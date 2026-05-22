@@ -1,0 +1,62 @@
+"Phrases"
+{
+	"Tag"
+	{
+		"en"		"[{olive}Stats{default}]"
+		"es"		"[{olive}Stats{default}]"
+	}
+
+	"StatsUnavailable"
+	{
+		"en"		"No round statistics are available yet."
+		"es"		"No hay estadisticas de ronda disponibles todavia."
+	}
+
+	"RoundMVPDamage"
+	{
+		"#format"	"{1:s},{2:d},{3:d},{4:d},{5:d},{6:d}"
+		"en"		"SI MVP: {olive}{1}{default} with {green}{2}{default} total damage [{green}{3}%{default}] ({green}{4}{default} SI, {green}{5}{default} Tank, {green}{6}{default} Witch)."
+		"es"		"MVP SI: {olive}{1}{default} con {green}{2}{default} de daño total [{green}{3}%{default}] ({green}{4}{default} SI, {green}{5}{default} Tank, {green}{6}{default} Witch)."
+	}
+
+	"RoundMVPCommon"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"CI MVP: {olive}{1}{default} with {green}{2}{default} common kills [{green}{3}%{default}]."
+		"es"		"MVP CI: {olive}{1}{default} con {green}{2}{default} common kills [{green}{3}%{default}]."
+	}
+
+	"RoundLVPFF"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"FF LVP: {olive}{1}{default} with {green}{2}{default} FF [{green}{3}%{default}]."
+		"es"		"LVP FF: {olive}{1}{default} con {green}{2}{default} de FF [{green}{3}%{default}]."
+	}
+
+	"RoundNoFF"
+	{
+		"en"		"FF LVP: no friendly fire at all."
+		"es"		"LVP FF: no hubo friendly fire."
+	}
+
+	"YourRankDamage"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Your SI rank: {green}#{1}{default} with {green}{2}{default} total damage [{green}{3}%{default}]."
+		"es"		"Tu rank SI: {green}#{1}{default} con {green}{2}{default} de daño total [{green}{3}%{default}]."
+	}
+
+	"YourRankCommon"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Your CI rank: {green}#{1}{default} with {green}{2}{default} common kills [{green}{3}%{default}]."
+		"es"		"Tu rank CI: {green}#{1}{default} con {green}{2}{default} common kills [{green}{3}%{default}]."
+	}
+
+	"YourRankFF"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Your FF rank: {green}#{1}{default} with {green}{2}{default} FF [{green}{3}%{default}]."
+		"es"		"Tu rank FF: {green}#{1}{default} con {green}{2}{default} de FF [{green}{3}%{default}]."
+	}
+}
