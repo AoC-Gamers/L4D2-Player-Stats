@@ -80,14 +80,14 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 	ConsolePanel_EnableSafeAscii(panel, true);
 
 	char line[128];
-	Format(line, sizeof(line), "L4D2 Player Stats - Round %d", g_Round.id);
+	Format(line, sizeof(line), "L4D2 Player Stats - Round %d", g_Round.meta.id);
 	ConsolePanel_AddHeaderLine(panel, line);
 
 	int totalDamage = Announce_GetTotalSurvivorDamage();
 	Format(line, sizeof(line), "Totals: DMG %d | CI %d | FF %d",
 		totalDamage,
-		g_Round.survivorTotalCommonKills,
-		g_Round.survivorTotalFF);
+		g_Round.totals.survivorTotalCommonKills,
+		g_Round.totals.survivorTotalFF);
 	ConsolePanel_AddHeaderLine(panel, line);
 
 	ConsoleTable_AddColumn(panel.table, "Player", 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
@@ -110,11 +110,11 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 
 		ConsoleTable_AddStringCell(panel.table, g_Round.players[slot].player.name);
 		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerDamageScore(slot));
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].siDamage);
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].tankDamage);
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].witchDamage);
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].commonKills);
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].ffGiven);
+		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.siDamage);
+		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.tankDamage);
+		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.witchDamage);
+		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.commonKills);
+		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.ffGiven);
 		ConsoleTable_EndRow(panel.table);
 	}
 
@@ -135,12 +135,12 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 	{
 		Format(line, sizeof(line), "CI MVP: %s (%d, %d%%)",
 			g_Round.players[ciMvp].player.name,
-			g_Round.players[ciMvp].commonKills,
-			Announce_GetPercent(g_Round.players[ciMvp].commonKills, g_Round.survivorTotalCommonKills));
+			g_Round.players[ciMvp].combat.commonKills,
+			Announce_GetPercent(g_Round.players[ciMvp].combat.commonKills, g_Round.totals.survivorTotalCommonKills));
 		ConsolePanel_AddFooterLine(panel, line);
 	}
 
-	if (g_Round.survivorTotalFF <= 0)
+	if (g_Round.totals.survivorTotalFF <= 0)
 	{
 		ConsolePanel_AddFooterLine(panel, "FF LVP: none");
 	}
@@ -148,8 +148,8 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 	{
 		Format(line, sizeof(line), "FF LVP: %s (%d, %d%%)",
 			g_Round.players[ffLvp].player.name,
-			g_Round.players[ffLvp].ffGiven,
-			Announce_GetPercent(g_Round.players[ffLvp].ffGiven, g_Round.survivorTotalFF));
+			g_Round.players[ffLvp].combat.ffGiven,
+			Announce_GetPercent(g_Round.players[ffLvp].combat.ffGiven, g_Round.totals.survivorTotalFF));
 		ConsolePanel_AddFooterLine(panel, line);
 	}
 
@@ -167,32 +167,32 @@ void Announce_PrintRoundSummaryLines(int client, int siMvp, int ciMvp, int ffLvp
 			g_Round.players[siMvp].player.name,
 			Announce_GetPlayerDamageScore(siMvp),
 			percent,
-			g_Round.players[siMvp].siDamage,
-			g_Round.players[siMvp].tankDamage,
-			g_Round.players[siMvp].witchDamage);
+			g_Round.players[siMvp].combat.siDamage,
+			g_Round.players[siMvp].combat.tankDamage,
+			g_Round.players[siMvp].combat.witchDamage);
 	}
 
 	if (Stats_IsValidRoundSlot(ciMvp))
 	{
-		int percent = Announce_GetPercent(g_Round.players[ciMvp].commonKills, g_Round.survivorTotalCommonKills);
+		int percent = Announce_GetPercent(g_Round.players[ciMvp].combat.commonKills, g_Round.totals.survivorTotalCommonKills);
 
 		Announce_PrintPhrase(client, "RoundMVPCommon",
 			g_Round.players[ciMvp].player.name,
-			g_Round.players[ciMvp].commonKills,
+			g_Round.players[ciMvp].combat.commonKills,
 			percent);
 	}
 
-	if (g_Round.survivorTotalFF <= 0)
+	if (g_Round.totals.survivorTotalFF <= 0)
 	{
 		Announce_PrintPhrase(client, "RoundNoFF");
 	}
 	else if (Stats_IsValidRoundSlot(ffLvp))
 	{
-		int percent = Announce_GetPercent(g_Round.players[ffLvp].ffGiven, g_Round.survivorTotalFF);
+		int percent = Announce_GetPercent(g_Round.players[ffLvp].combat.ffGiven, g_Round.totals.survivorTotalFF);
 
 		Announce_PrintPhrase(client, "RoundLVPFF",
 			g_Round.players[ffLvp].player.name,
-			g_Round.players[ffLvp].ffGiven,
+			g_Round.players[ffLvp].combat.ffGiven,
 			percent);
 	}
 }
@@ -224,20 +224,20 @@ void Announce_PrintClientRanks(int client)
 			Announce_GetPercent(Announce_GetPlayerDamageScore(index), Announce_GetTotalSurvivorDamage()));
 	}
 
-	if (commonRank > 0 && g_Round.survivorTotalCommonKills > 0)
+	if (commonRank > 0 && g_Round.totals.survivorTotalCommonKills > 0)
 	{
 		CPrintToChat(client, "%t %t", "Tag", "YourRankCommon",
 			commonRank,
-			g_Round.players[index].commonKills,
-			Announce_GetPercent(g_Round.players[index].commonKills, g_Round.survivorTotalCommonKills));
+			g_Round.players[index].combat.commonKills,
+			Announce_GetPercent(g_Round.players[index].combat.commonKills, g_Round.totals.survivorTotalCommonKills));
 	}
 
-	if (ffRank > 0 && g_Round.survivorTotalFF > 0)
+	if (ffRank > 0 && g_Round.totals.survivorTotalFF > 0)
 	{
 		CPrintToChat(client, "%t %t", "Tag", "YourRankFF",
 			ffRank,
-			g_Round.players[index].ffGiven,
-			Announce_GetPercent(g_Round.players[index].ffGiven, g_Round.survivorTotalFF));
+			g_Round.players[index].combat.ffGiven,
+			Announce_GetPercent(g_Round.players[index].combat.ffGiven, g_Round.totals.survivorTotalFF));
 	}
 }
 
@@ -257,12 +257,12 @@ void Announce_PrintPhrase(int client, const char[] phrase, any ...)
 
 int Announce_GetPlayerDamageScore(int index)
 {
-	return g_Round.players[index].siDamage + g_Round.players[index].tankDamage + g_Round.players[index].witchDamage;
+	return g_Round.players[index].combat.siDamage + g_Round.players[index].combat.tankDamage + g_Round.players[index].combat.witchDamage;
 }
 
 int Announce_GetTotalSurvivorDamage()
 {
-	return g_Round.survivorTotalSiDamage + g_Round.survivorTotalTankDamage + g_Round.survivorTotalWitchDamage;
+	return g_Round.totals.survivorTotalSiDamage + g_Round.totals.survivorTotalTankDamage + g_Round.totals.survivorTotalWitchDamage;
 }
 
 int Announce_GetPercent(int part, int whole)
@@ -320,7 +320,7 @@ int Announce_FindTopCommonSlot(int excludeA = -1, int excludeB = -1, int exclude
 			continue;
 		}
 
-		int score = g_Round.players[slot].commonKills;
+		int score = g_Round.players[slot].combat.commonKills;
 		if (score > bestScore)
 		{
 			bestScore = score;
@@ -348,7 +348,7 @@ int Announce_FindTopFFSlot(int excludeA = -1, int excludeB = -1, int excludeC = 
 			continue;
 		}
 
-		int score = g_Round.players[slot].ffGiven;
+		int score = g_Round.players[slot].combat.ffGiven;
 		if (score > bestScore)
 		{
 			bestScore = score;
@@ -393,7 +393,7 @@ int Announce_CollectSortedSurvivorSlotsByDamage(int[] slots, int maxSlots)
 				break;
 			}
 
-			if (currentScore == keyScore && g_Round.players[current].commonKills >= g_Round.players[key].commonKills)
+			if (currentScore == keyScore && g_Round.players[current].combat.commonKills >= g_Round.players[key].combat.commonKills)
 			{
 				break;
 			}
@@ -439,7 +439,7 @@ int Announce_GetCommonRank(int client)
 {
 	int rank = 1;
 	int index = Stats_GetPlayerRoundIndex(client);
-	int score = index != -1 ? g_Round.players[index].commonKills : 0;
+	int score = index != -1 ? g_Round.players[index].combat.commonKills : 0;
 
 	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
 	{
@@ -453,7 +453,7 @@ int Announce_GetCommonRank(int client)
 			continue;
 		}
 
-		if (g_Round.players[slot].commonKills > score)
+		if (g_Round.players[slot].combat.commonKills > score)
 		{
 			rank++;
 		}
@@ -466,7 +466,7 @@ int Announce_GetFFRank(int client)
 {
 	int rank = 1;
 	int index = Stats_GetPlayerRoundIndex(client);
-	int score = index != -1 ? g_Round.players[index].ffGiven : 0;
+	int score = index != -1 ? g_Round.players[index].combat.ffGiven : 0;
 
 	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
 	{
@@ -480,7 +480,7 @@ int Announce_GetFFRank(int client)
 			continue;
 		}
 
-		if (g_Round.players[slot].ffGiven > score)
+		if (g_Round.players[slot].combat.ffGiven > score)
 		{
 			rank++;
 		}

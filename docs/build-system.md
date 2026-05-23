@@ -103,3 +103,14 @@ Jobs:
 - `README.md`
 - `plugin-package-map.json`
 - `compile.log`
+
+## Debug
+
+El core usa `l4d2_player_stats_debug` como bitmask de categorias:
+
+- `1` `Core`
+- `2` `Detect`
+- `4` `Api`
+- `8` `Announce`
+
+`15` habilita todas las categorias actuales.

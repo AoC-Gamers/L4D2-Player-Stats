@@ -20,7 +20,7 @@ stock bool Stats_IsEnabled()
  */
 stock bool Stats_IsRoundLive()
 {
-	return Stats_IsEnabled() && g_Round.active && g_bRoundLive;
+	return Stats_IsEnabled() && g_Round.meta.active && g_Runtime.roundLive;
 }
 
 /**
@@ -30,7 +30,7 @@ stock bool Stats_IsRoundLive()
  */
 stock bool Stats_HasRoundSnapshot()
 {
-	return Stats_IsEnabled() && g_Round.id > 0;
+	return Stats_IsEnabled() && g_Round.meta.id > 0;
 }
 
 /**
@@ -46,6 +46,56 @@ stock bool IsValidClient(int client)
 }
 
 /**
+ * @brief Returns the typed L4D team for a client.
+ *
+ * @param client         Client index to inspect.
+ *
+ * @return               Team enum, or L4DTeam_Unassigned if invalid.
+ */
+stock L4DTeam GetClientL4DTeam(int client)
+{
+	return IsValidClient(client) ? L4D_GetClientTeam(client) : L4DTeam_Unassigned;
+}
+
+/**
+ * @brief Checks whether a client belongs to the requested L4D team.
+ *
+ * @param client         Client index to inspect.
+ * @param team           Target L4D team.
+ *
+ * @return               True if the client is valid and belongs to that team.
+ */
+stock bool IsClientOnTeam(int client, L4DTeam team)
+{
+	return GetClientL4DTeam(client) == team;
+}
+
+/**
+ * @brief Returns the typed zombie class for an infected client.
+ *
+ * @param client         Client index to inspect.
+ *
+ * @return               Zombie class enum, or NotInfected when unavailable.
+ */
+stock L4D2ZombieClassType GetClientZombieClass(int client)
+{
+	return IsValidInfected(client) ? L4D2_GetPlayerZombieClass(client) : L4D2ZombieClass_NotInfected;
+}
+
+/**
+ * @brief Checks whether an infected client matches a specific zombie class.
+ *
+ * @param client         Client index to inspect.
+ * @param zombieClass    Target zombie class.
+ *
+ * @return               True if the client is infected and matches the class.
+ */
+stock bool IsValidZombieClass(int client, L4D2ZombieClassType zombieClass)
+{
+	return IsValidInfected(client) && GetClientZombieClass(client) == zombieClass;
+}
+
+/**
  * @brief Checks whether a client is on the survivor team.
  *
  * @param client         Client index to inspect.
@@ -54,7 +104,7 @@ stock bool IsValidClient(int client)
  */
 stock bool IsValidSurvivor(int client)
 {
-	return IsValidClient(client) && L4D_GetClientTeam(client) == L4DTeam_Survivor;
+	return IsClientOnTeam(client, L4DTeam_Survivor);
 }
 
 /**
@@ -66,7 +116,7 @@ stock bool IsValidSurvivor(int client)
  */
 stock bool IsValidInfected(int client)
 {
-	return IsValidClient(client) && L4D_GetClientTeam(client) == L4DTeam_Infected;
+	return IsClientOnTeam(client, L4DTeam_Infected);
 }
 
 /**
@@ -100,7 +150,7 @@ stock PlayerStatsAttributionType Stats_GetAttributionType(int attacker)
  */
 stock bool IsValidTank(int client)
 {
-	return IsValidInfected(client) && L4D2_GetPlayerZombieClass(client) == L4D2ZombieClass_Tank;
+	return IsValidZombieClass(client, L4D2ZombieClass_Tank);
 }
 
 /**
@@ -123,22 +173,41 @@ stock bool IsWitchEntity(int entity)
 }
 
 /**
- * @brief Writes a formatted debug line when debug logging is enabled.
+ * @brief Checks whether a specific debug category is enabled in the bitmask ConVar.
  *
+ * @param category       Bitmask category from PlayerStatsDebugCategory.
+ *
+ * @return               True if that category is enabled.
+ */
+stock bool Stats_IsDebugEnabled(PlayerStatsDebugCategory category)
+{
+	if (g_cvDebug == null)
+	{
+		return false;
+	}
+
+	int mask = g_cvDebug.IntValue;
+	return (mask & view_as<int>(category)) != 0;
+}
+
+/**
+ * @brief Writes a formatted debug line when the selected category is enabled.
+ *
+ * @param category       Bitmask category from PlayerStatsDebugCategory.
  * @param fmt            Format string.
  * @param ...            Format arguments.
  *
  * @noreturn
  */
-stock void Stats_Debug(const char[] fmt, any...)
+stock void Stats_Debug(PlayerStatsDebugCategory category, const char[] fmt, any...)
 {
-	if (g_cvDebug == null || !g_cvDebug.BoolValue)
+	if (!Stats_IsDebugEnabled(category))
 	{
 		return;
 	}
 
 	char buffer[256];
-	VFormat(buffer, sizeof(buffer), fmt, 2);
+	VFormat(buffer, sizeof(buffer), fmt, 3);
 	LogToFileEx(g_sDebugLogPath, "[l4d2_player_stats] %s", buffer);
 }
 
@@ -172,7 +241,7 @@ stock PlayerStatsTeam Stats_GetPlayerTeam(int client)
 		return PlayerStatsTeam_None;
 	}
 
-	switch (L4D_GetClientTeam(client))
+	switch (GetClientL4DTeam(client))
 	{
 		case L4DTeam_Survivor:
 		{
@@ -207,33 +276,33 @@ stock void Stats_AddSpecialDamageByClass(int index, L4D2ZombieClassType zombieCl
 	{
 		case L4D2ZombieClass_Smoker:
 		{
-			g_Round.players[index].smokerDamage += damage;
-			g_Round.survivorTotalSmokerDamage += damage;
+			g_Round.players[index].combat.smokerDamage += damage;
+			g_Round.totals.survivorTotalSmokerDamage += damage;
 		}
 		case L4D2ZombieClass_Boomer:
 		{
-			g_Round.players[index].boomerDamage += damage;
-			g_Round.survivorTotalBoomerDamage += damage;
+			g_Round.players[index].combat.boomerDamage += damage;
+			g_Round.totals.survivorTotalBoomerDamage += damage;
 		}
 		case L4D2ZombieClass_Hunter:
 		{
-			g_Round.players[index].hunterDamage += damage;
-			g_Round.survivorTotalHunterDamage += damage;
+			g_Round.players[index].combat.hunterDamage += damage;
+			g_Round.totals.survivorTotalHunterDamage += damage;
 		}
 		case L4D2ZombieClass_Spitter:
 		{
-			g_Round.players[index].spitterDamage += damage;
-			g_Round.survivorTotalSpitterDamage += damage;
+			g_Round.players[index].combat.spitterDamage += damage;
+			g_Round.totals.survivorTotalSpitterDamage += damage;
 		}
 		case L4D2ZombieClass_Jockey:
 		{
-			g_Round.players[index].jockeyDamage += damage;
-			g_Round.survivorTotalJockeyDamage += damage;
+			g_Round.players[index].combat.jockeyDamage += damage;
+			g_Round.totals.survivorTotalJockeyDamage += damage;
 		}
 		case L4D2ZombieClass_Charger:
 		{
-			g_Round.players[index].chargerDamage += damage;
-			g_Round.survivorTotalChargerDamage += damage;
+			g_Round.players[index].combat.chargerDamage += damage;
+			g_Round.totals.survivorTotalChargerDamage += damage;
 		}
 	}
 }
@@ -257,38 +326,38 @@ stock void Stats_AddSpecialKillByClass(int index, L4D2ZombieClassType zombieClas
 	{
 		case L4D2ZombieClass_Smoker:
 		{
-			g_Round.players[index].smokerKills++;
-			g_Round.survivorTotalSmokerKills++;
+			g_Round.players[index].combat.smokerKills++;
+			g_Round.totals.survivorTotalSmokerKills++;
 		}
 		case L4D2ZombieClass_Boomer:
 		{
-			g_Round.players[index].boomerKills++;
-			g_Round.survivorTotalBoomerKills++;
+			g_Round.players[index].combat.boomerKills++;
+			g_Round.totals.survivorTotalBoomerKills++;
 		}
 		case L4D2ZombieClass_Hunter:
 		{
-			g_Round.players[index].hunterKills++;
-			g_Round.survivorTotalHunterKills++;
+			g_Round.players[index].combat.hunterKills++;
+			g_Round.totals.survivorTotalHunterKills++;
 		}
 		case L4D2ZombieClass_Spitter:
 		{
-			g_Round.players[index].spitterKills++;
-			g_Round.survivorTotalSpitterKills++;
+			g_Round.players[index].combat.spitterKills++;
+			g_Round.totals.survivorTotalSpitterKills++;
 		}
 		case L4D2ZombieClass_Jockey:
 		{
-			g_Round.players[index].jockeyKills++;
-			g_Round.survivorTotalJockeyKills++;
+			g_Round.players[index].combat.jockeyKills++;
+			g_Round.totals.survivorTotalJockeyKills++;
 		}
 		case L4D2ZombieClass_Charger:
 		{
-			g_Round.players[index].chargerKills++;
-			g_Round.survivorTotalChargerKills++;
+			g_Round.players[index].combat.chargerKills++;
+			g_Round.totals.survivorTotalChargerKills++;
 		}
 		case L4D2ZombieClass_Tank:
 		{
-			g_Round.players[index].tankKills++;
-			g_Round.survivorTotalTankKills++;
+			g_Round.players[index].combat.tankKills++;
+			g_Round.totals.survivorTotalTankKills++;
 		}
 	}
 }
@@ -302,7 +371,7 @@ stock void Stats_ResetRuntimeMappings()
 {
 	for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 	{
-		g_iPlayerSlotByClient[client] = -1;
+		g_Runtime.playerSlotByClient[client] = -1;
 	}
 }
 
@@ -333,7 +402,7 @@ stock void Stats_AssignClientToSlot(int client, int slot)
 		return;
 	}
 
-	g_iPlayerSlotByClient[client] = slot;
+	g_Runtime.playerSlotByClient[client] = slot;
 	g_Round.players[slot].player.Capture(client);
 	g_Round.players[slot].team = Stats_GetPlayerTeam(client);
 }
@@ -395,8 +464,8 @@ stock int Stats_FindFreeRoundSlot()
  */
 stock int Stats_GetPlayerRoundIndex(int client)
 {
-	return (client > 0 && client < L4D2_PLAYER_STATS_MAX_PLAYERS && Stats_IsValidRoundSlot(g_iPlayerSlotByClient[client]))
-		? g_iPlayerSlotByClient[client]
+	return (client > 0 && client < L4D2_PLAYER_STATS_MAX_PLAYERS && Stats_IsValidRoundSlot(g_Runtime.playerSlotByClient[client]))
+		? g_Runtime.playerSlotByClient[client]
 		: -1;
 }
 
@@ -470,13 +539,13 @@ stock void Stats_OnClientDisconnect(int client)
 		return;
 	}
 
-	int slot = g_iPlayerSlotByClient[client];
+	int slot = g_Runtime.playerSlotByClient[client];
 	if (Stats_IsValidRoundSlot(slot))
 	{
 		g_Round.players[slot].player.DetachClient();
 	}
 
-	g_iPlayerSlotByClient[client] = -1;
+	g_Runtime.playerSlotByClient[client] = -1;
 }
 
 /**
@@ -508,7 +577,7 @@ stock void Stats_EventPlayerBotReplace(Event event, const char[] name, bool dont
 
 	if (player > 0 && player < L4D2_PLAYER_STATS_MAX_PLAYERS)
 	{
-		g_iPlayerSlotByClient[player] = -1;
+		g_Runtime.playerSlotByClient[player] = -1;
 	}
 
 	Stats_AssignClientToSlot(bot, slot);
@@ -543,7 +612,7 @@ stock void Stats_EventBotPlayerReplace(Event event, const char[] name, bool dont
 
 	if (bot > 0 && bot < L4D2_PLAYER_STATS_MAX_PLAYERS)
 	{
-		g_iPlayerSlotByClient[bot] = -1;
+		g_Runtime.playerSlotByClient[bot] = -1;
 	}
 
 	Stats_AssignClientToSlot(player, slot);

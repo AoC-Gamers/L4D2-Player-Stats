@@ -35,25 +35,12 @@ void API_FireRoundFinalized(int roundId)
 
 bool API_IsRoundIdValid(int roundId)
 {
-	return roundId > 0 && g_Round.id == roundId;
+	return roundId > 0 && g_Round.meta.id == roundId;
 }
 
 bool API_IsCoopMode()
 {
-	static ConVar cvGameMode = null;
-	if (cvGameMode == null)
-	{
-		cvGameMode = FindConVar("mp_gamemode");
-	}
-
-	if (cvGameMode == null)
-	{
-		return false;
-	}
-
-	char gameMode[32];
-	cvGameMode.GetString(gameMode, sizeof(gameMode));
-	return StrContains(gameMode, "coop", false) != -1;
+	return L4D_GetGameModeType() == GAMEMODE_COOP;
 }
 
 void API_WriteIdentityBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
@@ -63,8 +50,9 @@ void API_WriteIdentityBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetString(kv, "name", playerData.player.name);
+	KvSetNum(kv, "userid", playerData.player.userid);
 	KvSetNum(kv, "accountid", playerData.player.accountId);
+	KvSetString(kv, "name", playerData.player.name);
 	KvSetNum(kv, "bot", playerData.player.bot ? 1 : 0);
 	KvSetNum(kv, "team", playerData.team);
 
@@ -78,24 +66,24 @@ void API_WriteCombatBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetNum(kv, "si_damage", playerData.siDamage);
-	KvSetNum(kv, "smoker_damage", playerData.smokerDamage);
-	KvSetNum(kv, "boomer_damage", playerData.boomerDamage);
-	KvSetNum(kv, "hunter_damage", playerData.hunterDamage);
-	KvSetNum(kv, "spitter_damage", playerData.spitterDamage);
-	KvSetNum(kv, "jockey_damage", playerData.jockeyDamage);
-	KvSetNum(kv, "charger_damage", playerData.chargerDamage);
-	KvSetNum(kv, "tank_damage", playerData.tankDamage);
-	KvSetNum(kv, "witch_damage", playerData.witchDamage);
-	KvSetNum(kv, "common_kills", playerData.commonKills);
-	KvSetNum(kv, "smoker_kills", playerData.smokerKills);
-	KvSetNum(kv, "boomer_kills", playerData.boomerKills);
-	KvSetNum(kv, "hunter_kills", playerData.hunterKills);
-	KvSetNum(kv, "spitter_kills", playerData.spitterKills);
-	KvSetNum(kv, "jockey_kills", playerData.jockeyKills);
-	KvSetNum(kv, "charger_kills", playerData.chargerKills);
-	KvSetNum(kv, "tank_kills", playerData.tankKills);
-	KvSetNum(kv, "ff_given", playerData.ffGiven);
+	KvSetNum(kv, "si_damage", playerData.combat.siDamage);
+	KvSetNum(kv, "smoker_damage", playerData.combat.smokerDamage);
+	KvSetNum(kv, "boomer_damage", playerData.combat.boomerDamage);
+	KvSetNum(kv, "hunter_damage", playerData.combat.hunterDamage);
+	KvSetNum(kv, "spitter_damage", playerData.combat.spitterDamage);
+	KvSetNum(kv, "jockey_damage", playerData.combat.jockeyDamage);
+	KvSetNum(kv, "charger_damage", playerData.combat.chargerDamage);
+	KvSetNum(kv, "tank_damage", playerData.combat.tankDamage);
+	KvSetNum(kv, "witch_damage", playerData.combat.witchDamage);
+	KvSetNum(kv, "common_kills", playerData.combat.commonKills);
+	KvSetNum(kv, "smoker_kills", playerData.combat.smokerKills);
+	KvSetNum(kv, "boomer_kills", playerData.combat.boomerKills);
+	KvSetNum(kv, "hunter_kills", playerData.combat.hunterKills);
+	KvSetNum(kv, "spitter_kills", playerData.combat.spitterKills);
+	KvSetNum(kv, "jockey_kills", playerData.combat.jockeyKills);
+	KvSetNum(kv, "charger_kills", playerData.combat.chargerKills);
+	KvSetNum(kv, "tank_kills", playerData.combat.tankKills);
+	KvSetNum(kv, "ff_given", playerData.combat.ffGiven);
 
 	KvGoBack(kv);
 }
@@ -107,14 +95,14 @@ void API_WriteSurvivabilityBlock(Handle kv, PlayerStatsPlayerRoundData playerDat
 		return;
 	}
 
-	KvSetNum(kv, "deaths", playerData.deaths);
-	KvSetNum(kv, "incaps", playerData.incaps);
-	KvSetNum(kv, "death_by_survivor", playerData.deathBySurvivor);
-	KvSetNum(kv, "death_by_infected_player", playerData.deathByInfectedPlayer);
-	KvSetNum(kv, "death_by_infected_ai", playerData.deathByInfectedAI);
-	KvSetNum(kv, "incap_by_survivor", playerData.incapBySurvivor);
-	KvSetNum(kv, "incap_by_infected_player", playerData.incapByInfectedPlayer);
-	KvSetNum(kv, "incap_by_infected_ai", playerData.incapByInfectedAI);
+	KvSetNum(kv, "deaths", playerData.survivability.deaths);
+	KvSetNum(kv, "incaps", playerData.survivability.incaps);
+	KvSetNum(kv, "death_by_survivor", playerData.survivability.deathBySurvivor);
+	KvSetNum(kv, "death_by_infected_player", playerData.survivability.deathByInfectedPlayer);
+	KvSetNum(kv, "death_by_infected_ai", playerData.survivability.deathByInfectedAI);
+	KvSetNum(kv, "incap_by_survivor", playerData.survivability.incapBySurvivor);
+	KvSetNum(kv, "incap_by_infected_player", playerData.survivability.incapByInfectedPlayer);
+	KvSetNum(kv, "incap_by_infected_ai", playerData.survivability.incapByInfectedAI);
 
 	KvGoBack(kv);
 }
@@ -126,10 +114,10 @@ void API_WriteSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetNum(kv, "heals_given", playerData.healsGiven);
-	KvSetNum(kv, "heals_received", playerData.healsReceived);
-	KvSetNum(kv, "revives_given", playerData.revivesGiven);
-	KvSetNum(kv, "revives_received", playerData.revivesReceived);
+	KvSetNum(kv, "heals_given", playerData.support.healsGiven);
+	KvSetNum(kv, "heals_received", playerData.support.healsReceived);
+	KvSetNum(kv, "revives_given", playerData.support.revivesGiven);
+	KvSetNum(kv, "revives_received", playerData.support.revivesReceived);
 
 	KvGoBack(kv);
 }
@@ -141,20 +129,20 @@ void API_WriteResourcesBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetNum(kv, "pills_used", playerData.pillsUsed);
-	KvSetNum(kv, "adrenaline_used", playerData.adrenalineUsed);
-	KvSetNum(kv, "medkits_used", playerData.medkitsUsed);
-	KvSetNum(kv, "defibs_used", playerData.defibsUsed);
-	KvSetNum(kv, "molotovs_thrown", playerData.molotovsThrown);
-	KvSetNum(kv, "pipebombs_thrown", playerData.pipebombsThrown);
-	KvSetNum(kv, "vomitjars_thrown", playerData.vomitjarsThrown);
+	KvSetNum(kv, "pills_used", playerData.resources.pillsUsed);
+	KvSetNum(kv, "adrenaline_used", playerData.resources.adrenalineUsed);
+	KvSetNum(kv, "medkits_used", playerData.resources.medkitsUsed);
+	KvSetNum(kv, "defibs_used", playerData.resources.defibsUsed);
+	KvSetNum(kv, "molotovs_thrown", playerData.resources.molotovsThrown);
+	KvSetNum(kv, "pipebombs_thrown", playerData.resources.pipebombsThrown);
+	KvSetNum(kv, "vomitjars_thrown", playerData.resources.vomitjarsThrown);
 
 	KvGoBack(kv);
 }
 
 void API_WriteModeBlocks(Handle kv, PlayerStatsPlayerRoundData playerData)
 {
-	if (playerData.rescuesGiven <= 0 || !API_IsCoopMode())
+	if (playerData.support.rescuesGiven <= 0 || !API_IsCoopMode())
 	{
 		return;
 	}
@@ -164,7 +152,7 @@ void API_WriteModeBlocks(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetNum(kv, "rescues_given", playerData.rescuesGiven);
+	KvSetNum(kv, "rescues_given", playerData.support.rescuesGiven);
 	KvGoBack(kv);
 }
 
@@ -175,15 +163,15 @@ void API_WriteRoundTotals(Handle kv)
 		return;
 	}
 
-	KvSetNum(kv, "si_damage", g_Round.survivorTotalSiDamage);
-	KvSetNum(kv, "tank_damage", g_Round.survivorTotalTankDamage);
-	KvSetNum(kv, "witch_damage", g_Round.survivorTotalWitchDamage);
-	KvSetNum(kv, "common_kills", g_Round.survivorTotalCommonKills);
-	KvSetNum(kv, "ff", g_Round.survivorTotalFF);
-	KvSetNum(kv, "deaths", g_Round.survivorTotalDeaths);
-	KvSetNum(kv, "incaps", g_Round.survivorTotalIncaps);
-	KvSetNum(kv, "heals_given", g_Round.survivorTotalHealsGiven);
-	KvSetNum(kv, "revives_given", g_Round.survivorTotalRevivesGiven);
+	KvSetNum(kv, "si_damage", g_Round.totals.survivorTotalSiDamage);
+	KvSetNum(kv, "tank_damage", g_Round.totals.survivorTotalTankDamage);
+	KvSetNum(kv, "witch_damage", g_Round.totals.survivorTotalWitchDamage);
+	KvSetNum(kv, "common_kills", g_Round.totals.survivorTotalCommonKills);
+	KvSetNum(kv, "ff", g_Round.totals.survivorTotalFF);
+	KvSetNum(kv, "deaths", g_Round.totals.survivorTotalDeaths);
+	KvSetNum(kv, "incaps", g_Round.totals.survivorTotalIncaps);
+	KvSetNum(kv, "heals_given", g_Round.totals.survivorTotalHealsGiven);
+	KvSetNum(kv, "revives_given", g_Round.totals.survivorTotalRevivesGiven);
 
 	KvGoBack(kv);
 }
@@ -233,12 +221,12 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 
 public int Native_PlayerStats_IsRoundActive(Handle plugin, int numParams)
 {
-	return g_Round.active;
+	return g_Round.meta.active;
 }
 
 public int Native_PlayerStats_GetRoundId(Handle plugin, int numParams)
 {
-	return g_Round.id;
+	return g_Round.meta.id;
 }
 
 public int Native_PlayerStats_IsRoundPlayerSlotValid(Handle plugin, int numParams)
@@ -277,7 +265,7 @@ public int Native_PlayerStats_FillRoundKeyValues(Handle plugin, int numParams)
 		return false;
 	}
 
-	KvSetNum(kv, "id", g_Round.id);
+	KvSetNum(kv, "id", g_Round.meta.id);
 	API_WriteRoundTotals(kv);
 	API_WriteRoundPlayersSummary(kv);
 

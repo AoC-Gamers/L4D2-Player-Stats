@@ -21,6 +21,15 @@ enum PlayerStatsAttributionType
 	PlayerStatsAttribution_InfectedAI
 }
 
+enum PlayerStatsDebugCategory
+{
+	PlayerStatsDebug_None		= 0,
+	PlayerStatsDebug_Core		= 1 << 0,
+	PlayerStatsDebug_Detect		= 1 << 1,
+	PlayerStatsDebug_Api		= 1 << 2,
+	PlayerStatsDebug_Announce	= 1 << 3
+}
+
 enum struct PlayerStatsPlayerRef
 {
 	int  client;
@@ -94,6 +103,29 @@ enum struct PlayerStatsPlayerRef
 	}
 
 	/**
+	 * @brief Resolves the stored runtime userid back to a live client index.
+	 *
+	 * @return               Client index, or 0 if the player is offline.
+	 */
+	int ResolveClient()
+	{
+		int current = GetClientOfUserId(this.userid);
+		return IsValidClient(current) ? current : 0;
+	}
+
+	/**
+	 * @brief Checks whether a live client matches this runtime snapshot.
+	 *
+	 * @param clientIndex    SourceMod client index.
+	 *
+	 * @return               True if the userid matches the captured runtime user.
+	 */
+	bool IsSameRuntimePlayer(int clientIndex)
+	{
+		return IsValidClient(clientIndex) && this.userid > 0 && GetClientUserId(clientIndex) == this.userid;
+	}
+
+	/**
 	 * @brief Checks whether a runtime client matches this persistent identity.
 	 *
 	 * @param clientIndex    SourceMod client index.
@@ -134,11 +166,8 @@ enum struct PlayerStatsPlayerRef
 	}
 }
 
-enum struct PlayerStatsPlayerRoundData
+enum struct PlayerStatsCombatData
 {
-	bool active;
-	PlayerStatsPlayerRef player;
-	PlayerStatsTeam team;
 	int siDamage;
 	int smokerDamage;
 	int boomerDamage;
@@ -157,51 +186,9 @@ enum struct PlayerStatsPlayerRoundData
 	int ffGiven;
 	int tankDamage;
 	int witchDamage;
-	int deaths;
-	int incaps;
-	int deathBySurvivor;
-	int deathByInfectedPlayer;
-	int deathByInfectedAI;
-	int incapBySurvivor;
-	int incapByInfectedPlayer;
-	int incapByInfectedAI;
-	int healsGiven;
-	int healsReceived;
-	int revivesGiven;
-	int revivesReceived;
-	int rescuesGiven;
-	int rescuesReceived;
-	int tongueGrabs;
-	int hunterPouncesLanded;
-	int jockeyRidesLanded;
-	int boomerVomitVictims;
-	int skeets;
-	int skeetMelees;
-	int deadstops;
-	int boomerPops;
-	int levels;
-	int crowns;
-	int tongueCuts;
-	int smokerSelfClears;
-	int instaKills;
-	int pillsUsed;
-	int adrenalineUsed;
-	int medkitsUsed;
-	int defibsUsed;
-	int molotovsThrown;
-	int pipebombsThrown;
-	int vomitjarsThrown;
 
-	/**
-	 * @brief Resets all tracked per-player round values.
-	 *
-	 * @noreturn
-	 */
 	void Reset()
 	{
-		this.active = false;
-		this.player.Reset();
-		this.team = PlayerStatsTeam_None;
 		this.siDamage = 0;
 		this.smokerDamage = 0;
 		this.boomerDamage = 0;
@@ -220,6 +207,22 @@ enum struct PlayerStatsPlayerRoundData
 		this.ffGiven = 0;
 		this.tankDamage = 0;
 		this.witchDamage = 0;
+	}
+}
+
+enum struct PlayerStatsSurvivabilityData
+{
+	int deaths;
+	int incaps;
+	int deathBySurvivor;
+	int deathByInfectedPlayer;
+	int deathByInfectedAI;
+	int incapBySurvivor;
+	int incapByInfectedPlayer;
+	int incapByInfectedAI;
+
+	void Reset()
+	{
 		this.deaths = 0;
 		this.incaps = 0;
 		this.deathBySurvivor = 0;
@@ -228,16 +231,59 @@ enum struct PlayerStatsPlayerRoundData
 		this.incapBySurvivor = 0;
 		this.incapByInfectedPlayer = 0;
 		this.incapByInfectedAI = 0;
+	}
+}
+
+enum struct PlayerStatsSupportData
+{
+	int healsGiven;
+	int healsReceived;
+	int revivesGiven;
+	int revivesReceived;
+	int rescuesGiven;
+	int rescuesReceived;
+
+	void Reset()
+	{
 		this.healsGiven = 0;
 		this.healsReceived = 0;
 		this.revivesGiven = 0;
 		this.revivesReceived = 0;
 		this.rescuesGiven = 0;
 		this.rescuesReceived = 0;
+	}
+}
+
+enum struct PlayerStatsPressureData
+{
+	int tongueGrabs;
+	int hunterPouncesLanded;
+	int jockeyRidesLanded;
+	int boomerVomitVictims;
+
+	void Reset()
+	{
 		this.tongueGrabs = 0;
 		this.hunterPouncesLanded = 0;
 		this.jockeyRidesLanded = 0;
 		this.boomerVomitVictims = 0;
+	}
+}
+
+enum struct PlayerStatsSkillData
+{
+	int skeets;
+	int skeetMelees;
+	int deadstops;
+	int boomerPops;
+	int levels;
+	int crowns;
+	int tongueCuts;
+	int smokerSelfClears;
+	int instaKills;
+
+	void Reset()
+	{
 		this.skeets = 0;
 		this.skeetMelees = 0;
 		this.deadstops = 0;
@@ -247,6 +293,21 @@ enum struct PlayerStatsPlayerRoundData
 		this.tongueCuts = 0;
 		this.smokerSelfClears = 0;
 		this.instaKills = 0;
+	}
+}
+
+enum struct PlayerStatsResourceData
+{
+	int pillsUsed;
+	int adrenalineUsed;
+	int medkitsUsed;
+	int defibsUsed;
+	int molotovsThrown;
+	int pipebombsThrown;
+	int vomitjarsThrown;
+
+	void Reset()
+	{
 		this.pillsUsed = 0;
 		this.adrenalineUsed = 0;
 		this.medkitsUsed = 0;
@@ -257,12 +318,55 @@ enum struct PlayerStatsPlayerRoundData
 	}
 }
 
-enum struct PlayerStatsRoundData
+enum struct PlayerStatsPlayerRoundData
+{
+	bool active;
+	PlayerStatsPlayerRef player;
+	PlayerStatsTeam team;
+	PlayerStatsCombatData combat;
+	PlayerStatsSurvivabilityData survivability;
+	PlayerStatsSupportData support;
+	PlayerStatsPressureData pressure;
+	PlayerStatsSkillData skills;
+	PlayerStatsResourceData resources;
+
+	/**
+	 * @brief Resets all tracked per-player round values.
+	 *
+	 * @noreturn
+	 */
+	void Reset()
+	{
+		this.active = false;
+		this.player.Reset();
+		this.team = PlayerStatsTeam_None;
+		this.combat.Reset();
+		this.survivability.Reset();
+		this.support.Reset();
+		this.pressure.Reset();
+		this.skills.Reset();
+		this.resources.Reset();
+	}
+}
+
+enum struct PlayerStatsRoundMetaData
 {
 	int id;
 	bool active;
 	float startedAt;
 	float endedAt;
+
+	void Reset()
+	{
+		this.id = 0;
+		this.active = false;
+		this.startedAt = 0.0;
+		this.endedAt = 0.0;
+	}
+}
+
+enum struct PlayerStatsRoundTotalsData
+{
 	int survivorTotalSiDamage;
 	int survivorTotalSmokerDamage;
 	int survivorTotalBoomerDamage;
@@ -306,19 +410,9 @@ enum struct PlayerStatsRoundData
 	int survivorTotalMolotovsThrown;
 	int survivorTotalPipebombsThrown;
 	int survivorTotalVomitjarsThrown;
-	PlayerStatsPlayerRoundData players[L4D2_PLAYER_STATS_MAX_SLOTS];
 
-	/**
-	 * @brief Resets the current round snapshot and all tracked players.
-	 *
-	 * @noreturn
-	 */
 	void Reset()
 	{
-		this.id = 0;
-		this.active = false;
-		this.startedAt = 0.0;
-		this.endedAt = 0.0;
 		this.survivorTotalSiDamage = 0;
 		this.survivorTotalSmokerDamage = 0;
 		this.survivorTotalBoomerDamage = 0;
@@ -362,10 +456,55 @@ enum struct PlayerStatsRoundData
 		this.survivorTotalMolotovsThrown = 0;
 		this.survivorTotalPipebombsThrown = 0;
 		this.survivorTotalVomitjarsThrown = 0;
+	}
+}
+
+enum struct PlayerStatsRoundData
+{
+	PlayerStatsRoundMetaData meta;
+	PlayerStatsRoundTotalsData totals;
+	PlayerStatsPlayerRoundData players[L4D2_PLAYER_STATS_MAX_SLOTS];
+
+	/**
+	 * @brief Resets the current round snapshot and all tracked players.
+	 *
+	 * @noreturn
+	 */
+	void Reset()
+	{
+		this.meta.Reset();
+		this.totals.Reset();
 
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_SLOTS; client++)
 		{
 			this.players[client].Reset();
+		}
+	}
+}
+
+enum struct PlayerStatsRuntimeState
+{
+	bool roundLive;
+	bool readyUpAvailable;
+	bool playerSkillsAvailable;
+	bool lateload;
+	int playerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+
+	/**
+	 * @brief Resets runtime flags and client-to-slot mappings.
+	 *
+	 * @noreturn
+	 */
+	void Reset()
+	{
+		this.roundLive = false;
+		this.readyUpAvailable = false;
+		this.playerSkillsAvailable = false;
+		this.lateload = false;
+
+		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
+		{
+			this.playerSlotByClient[client] = -1;
 		}
 	}
 }

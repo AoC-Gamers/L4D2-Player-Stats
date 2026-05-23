@@ -18,3 +18,12 @@ Documentation:
 - [Build System](docs/build-system.md)
 - [Player Stats API](docs/l4d2-player-stats-api.md)
 - [Product Model](docs/l4d2-player-stats-product-model.md)
+
+Debug categories:
+
+- `l4d2_player_stats_debug`
+  - `1` `Core`
+  - `2` `Detect`
+  - `4` `Api`
+  - `8` `Announce`
+  - `15` all current categories

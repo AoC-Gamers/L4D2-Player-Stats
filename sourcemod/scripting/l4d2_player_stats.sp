@@ -19,11 +19,7 @@
 #define L4D2_PLAYER_SKILLS_LIBRARY "l4d2_player_skills"
 
 PlayerStatsRoundData g_Round;
-bool				 g_bRoundLive			  = false;
-bool				 g_bReadyUpAvailable	  = false;
-bool				 g_bPlayerSkillsAvailable = false;
-bool				 g_bLateload			  = false;	
-int					 g_iPlayerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+PlayerStatsRuntimeState g_Runtime;
 
 ConVar				 g_cvEnable = null;
 ConVar				 g_cvDebug	= null;
@@ -40,7 +36,8 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int errorMax)
 {
-	g_bLateload = late;
+	g_Runtime.Reset();
+	g_Runtime.lateload = late;
 	return APLRes_Success;
 }
 
@@ -49,7 +46,7 @@ public void OnPluginStart()
 	LoadTranslations("l4d2_player_stats.phrases");
 
 	g_cvEnable = CreateConVar("l4d2_player_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
-	g_cvDebug  = CreateConVar("l4d2_player_stats_debug", "0", "Enable debug logging for l4d2_player_stats.");
+	g_cvDebug  = CreateConVar("l4d2_player_stats_debug", "0", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Detect 4=Api 8=Announce.");
 
 	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), "logs/l4d2_player_stats_debug.log");
 
@@ -60,28 +57,28 @@ public void OnPluginStart()
 	Round_Init();
 	Detect_Init();
 
-	if (!g_bLateload)
+	if (!g_Runtime.lateload)
 		return;
 
-	g_bReadyUpAvailable		 = LibraryExists(READYUP_LIBRARY);
-	g_bPlayerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
+	g_Runtime.readyUpAvailable		= LibraryExists(READYUP_LIBRARY);
+	g_Runtime.playerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
 }
 
 public void OnAllPluginsLoaded()
 {
-	g_bReadyUpAvailable		 = LibraryExists(READYUP_LIBRARY);
-	g_bPlayerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
+	g_Runtime.readyUpAvailable		= LibraryExists(READYUP_LIBRARY);
+	g_Runtime.playerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
 }
 
 public void OnLibraryAdded(const char[] name)
 {
 	if (strcmp(name, READYUP_LIBRARY) == 0)
 	{
-		g_bReadyUpAvailable = true;
+		g_Runtime.readyUpAvailable = true;
 	}
 	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
 	{
-		g_bPlayerSkillsAvailable = true;
+		g_Runtime.playerSkillsAvailable = true;
 	}
 }
 
@@ -89,11 +86,11 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if (strcmp(name, READYUP_LIBRARY) == 0)
 	{
-		g_bReadyUpAvailable = false;
+		g_Runtime.readyUpAvailable = false;
 	}
 	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
 	{
-		g_bPlayerSkillsAvailable = false;
+		g_Runtime.playerSkillsAvailable = false;
 	}
 }
 

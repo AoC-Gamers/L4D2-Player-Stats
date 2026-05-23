@@ -46,14 +46,14 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 		if (IsValidTank(victim))
 		{
-			g_Round.players[index].tankDamage += damage;
-			g_Round.survivorTotalTankDamage += damage;
+			g_Round.players[index].combat.tankDamage += damage;
+			g_Round.totals.survivorTotalTankDamage += damage;
 		}
 		else
 		{
 			Stats_AddSpecialDamageByClass(index, L4D2_GetPlayerZombieClass(victim), damage);
-			g_Round.players[index].siDamage += damage;
-			g_Round.survivorTotalSiDamage += damage;
+			g_Round.players[index].combat.siDamage += damage;
+			g_Round.totals.survivorTotalSiDamage += damage;
 		}
 
 		return;
@@ -67,8 +67,8 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			return;
 		}
 
-		g_Round.players[index].ffGiven += damage;
-		g_Round.survivorTotalFF += damage;
+		g_Round.players[index].combat.ffGiven += damage;
+		g_Round.totals.survivorTotalFF += damage;
 	}
 }
 
@@ -113,22 +113,22 @@ void Detect_EventPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		return;
 	}
 
-	g_Round.players[index].deaths++;
-	g_Round.survivorTotalDeaths++;
+	g_Round.players[index].survivability.deaths++;
+	g_Round.totals.survivorTotalDeaths++;
 
 	switch (Stats_GetAttributionType(attacker))
 	{
 		case PlayerStatsAttribution_Survivor:
 		{
-			g_Round.players[index].deathBySurvivor++;
+			g_Round.players[index].survivability.deathBySurvivor++;
 		}
 		case PlayerStatsAttribution_InfectedPlayer:
 		{
-			g_Round.players[index].deathByInfectedPlayer++;
+			g_Round.players[index].survivability.deathByInfectedPlayer++;
 		}
 		case PlayerStatsAttribution_InfectedAI:
 		{
-			g_Round.players[index].deathByInfectedAI++;
+			g_Round.players[index].survivability.deathByInfectedAI++;
 		}
 	}
 }
@@ -160,8 +160,8 @@ void Detect_EventInfectedDeath(Event event, const char[] name, bool dontBroadcas
 		return;
 	}
 
-	g_Round.players[index].commonKills++;
-	g_Round.survivorTotalCommonKills++;
+	g_Round.players[index].combat.commonKills++;
+	g_Round.totals.survivorTotalCommonKills++;
 }
 
 void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast)
@@ -193,8 +193,8 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 		return;
 	}
 
-	g_Round.players[index].witchDamage += damage;
-	g_Round.survivorTotalWitchDamage += damage;
+	g_Round.players[index].combat.witchDamage += damage;
+	g_Round.totals.survivorTotalWitchDamage += damage;
 }
 
 void Detect_OnIncapacitatedPost(int victim, int inflictor, int attacker, float damage, int damagetype, int weapon)
@@ -219,22 +219,22 @@ void Detect_OnIncapacitatedPost(int victim, int inflictor, int attacker, float d
 		return;
 	}
 
-	g_Round.players[index].incaps++;
-	g_Round.survivorTotalIncaps++;
+	g_Round.players[index].survivability.incaps++;
+	g_Round.totals.survivorTotalIncaps++;
 
 	switch (Stats_GetAttributionType(attacker))
 	{
 		case PlayerStatsAttribution_Survivor:
 		{
-			g_Round.players[index].incapBySurvivor++;
+			g_Round.players[index].survivability.incapBySurvivor++;
 		}
 		case PlayerStatsAttribution_InfectedPlayer:
 		{
-			g_Round.players[index].incapByInfectedPlayer++;
+			g_Round.players[index].survivability.incapByInfectedPlayer++;
 		}
 		case PlayerStatsAttribution_InfectedAI:
 		{
-			g_Round.players[index].incapByInfectedAI++;
+			g_Round.players[index].survivability.incapByInfectedAI++;
 		}
 	}
 }
@@ -269,22 +269,22 @@ void Detect_EventWeaponFire(Event event, const char[] name, bool dontBroadcast)
 
 	if (StrEqual(weapon, "molotov", false) || StrEqual(weapon, "weapon_molotov", false))
 	{
-		g_Round.players[index].molotovsThrown++;
-		g_Round.survivorTotalMolotovsThrown++;
+		g_Round.players[index].resources.molotovsThrown++;
+		g_Round.totals.survivorTotalMolotovsThrown++;
 		return;
 	}
 
 	if (StrEqual(weapon, "pipe_bomb", false) || StrEqual(weapon, "weapon_pipe_bomb", false))
 	{
-		g_Round.players[index].pipebombsThrown++;
-		g_Round.survivorTotalPipebombsThrown++;
+		g_Round.players[index].resources.pipebombsThrown++;
+		g_Round.totals.survivorTotalPipebombsThrown++;
 		return;
 	}
 
 	if (StrEqual(weapon, "vomitjar", false) || StrEqual(weapon, "weapon_vomitjar", false))
 	{
-		g_Round.players[index].vomitjarsThrown++;
-		g_Round.survivorTotalVomitjarsThrown++;
+		g_Round.players[index].resources.vomitjarsThrown++;
+		g_Round.totals.survivorTotalVomitjarsThrown++;
 	}
 }
 
@@ -309,8 +309,8 @@ void Detect_EventPillsUsed(Event event, const char[] name, bool dontBroadcast)
 		return;
 	}
 
-	g_Round.players[index].pillsUsed++;
-	g_Round.survivorTotalPillsUsed++;
+	g_Round.players[index].resources.pillsUsed++;
+	g_Round.totals.survivorTotalPillsUsed++;
 }
 
 void Detect_EventAdrenalineUsed(Event event, const char[] name, bool dontBroadcast)
@@ -334,8 +334,8 @@ void Detect_EventAdrenalineUsed(Event event, const char[] name, bool dontBroadca
 		return;
 	}
 
-	g_Round.players[index].adrenalineUsed++;
-	g_Round.survivorTotalAdrenalineUsed++;
+	g_Round.players[index].resources.adrenalineUsed++;
+	g_Round.totals.survivorTotalAdrenalineUsed++;
 }
 
 void Detect_EventHealSuccess(Event event, const char[] name, bool dontBroadcast)
@@ -361,17 +361,17 @@ void Detect_EventHealSuccess(Event event, const char[] name, bool dontBroadcast)
 		return;
 	}
 
-	g_Round.players[index].medkitsUsed++;
-	g_Round.players[index].healsGiven++;
-	g_Round.survivorTotalMedkitsUsed++;
-	g_Round.survivorTotalHealsGiven++;
+	g_Round.players[index].resources.medkitsUsed++;
+	g_Round.players[index].support.healsGiven++;
+	g_Round.totals.survivorTotalMedkitsUsed++;
+	g_Round.totals.survivorTotalHealsGiven++;
 
 	if (IsValidSurvivor(subject))
 	{
 		int subjectIndex = Stats_EnsurePlayerRoundSlot(subject);
 		if (subjectIndex != -1)
 		{
-			g_Round.players[subjectIndex].healsReceived++;
+			g_Round.players[subjectIndex].support.healsReceived++;
 		}
 	}
 }
@@ -397,8 +397,8 @@ void Detect_EventDefibrillatorUsed(Event event, const char[] name, bool dontBroa
 		return;
 	}
 
-	g_Round.players[index].defibsUsed++;
-	g_Round.survivorTotalDefibsUsed++;
+	g_Round.players[index].resources.defibsUsed++;
+	g_Round.totals.survivorTotalDefibsUsed++;
 }
 
 void Detect_EventReviveSuccess(Event event, const char[] name, bool dontBroadcast)
@@ -418,8 +418,8 @@ void Detect_EventReviveSuccess(Event event, const char[] name, bool dontBroadcas
 		int index = Stats_EnsurePlayerRoundSlot(client);
 		if (index != -1)
 		{
-			g_Round.players[index].revivesGiven++;
-			g_Round.survivorTotalRevivesGiven++;
+			g_Round.players[index].support.revivesGiven++;
+			g_Round.totals.survivorTotalRevivesGiven++;
 		}
 	}
 
@@ -428,7 +428,7 @@ void Detect_EventReviveSuccess(Event event, const char[] name, bool dontBroadcas
 		int subjectIndex = Stats_EnsurePlayerRoundSlot(subject);
 		if (subjectIndex != -1)
 		{
-			g_Round.players[subjectIndex].revivesReceived++;
+			g_Round.players[subjectIndex].support.revivesReceived++;
 		}
 	}
 }
@@ -450,8 +450,8 @@ void Detect_EventSurvivorRescued(Event event, const char[] name, bool dontBroadc
 		int rescuerIndex = Stats_EnsurePlayerRoundSlot(rescuer);
 		if (rescuerIndex != -1)
 		{
-			g_Round.players[rescuerIndex].rescuesGiven++;
-			g_Round.survivorTotalRescuesGiven++;
+			g_Round.players[rescuerIndex].support.rescuesGiven++;
+			g_Round.totals.survivorTotalRescuesGiven++;
 		}
 	}
 
@@ -460,7 +460,7 @@ void Detect_EventSurvivorRescued(Event event, const char[] name, bool dontBroadc
 		int victimIndex = Stats_EnsurePlayerRoundSlot(victim);
 		if (victimIndex != -1)
 		{
-			g_Round.players[victimIndex].rescuesReceived++;
+			g_Round.players[victimIndex].support.rescuesReceived++;
 		}
 	}
 }
@@ -478,8 +478,8 @@ void Detect_OnGrabWithTonguePost(int victim, int attacker)
 		return;
 	}
 
-	g_Round.players[index].tongueGrabs++;
-	g_Round.infectedTotalTongueGrabs++;
+	g_Round.players[index].pressure.tongueGrabs++;
+	g_Round.totals.infectedTotalTongueGrabs++;
 }
 
 void Detect_OnPouncedOnSurvivorPost(int victim, int attacker)
@@ -495,8 +495,8 @@ void Detect_OnPouncedOnSurvivorPost(int victim, int attacker)
 		return;
 	}
 
-	g_Round.players[index].hunterPouncesLanded++;
-	g_Round.infectedTotalHunterPouncesLanded++;
+	g_Round.players[index].pressure.hunterPouncesLanded++;
+	g_Round.totals.infectedTotalHunterPouncesLanded++;
 }
 
 void Detect_OnJockeyRidePost(int victim, int attacker)
@@ -512,8 +512,8 @@ void Detect_OnJockeyRidePost(int victim, int attacker)
 		return;
 	}
 
-	g_Round.players[index].jockeyRidesLanded++;
-	g_Round.infectedTotalJockeyRidesLanded++;
+	g_Round.players[index].pressure.jockeyRidesLanded++;
+	g_Round.totals.infectedTotalJockeyRidesLanded++;
 }
 
 void Detect_OnVomitedUponPost(int victim, int attacker, bool boomerExplosion)
@@ -534,13 +534,13 @@ void Detect_OnVomitedUponPost(int victim, int attacker, bool boomerExplosion)
 		return;
 	}
 
-	g_Round.players[index].boomerVomitVictims++;
-	g_Round.infectedTotalBoomerVomitVictims++;
+	g_Round.players[index].pressure.boomerVomitVictims++;
+	g_Round.totals.infectedTotalBoomerVomitVictims++;
 }
 
 void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 {
-	if (!g_bPlayerSkillsAvailable || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
+	if (!g_Runtime.playerSkillsAvailable || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
 	{
 		return;
 	}
@@ -561,51 +561,51 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 	{
 		case L4D2Skill_HunterSkeet:
 		{
-			g_Round.players[index].skeets++;
-			g_Round.survivorTotalSkeets++;
+			g_Round.players[index].skills.skeets++;
+			g_Round.totals.survivorTotalSkeets++;
 		}
 		case L4D2Skill_HunterSkeetMelee:
 		{
-			g_Round.players[index].skeetMelees++;
-			g_Round.survivorTotalSkeetMelees++;
+			g_Round.players[index].skills.skeetMelees++;
+			g_Round.totals.survivorTotalSkeetMelees++;
 		}
 		case L4D2Skill_HunterDeadstop:
 		{
-			g_Round.players[index].deadstops++;
-			g_Round.survivorTotalDeadstops++;
+			g_Round.players[index].skills.deadstops++;
+			g_Round.totals.survivorTotalDeadstops++;
 		}
 		case L4D2Skill_BoomerPop:
 		{
-			g_Round.players[index].boomerPops++;
-			g_Round.survivorTotalBoomerPops++;
+			g_Round.players[index].skills.boomerPops++;
+			g_Round.totals.survivorTotalBoomerPops++;
 		}
 		case L4D2Skill_ChargerLevel:
 		{
-			g_Round.players[index].levels++;
-			g_Round.survivorTotalLevels++;
+			g_Round.players[index].skills.levels++;
+			g_Round.totals.survivorTotalLevels++;
 		}
 		case L4D2Skill_WitchDead:
 		{
 			if (PlayerSkills_GetEventBool(eventId, L4D2SkillBool_Crown))
 			{
-				g_Round.players[index].crowns++;
-				g_Round.survivorTotalCrowns++;
+				g_Round.players[index].skills.crowns++;
+				g_Round.totals.survivorTotalCrowns++;
 			}
 		}
 		case L4D2Skill_SmokerTongueCut:
 		{
-			g_Round.players[index].tongueCuts++;
-			g_Round.survivorTotalTongueCuts++;
+			g_Round.players[index].skills.tongueCuts++;
+			g_Round.totals.survivorTotalTongueCuts++;
 		}
 		case L4D2Skill_SmokerSelfClear:
 		{
-			g_Round.players[index].smokerSelfClears++;
-			g_Round.survivorTotalSmokerSelfClears++;
+			g_Round.players[index].skills.smokerSelfClears++;
+			g_Round.totals.survivorTotalSmokerSelfClears++;
 		}
 		case L4D2Skill_ChargerInstaKill:
 		{
-			g_Round.players[index].instaKills++;
-			g_Round.survivorTotalInstaKills++;
+			g_Round.players[index].skills.instaKills++;
+			g_Round.totals.survivorTotalInstaKills++;
 		}
 	}
 }

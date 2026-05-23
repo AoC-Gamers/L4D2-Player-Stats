@@ -110,6 +110,7 @@ La primera forma recomendada es:
 
 Cada jugador persistente del snapshot detallado expone solo identidad básica:
 
+- `userid`
 - `name`
 - `accountid`
 - `bot`
@@ -122,7 +123,6 @@ La idea es mantener el payload alineado con el runtime interno del plugin y evit
 Si luego hace falta, se puede sumar:
 
 - `auth`
-- `userid`
 - `character`
 
 Pero no son obligatorios en la primera versión.
@@ -295,6 +295,7 @@ round
 
             "identity"
             {
+                "userid"                "41"
                 "name"                  "Lechuga"
                 "accountid"             "123456"
                 "bot"                   "0"
@@ -314,6 +315,7 @@ player
 
     "identity"
     {
+        "userid"                "41"
         "name"                  "Lechuga"
         "accountid"             "123456"
         "bot"                   "0"
@@ -398,8 +400,8 @@ Por eso el contrato recomendado es:
 ## Current Notes
 
 - `team` se expone como `int`
+- `userid` forma parte de `identity`
 - `accountid` forma parte de `identity`
-- `userid` no forma parte del contrato base actual
 - `players_count` no forma parte del snapshot de ronda actual
 - `mode_coop` solo se escribe cuando:
   - el jugador tiene `rescues_given > 0`
@@ -409,5 +411,4 @@ Por eso el contrato recomendado es:
 
 Estos son los puntos que todavía conviene seguir refinando sobre la implementación actual:
 
-- si `accountid` basta o también queremos `userid`
 - si `support` y `resources` conviene mantenerlos separados o fusionarlos en un solo bloque corto
