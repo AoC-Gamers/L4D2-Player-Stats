@@ -1,0 +1,39 @@
+{
+  "build": {
+    "plugins": {
+      "root": [
+        "l4d2_player_stats",
+        "survivor_mvp",
+        "l4d2_playstats"
+      ]
+    }
+  },
+  "artifact": {
+    "addons": {
+      "sourcemod": {
+        "scripting": {
+          "files": [
+            "l4d2_player_stats.sp",
+            "survivor_mvp.sp",
+            "l4d2_playstats.sp"
+          ],
+          "dirs": [
+            "l4d2_player_stats"
+          ],
+          "include": {
+            "files": [
+              "l4d2_player_stats.inc",
+              "survivor_mvp.inc",
+              "l4d2_playstats.inc"
+            ]
+          }
+        },
+        "translations": {
+          "files": [
+            "l4d2_player_stats.phrases.txt"
+          ]
+        }
+      }
+    }
+  }
+}

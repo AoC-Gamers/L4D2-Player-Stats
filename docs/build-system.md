@@ -1,6 +1,6 @@
 # Build System
 
-## Objetivo
+## Goal
 
 Este repositorio usa un flujo unico para:
 
@@ -21,7 +21,7 @@ La compilacion real vive en scripts Python compartidos, y `make` actua como orqu
 - `make clean`
 - `make clean-all`
 
-## Flujo
+## Flow
 
 1. `deps-smx` descarga el compilador de SourceMod para la plataforma actual.
 2. `build-smx` compila los plugins mapeados en `build.plugins`.
@@ -34,7 +34,7 @@ La compilacion real vive en scripts Python compartidos, y `make` actua como orqu
    - `compile.log`
 6. `release` empaqueta `dist/sourcemod/artifact` en un ZIP final.
 
-## Manifiesto
+## Manifest
 
 `plugin-package-map.json` define:
 
@@ -57,13 +57,19 @@ Los includes auxiliares locales, como `colors.inc` o `left4dhooks*.inc`, pueden 
 
 ## Build Inputs
 
-`build-local.py` compila todos los `*.sp` bajo `addons/sourcemod/scripting/`, pero solo publica los plugins clasificados en `build.plugins`.
+`build-local.py` compila todos los `*.sp` bajo `sourcemod/scripting/`, pero solo publica los plugins clasificados en `build.plugins`.
 
 Los `include` usados por `spcomp` son:
 
-- `addons/sourcemod/scripting/include`
-- `addons/sourcemod/scripting`
+- `sourcemod/scripting/include`
+- `sourcemod/scripting`
 - `deps/sourcemod-<platform>/addons/sourcemod/scripting/include`
+
+Plugins publicados actualmente:
+
+- `l4d2_player_stats`
+- `survivor_mvp`
+- `l4d2_playstats`
 
 ## Platform Resolution
 
@@ -72,7 +78,7 @@ Los `include` usados por `spcomp` son:
 - `windows`
 - `linux`
 
-Si el repo corre bajo `/mnt/...` en WSL, `build-local.py` usa un workspace temporal en `/tmp/l4d2-player-skills-build` para evitar el costo de I/O sobre el filesystem montado.
+Si el repo corre bajo `/mnt/...` en WSL, `build-local.py` usa un workspace temporal en `/tmp/l4d2-player-stats-build` para evitar el costo de I/O sobre el filesystem montado.
 
 ## WSL
 

@@ -12,3 +12,9 @@ Current output surface:
 - legacy compatibility wrappers:
   - `survivor_mvp`
   - `l4d2_playstats`
+
+Documentation:
+
+- [Build System](docs/build-system.md)
+- [Player Stats API](docs/l4d2-player-stats-api.md)
+- [Product Model](docs/l4d2-player-stats-product-model.md)
