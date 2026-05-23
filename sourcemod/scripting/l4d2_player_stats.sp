@@ -7,20 +7,27 @@
 #include <colors>
 #include <console_table>
 #include <left4dhooks>
+
+#undef REQUIRE_PLUGIN
 #include <readyup>
 #include <l4d2_player_skills>
+#define REQUIRE_PLUGIN
 
 #include "l4d2_player_stats/types.sp"
 
-PlayerStatsRoundData g_Round;
-bool g_bRoundLive = false;
-bool g_bReadyUpAvailable = false;
-bool g_bPlayerSkillsAvailable = false;
-int g_iPlayerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+#define READYUP_LIBRARY "readyup"
+#define L4D2_PLAYER_SKILLS_LIBRARY "l4d2_player_skills"
 
-ConVar g_cvEnable = null;
-ConVar g_cvDebug = null;
-char   g_sDebugLogPath[PLATFORM_MAX_PATH];
+PlayerStatsRoundData g_Round;
+bool				 g_bRoundLive			  = false;
+bool				 g_bReadyUpAvailable	  = false;
+bool				 g_bPlayerSkillsAvailable = false;
+bool				 g_bLateload			  = false;	
+int					 g_iPlayerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+
+ConVar				 g_cvEnable = null;
+ConVar				 g_cvDebug	= null;
+char				 g_sDebugLogPath[PLATFORM_MAX_PATH];
 
 public Plugin myinfo =
 {
@@ -30,6 +37,12 @@ public Plugin myinfo =
 	version		= "1.0.0",
 	url			= "https://github.com/AoC-Gamers/L4D2-Player-Stats"
 };
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int errorMax)
+{
+	g_bLateload = late;
+	return APLRes_Success;
+}
 
 public void OnPluginStart()
 {
@@ -47,23 +60,26 @@ public void OnPluginStart()
 	Round_Init();
 	Detect_Init();
 
-	g_bReadyUpAvailable = LibraryExists("readyup");
-	g_bPlayerSkillsAvailable = LibraryExists("l4d2_player_skills");
+	if (!g_bLateload)
+		return;
+
+	g_bReadyUpAvailable		 = LibraryExists(READYUP_LIBRARY);
+	g_bPlayerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
 }
 
 public void OnAllPluginsLoaded()
 {
-	g_bReadyUpAvailable = LibraryExists("readyup");
-	g_bPlayerSkillsAvailable = LibraryExists("l4d2_player_skills");
+	g_bReadyUpAvailable		 = LibraryExists(READYUP_LIBRARY);
+	g_bPlayerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
 }
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (strcmp(name, "readyup") == 0)
+	if (strcmp(name, READYUP_LIBRARY) == 0)
 	{
 		g_bReadyUpAvailable = true;
 	}
-	else if (strcmp(name, "l4d2_player_skills") == 0)
+	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
 	{
 		g_bPlayerSkillsAvailable = true;
 	}
@@ -71,11 +87,11 @@ public void OnLibraryAdded(const char[] name)
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if (strcmp(name, "readyup") == 0)
+	if (strcmp(name, READYUP_LIBRARY) == 0)
 	{
 		g_bReadyUpAvailable = false;
 	}
-	else if (strcmp(name, "l4d2_player_skills") == 0)
+	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
 	{
 		g_bPlayerSkillsAvailable = false;
 	}
