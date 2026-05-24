@@ -2,9 +2,7 @@
   "build": {
     "plugins": {
       "root": [
-        "l4d2_player_stats",
-        "survivor_mvp",
-        "l4d2_playstats"
+        "l4d2_player_stats"
       ]
     }
   },
@@ -13,18 +11,14 @@
       "sourcemod": {
         "scripting": {
           "files": [
-            "l4d2_player_stats.sp",
-            "survivor_mvp.sp",
-            "l4d2_playstats.sp"
+            "l4d2_player_stats.sp"
           ],
           "dirs": [
             "l4d2_player_stats"
           ],
           "include": {
             "files": [
-              "l4d2_player_stats.inc",
-              "survivor_mvp.inc",
-              "l4d2_playstats.inc"
+              "l4d2_player_stats.inc"
             ]
           }
         },

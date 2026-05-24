@@ -68,8 +68,6 @@ Los `include` usados por `spcomp` son:
 Plugins publicados actualmente:
 
 - `l4d2_player_stats`
-- `survivor_mvp`
-- `l4d2_playstats`
 
 ## Platform Resolution
 
