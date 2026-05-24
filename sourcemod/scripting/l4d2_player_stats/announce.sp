@@ -7,6 +7,8 @@ void Announce_Init()
 {
 	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
 	RegConsoleCmd("sm_mvp_rank", Command_MVPRank, "Print the client's current MVP ranks in chat and the global rank table in console.");
+	RegConsoleCmd("sm_mvp_stats", Command_MVPStats, "Print the aggregated mission history for the current map, a requested map, or all maps.");
+	RegConsoleCmd("sm_mvp_acc", Command_MVPAcc, "Print the current round accuracy table in console.");
 }
 
 Action Command_MVP(int client, int args)
@@ -30,6 +32,34 @@ Action Command_MVPRank(int client, int args)
 
 	Announce_PrintClientRanks(client);
 	Announce_RenderGlobalRankPanel(client);
+	return Plugin_Handled;
+}
+
+Action Command_MVPStats(int client, int args)
+{
+	char mapFilter[64];
+	mapFilter[0] = '\0';
+
+	if (args >= 1)
+	{
+		GetCmdArg(1, mapFilter, sizeof(mapFilter));
+		if (StrEqual(mapFilter, "all", false))
+		{
+			mapFilter[0] = '\0';
+		}
+	}
+	else
+	{
+		GetCurrentMap(mapFilter, sizeof(mapFilter));
+	}
+
+	Announce_RenderGameHistoryPanel(client, mapFilter);
+	return Plugin_Handled;
+}
+
+Action Command_MVPAcc(int client, int args)
+{
+	Announce_RenderAccuracyPanel(client);
 	return Plugin_Handled;
 }
 
@@ -75,7 +105,7 @@ void Announce_BroadcastRoundSummary(int client = 0)
 	Announce_PrintRoundSummaryLines(client, siMvp, ciMvp, ffLvp);
 }
 
-void Announce_RenderGameHistoryPanel(int client = 0)
+void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = "")
 {
 	if (!g_GameHistory.active || g_GameHistory.roundCount <= 0)
 	{
@@ -89,7 +119,14 @@ void Announce_RenderGameHistoryPanel(int client = 0)
 	ConsolePanel_EnableSafeAscii(panel, true);
 
 	char line[160];
-	Format(line, sizeof(line), "General data per game round -- Series %d", g_GameHistory.seriesId);
+	if (mapFilter[0] != '\0')
+	{
+		Format(line, sizeof(line), "General data per mission round -- Series %d -- %s", g_GameHistory.seriesId, mapFilter);
+	}
+	else
+	{
+		Format(line, sizeof(line), "General data per mission round -- Series %d -- all maps", g_GameHistory.seriesId);
+	}
 	ConsolePanel_AddHeaderLine(panel, line);
 
 	Format(line, sizeof(line), "Campaign Score A/B: %d / %d",
@@ -108,9 +145,15 @@ void Announce_RenderGameHistoryPanel(int client = 0)
 	ConsoleTable_AddColumn(panel.table, "Pills", 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	ConsoleTable_AddColumn(panel.table, "Restarts", 8, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 
+	int displayedRows = 0;
 	for (int i = 0; i < g_GameHistory.roundCount; i++)
 	{
 		if (!g_GameHistory.rounds[i].active)
+		{
+			continue;
+		}
+
+		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
 		{
 			continue;
 		}
@@ -135,6 +178,67 @@ void Announce_RenderGameHistoryPanel(int client = 0)
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].kitsUsed);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].pillsUsed);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].restarts);
+		ConsoleTable_EndRow(panel.table);
+		displayedRows++;
+	}
+
+	if (displayedRows <= 0)
+	{
+		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No mission history available for that map.");
+		return;
+	}
+
+	ConsolePanel_RenderToClient(panel, client);
+}
+
+void Announce_RenderAccuracyPanel(int client = 0)
+{
+	if (!Stats_HasRoundSnapshot())
+	{
+		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No round snapshot available.");
+		return;
+	}
+
+	ConsolePanel panel;
+	ConsolePanel_Reset(panel);
+	ConsolePanel_SetWidth(panel, 108);
+	ConsolePanel_EnableSafeAscii(panel, true);
+
+	char line[160];
+	Format(line, sizeof(line), "Accuracy Stats -- Round %d", g_Round.meta.id);
+	ConsolePanel_AddHeaderLine(panel, line);
+
+	ConsoleTable_AddColumn(panel.table, "Player", 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, "Shotgun", 18, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, "SMG/Rifle", 18, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, "Sniper", 18, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, "Pistol", 18, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+
+	int survivorSlots[8];
+	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	for (int i = 0; i < survivorCount; i++)
+	{
+		int slot = survivorSlots[i];
+		if (!ConsoleTable_BeginRow(panel.table))
+		{
+			break;
+		}
+
+		char shotgun[32];
+		char smgRifle[32];
+		char sniper[32];
+		char pistol[32];
+
+		Announce_FormatAccuracyCell(shotgun, sizeof(shotgun), g_Round.players[slot].accuracy.shotgunHits, g_Round.players[slot].accuracy.shotgunShots);
+		Announce_FormatAccuracyCell(smgRifle, sizeof(smgRifle), g_Round.players[slot].accuracy.smgRifleHits, g_Round.players[slot].accuracy.smgRifleShots);
+		Announce_FormatAccuracyCell(sniper, sizeof(sniper), g_Round.players[slot].accuracy.sniperHits, g_Round.players[slot].accuracy.sniperShots);
+		Announce_FormatAccuracyCell(pistol, sizeof(pistol), g_Round.players[slot].accuracy.pistolHits, g_Round.players[slot].accuracy.pistolShots);
+
+		ConsoleTable_AddStringCell(panel.table, g_Round.players[slot].player.name);
+		ConsoleTable_AddStringCell(panel.table, shotgun);
+		ConsoleTable_AddStringCell(panel.table, smgRifle);
+		ConsoleTable_AddStringCell(panel.table, sniper);
+		ConsoleTable_AddStringCell(panel.table, pistol);
 		ConsoleTable_EndRow(panel.table);
 	}
 
@@ -500,6 +604,11 @@ void Announce_FormatRoundDurationLine(char[] buffer, int maxlen)
 	Format(buffer, maxlen, "Round Duration: %dm %02ds", minutes, seconds);
 }
 
+void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots)
+{
+	Format(buffer, maxlen, "%d/%d %d%%", hits, shots, Announce_GetPercent(hits, shots));
+}
+
 void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phraseTarget = LANG_SERVER)
 {
 	bool showTank = Announce_ShouldShowTankDamage();
@@ -694,12 +803,7 @@ int Announce_GetTotalSurvivorSpecialKills()
 
 int Announce_GetPercent(int part, int whole)
 {
-	if (part <= 0 || whole <= 0)
-	{
-		return 0;
-	}
-
-	return RoundToNearest((float(part) / float(whole)) * 100.0);
+	return L4D2Util_IntToPercentInt(part, whole);
 }
 
 int Announce_FindTopDamageSlot(int excludeA = -1, int excludeB = -1, int excludeC = -1)

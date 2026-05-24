@@ -7,6 +7,9 @@
 #include <colors>
 #include <console_table>
 #include <left4dhooks>
+#include <l4d2util_rounds>
+#include <l4d2util_stocks>
+#include <l4d2util_weapons>
 
 #undef REQUIRE_PLUGIN
 #include <readyup>
@@ -55,6 +58,7 @@ public void OnPluginStart()
 	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), "logs/l4d2_player_stats.log");
 
 	AutoExecConfig(false, "l4d2_player_stats");
+	L4D2Weapons_Init();
 
 	API_Init();
 	Announce_Init();

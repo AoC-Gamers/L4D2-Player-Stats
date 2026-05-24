@@ -33,6 +33,11 @@ stock bool Stats_HasRoundSnapshot()
 	return Stats_IsEnabled() && g_Round.meta.id > 0;
 }
 
+stock bool Stats_IsSecondHalfOfRound()
+{
+	return InSecondHalfOfRound();
+}
+
 /**
  * @brief Checks whether a client index is valid and in-game.
  *
@@ -42,7 +47,7 @@ stock bool Stats_HasRoundSnapshot()
  */
 stock bool IsValidClient(int client)
 {
-	return client > 0 && client <= MaxClients && IsClientInGame(client);
+	return IsValidClientIndex(client) && IsClientInGame(client);
 }
 
 /**
@@ -372,6 +377,139 @@ stock void Stats_ResetRuntimeMappings()
 	for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 	{
 		g_Runtime.playerSlotByClient[client] = -1;
+		g_Runtime.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
+	}
+}
+
+stock PlayerStatsWeaponFamily Stats_GetWeaponFamily(const char[] weapon)
+{
+	if (weapon[0] == '\0')
+	{
+		return PlayerStatsWeaponFamily_None;
+	}
+
+	char normalized[64];
+	if (strncmp(weapon, "weapon_", 7, false) == 0)
+	{
+		strcopy(normalized, sizeof(normalized), weapon);
+	}
+	else
+	{
+		Format(normalized, sizeof(normalized), "weapon_%s", weapon);
+	}
+
+	switch (WeaponNameToId(normalized))
+	{
+		case WEPID_PUMPSHOTGUN, WEPID_AUTOSHOTGUN, WEPID_SHOTGUN_CHROME, WEPID_SHOTGUN_SPAS:
+		{
+			return PlayerStatsWeaponFamily_Shotgun;
+		}
+		case WEPID_SMG, WEPID_RIFLE, WEPID_SMG_SILENCED, WEPID_RIFLE_DESERT, WEPID_SMG_MP5, WEPID_RIFLE_AK47, WEPID_RIFLE_SG552, WEPID_RIFLE_M60:
+		{
+			return PlayerStatsWeaponFamily_SmgRifle;
+		}
+		case WEPID_HUNTING_RIFLE, WEPID_SNIPER_MILITARY, WEPID_SNIPER_AWP, WEPID_SNIPER_SCOUT:
+		{
+			return PlayerStatsWeaponFamily_Sniper;
+		}
+		case WEPID_PISTOL, WEPID_PISTOL_MAGNUM:
+		{
+			return PlayerStatsWeaponFamily_Pistol;
+		}
+	}
+
+	return PlayerStatsWeaponFamily_None;
+}
+
+stock void Stats_SetLastWeaponFamily(int client, PlayerStatsWeaponFamily family)
+{
+	if (client <= 0 || client >= L4D2_PLAYER_STATS_MAX_PLAYERS)
+	{
+		return;
+	}
+
+	g_Runtime.lastWeaponFamilyByClient[client] = family;
+}
+
+stock PlayerStatsWeaponFamily Stats_GetLastWeaponFamily(int client)
+{
+	if (client <= 0 || client >= L4D2_PLAYER_STATS_MAX_PLAYERS)
+	{
+		return PlayerStatsWeaponFamily_None;
+	}
+
+	return g_Runtime.lastWeaponFamilyByClient[client];
+}
+
+stock void Stats_RecordAccuracyShot(int index, PlayerStatsWeaponFamily family)
+{
+	if (!Stats_IsValidRoundSlot(index))
+	{
+		return;
+	}
+
+	switch (family)
+	{
+		case PlayerStatsWeaponFamily_Shotgun:
+		{
+			g_Round.players[index].accuracy.shotgunShots++;
+		}
+		case PlayerStatsWeaponFamily_SmgRifle:
+		{
+			g_Round.players[index].accuracy.smgRifleShots++;
+		}
+		case PlayerStatsWeaponFamily_Sniper:
+		{
+			g_Round.players[index].accuracy.sniperShots++;
+		}
+		case PlayerStatsWeaponFamily_Pistol:
+		{
+			g_Round.players[index].accuracy.pistolShots++;
+		}
+	}
+}
+
+stock void Stats_RecordAccuracyHit(int index, PlayerStatsWeaponFamily family, bool headshot = false)
+{
+	if (!Stats_IsValidRoundSlot(index))
+	{
+		return;
+	}
+
+	switch (family)
+	{
+		case PlayerStatsWeaponFamily_Shotgun:
+		{
+			g_Round.players[index].accuracy.shotgunHits++;
+			if (headshot)
+			{
+				g_Round.players[index].accuracy.shotgunHeadshots++;
+			}
+		}
+		case PlayerStatsWeaponFamily_SmgRifle:
+		{
+			g_Round.players[index].accuracy.smgRifleHits++;
+			if (headshot)
+			{
+				g_Round.players[index].accuracy.smgRifleHeadshots++;
+			}
+		}
+		case PlayerStatsWeaponFamily_Sniper:
+		{
+			g_Round.players[index].accuracy.sniperHits++;
+			if (headshot)
+			{
+				g_Round.players[index].accuracy.sniperHeadshots++;
+			}
+		}
+		case PlayerStatsWeaponFamily_Pistol:
+		{
+			g_Round.players[index].accuracy.pistolHits++;
+			if (headshot)
+			{
+				g_Round.players[index].accuracy.pistolHeadshots++;
+			}
+		}
 	}
 }
 
@@ -598,6 +736,8 @@ stock void Stats_OnClientPutInServer(int client)
 		return;
 	}
 
+	Stats_SetLastWeaponFamily(client, PlayerStatsWeaponFamily_None);
+
 	int slot = Stats_FindPersistentSlotForClient(client);
 	if (slot != -1)
 	{
@@ -626,6 +766,7 @@ stock void Stats_OnClientDisconnect(int client)
 	}
 
 	g_Runtime.playerSlotByClient[client] = -1;
+	g_Runtime.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
 }
 
 /**

@@ -30,6 +30,7 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int damage = event.GetInt("dmg_health");
+	bool headshot = event.GetInt("hitgroup") == 1;
 
 	if (damage <= 0 || !IsValidClient(attacker))
 	{
@@ -43,6 +44,15 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 		{
 			return;
 		}
+
+		char weapon[64];
+		event.GetString("weapon", weapon, sizeof(weapon));
+		PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+		if (family == PlayerStatsWeaponFamily_None)
+		{
+			family = Stats_GetLastWeaponFamily(attacker);
+		}
+		Stats_RecordAccuracyHit(index, family, headshot);
 
 		if (IsValidTank(victim))
 		{
@@ -184,6 +194,7 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int damage = event.GetInt("amount");
+	bool headshot = event.GetInt("hitgroup") == 1;
 
 	if (damage <= 0 || !IsValidSurvivor(attacker))
 	{
@@ -195,6 +206,15 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 	{
 		return;
 	}
+
+	char weapon[64];
+	event.GetString("weapon", weapon, sizeof(weapon));
+	PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+	if (family == PlayerStatsWeaponFamily_None)
+	{
+		family = Stats_GetLastWeaponFamily(attacker);
+	}
+	Stats_RecordAccuracyHit(index, family, headshot);
 
 	g_Round.players[index].combat.witchDamage += damage;
 	g_Round.totals.survivorTotalWitchDamage += damage;
@@ -269,6 +289,10 @@ void Detect_EventWeaponFire(Event event, const char[] name, bool dontBroadcast)
 	{
 		return;
 	}
+
+	PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+	Stats_SetLastWeaponFamily(client, family);
+	Stats_RecordAccuracyShot(index, family);
 
 	if (StrEqual(weapon, "molotov", false) || StrEqual(weapon, "weapon_molotov", false))
 	{

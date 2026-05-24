@@ -140,6 +140,29 @@ void API_WriteResourcesBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvGoBack(kv);
 }
 
+void API_WriteAccuracyBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "accuracy", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "shotgun_shots", playerData.accuracy.shotgunShots);
+	KvSetNum(kv, "shotgun_hits", playerData.accuracy.shotgunHits);
+	KvSetNum(kv, "shotgun_headshots", playerData.accuracy.shotgunHeadshots);
+	KvSetNum(kv, "smg_rifle_shots", playerData.accuracy.smgRifleShots);
+	KvSetNum(kv, "smg_rifle_hits", playerData.accuracy.smgRifleHits);
+	KvSetNum(kv, "smg_rifle_headshots", playerData.accuracy.smgRifleHeadshots);
+	KvSetNum(kv, "sniper_shots", playerData.accuracy.sniperShots);
+	KvSetNum(kv, "sniper_hits", playerData.accuracy.sniperHits);
+	KvSetNum(kv, "sniper_headshots", playerData.accuracy.sniperHeadshots);
+	KvSetNum(kv, "pistol_shots", playerData.accuracy.pistolShots);
+	KvSetNum(kv, "pistol_hits", playerData.accuracy.pistolHits);
+	KvSetNum(kv, "pistol_headshots", playerData.accuracy.pistolHeadshots);
+
+	KvGoBack(kv);
+}
+
 void API_WriteModeBlocks(Handle kv, PlayerStatsPlayerRoundData playerData)
 {
 	if (playerData.support.rescuesGiven <= 0 || !API_IsCoopMode())
@@ -216,6 +239,7 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 	API_WriteSurvivabilityBlock(kv, g_Round.players[slot]);
 	API_WriteSupportBlock(kv, g_Round.players[slot]);
 	API_WriteResourcesBlock(kv, g_Round.players[slot]);
+	API_WriteAccuracyBlock(kv, g_Round.players[slot]);
 	API_WriteModeBlocks(kv, g_Round.players[slot]);
 }
 

@@ -7,6 +7,11 @@ Current output surface:
 - chat summary commands:
   - `sm_mvp` prints the MVP/LVP summary in chat and the round table in the user's console
   - `sm_mvp_rank` prints the player's SI/CI/FF ranks in chat and the global rank table in the user's console
+  - `sm_mvp_stats` prints the aggregated mission history in the user's console
+    - no args: current map inside the current mission
+    - `sm_mvp_stats c2m1_highway`: specific map inside the current mission
+    - `sm_mvp_stats all`: all maps in the current mission
+  - `sm_mvp_acc` prints the current round accuracy table in the user's console
 - post-round server console table with survivor totals and MVP/LVP summary
 - game-history panel available through `PlayerStats_BroadcastGameStats`
 - legacy compatibility wrappers:
@@ -18,6 +23,13 @@ Documentation:
 - [Build System](docs/build-system.md)
 - [Player Stats API](docs/l4d2-player-stats-api.md)
 - [Product Model](docs/l4d2-player-stats-product-model.md)
+- [Accuracy Implementation](docs/l4d2-player-stats-accuracy-implementation.md)
+- [Vendor l4d2util](docs/vendor-l4d2util.md)
+
+Bundled utility includes:
+
+- `include/l4d2util_constants.inc`
+- `include/l4d2util_weapons.inc`
 
 Debug categories:
 

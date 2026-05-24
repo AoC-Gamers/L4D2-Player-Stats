@@ -23,6 +23,15 @@ enum PlayerStatsAttributionType
 	PlayerStatsAttribution_InfectedAI
 }
 
+enum PlayerStatsWeaponFamily
+{
+	PlayerStatsWeaponFamily_None = 0,
+	PlayerStatsWeaponFamily_Shotgun,
+	PlayerStatsWeaponFamily_SmgRifle,
+	PlayerStatsWeaponFamily_Sniper,
+	PlayerStatsWeaponFamily_Pistol
+}
+
 enum PlayerStatsDebugCategory
 {
 	PlayerStatsDebug_None		= 0,
@@ -320,6 +329,38 @@ enum struct PlayerStatsResourceData
 	}
 }
 
+enum struct PlayerStatsAccuracyData
+{
+	int shotgunShots;
+	int shotgunHits;
+	int shotgunHeadshots;
+	int smgRifleShots;
+	int smgRifleHits;
+	int smgRifleHeadshots;
+	int sniperShots;
+	int sniperHits;
+	int sniperHeadshots;
+	int pistolShots;
+	int pistolHits;
+	int pistolHeadshots;
+
+	void Reset()
+	{
+		this.shotgunShots = 0;
+		this.shotgunHits = 0;
+		this.shotgunHeadshots = 0;
+		this.smgRifleShots = 0;
+		this.smgRifleHits = 0;
+		this.smgRifleHeadshots = 0;
+		this.sniperShots = 0;
+		this.sniperHits = 0;
+		this.sniperHeadshots = 0;
+		this.pistolShots = 0;
+		this.pistolHits = 0;
+		this.pistolHeadshots = 0;
+	}
+}
+
 enum struct PlayerStatsPlayerRoundData
 {
 	bool active;
@@ -331,6 +372,7 @@ enum struct PlayerStatsPlayerRoundData
 	PlayerStatsPressureData pressure;
 	PlayerStatsSkillData skills;
 	PlayerStatsResourceData resources;
+	PlayerStatsAccuracyData accuracy;
 
 	/**
 	 * @brief Resets all tracked per-player round values.
@@ -348,6 +390,7 @@ enum struct PlayerStatsPlayerRoundData
 		this.pressure.Reset();
 		this.skills.Reset();
 		this.resources.Reset();
+		this.accuracy.Reset();
 	}
 }
 
@@ -503,6 +546,7 @@ enum struct PlayerStatsRuntimeState
 	bool playerSkillsAvailable;
 	bool lateload;
 	int playerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+	PlayerStatsWeaponFamily lastWeaponFamilyByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 
 	/**
 	 * @brief Resets runtime flags and client-to-slot mappings.
@@ -519,6 +563,7 @@ enum struct PlayerStatsRuntimeState
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 		{
 			this.playerSlotByClient[client] = -1;
+			this.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
 		}
 	}
 }

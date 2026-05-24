@@ -170,6 +170,25 @@ Campos esperados:
 - `pipebombsThrown`
 - `vomitjarsThrown`
 
+## `accuracy`
+
+Este bloque representa precisión agregada por familia de armas.
+
+Campos esperados:
+
+- `shotgunShots`
+- `shotgunHits`
+- `shotgunHeadshots`
+- `smgRifleShots`
+- `smgRifleHits`
+- `smgRifleHeadshots`
+- `sniperShots`
+- `sniperHits`
+- `sniperHeadshots`
+- `pistolShots`
+- `pistolHits`
+- `pistolHeadshots`
+
 ## `pressure`
 
 Este bloque representa presión generada por infected o estados similares de control.
@@ -237,6 +256,11 @@ El estado actual del core ya cubre una parte importante del modelo.
   - molotovs
   - pipebombs
   - vomitjars
+- `accuracy`
+  - shotgun
+  - smg/rifle
+  - sniper
+  - pistol
 - `pressure`
   - smoker grabs
   - hunter pounces

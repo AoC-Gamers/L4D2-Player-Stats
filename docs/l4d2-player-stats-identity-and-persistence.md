@@ -34,6 +34,14 @@ Cuando el mapa cambia:
 - la ronda detallada se resetea
 - pero el resumen del round puede agregarse al historial de la campaña actual
 
+La consulta del historial agregado debe poder filtrarse por mapa de la misión actual.
+
+Regla recomendada:
+
+- sin argumentos: consultar el mapa actual
+- con nombre de mapa: consultar ese mapa dentro de la misión actual
+- con `all`: consultar toda la misión actual
+
 Cuando comienza una campaña nueva:
 
 - se resetea el estado detallado
