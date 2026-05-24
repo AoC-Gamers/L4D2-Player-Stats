@@ -61,7 +61,7 @@ public void OnPluginStart()
 	L4D2Weapons_Init();
 
 	API_Init();
-	Announce_Init();
+	Regcmd_Init();
 	Round_Init();
 	Series_Init();
 	Detect_Init();

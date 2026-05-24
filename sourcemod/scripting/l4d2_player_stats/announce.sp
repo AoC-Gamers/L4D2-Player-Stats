@@ -3,7 +3,7 @@
 #endif
 #define _l4d2_player_stats_announce_included
 
-void Announce_Init()
+void Regcmd_Init()
 {
 	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
 	RegConsoleCmd("sm_mvp_rank", Command_MVPRank, "Print the client's current MVP ranks in chat and the global rank table in console.");
