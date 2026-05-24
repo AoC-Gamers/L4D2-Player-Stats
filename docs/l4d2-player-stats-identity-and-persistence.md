@@ -13,22 +13,31 @@ Al mismo tiempo, no necesita construir un historial entre mapas ni una base de d
 
 ## Persistence Scope
 
-La persistencia del core debe limitarse al contexto actual del mapa y del match en curso.
+La persistencia del core se divide en dos niveles:
+
+- persistencia detallada por ronda/mapa actual
+- historial agregado de rounds dentro de la campaña actual
 
 La regla queda así:
 
 - sí debe sobrevivir a reconnects
 - sí debe sobrevivir a reemplazos entre player y bot
-- no debe sobrevivir a cambio de mapa
+- sí puede agregar resúmenes cuando el mapa cambia de forma natural dentro de la misma campaña
+- no debe sobrevivir al inicio de una campaña nueva
 
 ## Working Rule
 
-Las estadísticas deben persistir mientras el mapa actual siga siendo el mismo contexto de juego.
+Las estadísticas detalladas deben persistir mientras el mapa actual siga siendo el mismo contexto de juego.
 
 Cuando el mapa cambia:
 
-- se resetea el estado persistente del core
-- empieza una nueva identidad de sesión
+- la ronda detallada se resetea
+- pero el resumen del round puede agregarse al historial de la campaña actual
+
+Cuando comienza una campaña nueva:
+
+- se resetea el estado detallado
+- se resetea también el historial agregado
 
 ## Human Players
 
@@ -78,7 +87,6 @@ Eso mantiene continuidad estadística sin partir artificialmente una misma parti
 
 Este sistema no debe:
 
-- guardar estadísticas entre mapas
 - crear historial por campaña completa
 - persistir datos a disco
 - construir una base de datos de sesiones pasadas
@@ -117,7 +125,9 @@ Con esta política, el sistema debe comportarse así:
 
 ## Current Rule
 
-La identidad persistente de `PlayerStats` existe solo para proteger la coherencia del mapa actual.
+La identidad persistente de `PlayerStats` existe principalmente para proteger la coherencia del mapa actual.
+
+El historial agregado entre mapas de una misma campaña solo guarda resúmenes de round y debe cortarse cuando el director limpia los campaign scores para una campaña nueva.
 
 No existe para construir historial largo, sino para que las estadísticas no se rompan por:
 

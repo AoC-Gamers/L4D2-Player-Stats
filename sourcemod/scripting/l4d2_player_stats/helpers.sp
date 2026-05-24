@@ -500,8 +500,88 @@ stock int Stats_EnsurePlayerRoundSlot(int client)
 	g_Round.players[index].Reset();
 	g_Round.players[index].active = true;
 	Stats_AssignClientToSlot(client, index);
+	Stats_Debug(PlayerStatsDebug_Detect, "Assigned new round slot. client=%d slot=%d team=%d",
+		client,
+		index,
+		g_Round.players[index].team);
 
 	return index;
+}
+
+stock void Stats_RegisterTankVictim(int client)
+{
+	if (!IsValidClient(client))
+	{
+		return;
+	}
+
+	int userid = GetClientUserId(client);
+	if (userid <= 0)
+	{
+		return;
+	}
+
+	for (int i = 0; i < g_Round.tankVictimCount; i++)
+	{
+		if (g_Round.tankVictimUserIds[i] == userid)
+		{
+			return;
+		}
+	}
+
+	if (g_Round.tankVictimCount >= L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES)
+	{
+		return;
+	}
+
+	g_Round.tankVictimUserIds[g_Round.tankVictimCount++] = userid;
+}
+
+stock void Stats_RegisterWitchEntity(int entity)
+{
+	if (entity <= MaxClients || !IsValidEntity(entity))
+	{
+		return;
+	}
+
+	for (int i = 0; i < g_Round.witchEntityCount; i++)
+	{
+		if (g_Round.witchEntityIds[i] == entity)
+		{
+			return;
+		}
+	}
+
+	if (g_Round.witchEntityCount >= L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES)
+	{
+		return;
+	}
+
+	g_Round.witchEntityIds[g_Round.witchEntityCount++] = entity;
+}
+
+/**
+ * @brief Initializes round slots for currently connected players.
+ *
+ * @noreturn
+ */
+stock void Stats_PrimeCurrentRoundPlayers()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (!IsValidClient(client))
+		{
+			continue;
+		}
+
+		PlayerStatsTeam team = Stats_GetPlayerTeam(client);
+		if (team == PlayerStatsTeam_None)
+		{
+			continue;
+		}
+
+		Stats_EnsurePlayerRoundSlot(client);
+	}
 }
 
 /**

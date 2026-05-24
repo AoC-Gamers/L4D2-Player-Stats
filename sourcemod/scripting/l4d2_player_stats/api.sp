@@ -306,6 +306,6 @@ public int Native_PlayerStats_BroadcastRoundStats(Handle plugin, int numParams)
 
 public int Native_PlayerStats_BroadcastGameStats(Handle plugin, int numParams)
 {
-	Announce_BroadcastRoundSummary();
+	Announce_RenderGameHistoryPanel(0);
 	return 1;
 }

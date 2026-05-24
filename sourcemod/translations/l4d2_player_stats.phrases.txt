@@ -12,25 +12,53 @@
 		"es"		"No hay estadisticas de ronda disponibles todavia."
 	}
 
-	"RoundMVPDamage"
+	"RoundMVPDamageBase"
 	{
-		"#format"	"{1:s},{2:d},{3:d},{4:d},{5:d},{6:d}"
-		"en"		"SI MVP: {olive}{1}{default} with {green}{2}{default} total damage [{green}{3}%{default}] ({green}{4}{default} SI, {green}{5}{default} Tank, {green}{6}{default} Witch)."
-		"es"		"MVP SI: {olive}{1}{default} con {green}{2}{default} de daño total [{green}{3}%{default}] ({green}{4}{default} SI, {green}{5}{default} Tank, {green}{6}{default} Witch)."
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"{blue}SI MVP:{default} {olive}{1} {blue}with {green}{2} {blue}SI damage [{green}{3}%%{blue}]{default}"
+		"es"		"{blue}MVP SI:{default} {olive}{1} {blue}con {green}{2} {blue}de daño SI [{green}{3}%%{blue}]{default}"
+	}
+
+	"RoundMVPDamageTankPercent"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]{default}"
+		"es"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]{default}"
+	}
+
+	"RoundMVPDamageTankCount"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Tank [x{green}{2}{blue}]{default}"
+		"es"		"{green}{1} {blue}Tank [x{green}{2}{blue}]{default}"
+	}
+
+	"RoundMVPDamageWitchPercent"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]{default}"
+		"es"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]{default}"
+	}
+
+	"RoundMVPDamageWitchCount"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Witch [x{green}{2}{blue}]{default}"
+		"es"		"{green}{1} {blue}Witch [x{green}{2}{blue}]{default}"
 	}
 
 	"RoundMVPCommon"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"en"		"CI MVP: {olive}{1}{default} with {green}{2}{default} common kills [{green}{3}%{default}]."
-		"es"		"MVP CI: {olive}{1}{default} con {green}{2}{default} common kills [{green}{3}%{default}]."
+		"en"		"CI MVP: {olive}{1}{default} with {green}{2}{default} common kills [{green}{3}%%{default}]."
+		"es"		"MVP CI: {olive}{1}{default} con {green}{2}{default} common kills [{green}{3}%%{default}]."
 	}
 
 	"RoundLVPFF"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"en"		"FF LVP: {olive}{1}{default} with {green}{2}{default} FF [{green}{3}%{default}]."
-		"es"		"LVP FF: {olive}{1}{default} con {green}{2}{default} de FF [{green}{3}%{default}]."
+		"en"		"FF LVP: {olive}{1}{default} with {green}{2}{default} FF [{green}{3}%%{default}]."
+		"es"		"LVP FF: {olive}{1}{default} con {green}{2}{default} de FF [{green}{3}%%{default}]."
 	}
 
 	"RoundNoFF"
@@ -42,21 +70,21 @@
 	"YourRankDamage"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your SI rank: {green}#{1}{default} with {green}{2}{default} total damage [{green}{3}%{default}]."
-		"es"		"Tu rank SI: {green}#{1}{default} con {green}{2}{default} de daño total [{green}{3}%{default}]."
+		"en"		"Your SI rank: {green}#{1}{default} with {green}{2}{default} total damage [{green}{3}%%{default}]."
+		"es"		"Tu rank SI: {green}#{1}{default} con {green}{2}{default} de daño total [{green}{3}%%{default}]."
 	}
 
 	"YourRankCommon"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your CI rank: {green}#{1}{default} with {green}{2}{default} common kills [{green}{3}%{default}]."
-		"es"		"Tu rank CI: {green}#{1}{default} con {green}{2}{default} common kills [{green}{3}%{default}]."
+		"en"		"Your CI rank: {green}#{1}{default} with {green}{2}{default} common kills [{green}{3}%%{default}]."
+		"es"		"Tu rank CI: {green}#{1}{default} con {green}{2}{default} common kills [{green}{3}%%{default}]."
 	}
 
 	"YourRankFF"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your FF rank: {green}#{1}{default} with {green}{2}{default} FF [{green}{3}%{default}]."
-		"es"		"Tu rank FF: {green}#{1}{default} con {green}{2}{default} de FF [{green}{3}%{default}]."
+		"en"		"Your FF rank: {green}#{1}{default} with {green}{2}{default} FF [{green}{3}%%{default}]."
+		"es"		"Tu rank FF: {green}#{1}{default} con {green}{2}{default} de FF [{green}{3}%%{default}]."
 	}
 }

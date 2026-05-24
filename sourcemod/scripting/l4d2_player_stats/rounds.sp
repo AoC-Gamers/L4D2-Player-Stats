@@ -13,8 +13,13 @@ void Round_Init()
 	HookEvent("bot_player_replace", Event_BotPlayerReplace, EventHookMode_PostNoCopy);
 }
 
-void Round_ResetAll()
+void Round_ResetAll(const char[] reason = "unspecified")
 {
+	Stats_Debug(PlayerStatsDebug_Core, "Round reset. reason=%s previous_round=%d active=%d live=%d",
+		reason,
+		g_Round.meta.id,
+		g_Round.meta.active,
+		g_Runtime.roundLive);
 	g_Round.Reset();
 	g_Runtime.roundLive = false;
 	Stats_ResetRuntimeMappings();
@@ -57,7 +62,9 @@ void Round_EventRoundEnd(Event event, const char[] name, bool dontBroadcast)
 		g_Round.totals.survivorTotalCommonKills,
 		g_Round.totals.survivorTotalFF);
 
-	Announce_RenderRoundConsolePanel(0);
+	Series_RecordRound();
+	Announce_BroadcastRoundSummary();
+	Announce_BroadcastRoundConsolePanel();
 	API_FireRoundFinalized(g_Round.meta.id);
 }
 
@@ -69,6 +76,7 @@ void Round_MarkLive(const char[] reason, int client = 0)
 	}
 
 	g_Runtime.roundLive = true;
+	Stats_PrimeCurrentRoundPlayers();
 
 	if (client > 0)
 	{
@@ -86,8 +94,17 @@ void Round_OnReadyUpLive()
 
 void Round_OnFirstSurvivorLeftSafeArea(int client)
 {
-	if (!Stats_IsEnabled() || !g_Round.meta.active || g_Runtime.readyUpAvailable)
+	if (!Stats_IsEnabled() || !g_Round.meta.active)
 	{
+		return;
+	}
+
+	if (g_Runtime.readyUpAvailable)
+	{
+		Stats_Debug(PlayerStatsDebug_Core, "First survivor left safe area but readyup is present. round=%d client=%d live=%d",
+			g_Round.meta.id,
+			client,
+			g_Runtime.roundLive);
 		return;
 	}
 

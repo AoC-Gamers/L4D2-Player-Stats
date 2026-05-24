@@ -46,6 +46,7 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 		if (IsValidTank(victim))
 		{
+			Stats_RegisterTankVictim(victim);
 			g_Round.players[index].combat.tankDamage += damage;
 			g_Round.totals.survivorTotalTankDamage += damage;
 		}
@@ -178,6 +179,8 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 	{
 		return;
 	}
+
+	Stats_RegisterWitchEntity(entity);
 
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int damage = event.GetInt("amount");

@@ -5,6 +5,8 @@
 
 #define L4D2_PLAYER_STATS_MAX_PLAYERS 33
 #define L4D2_PLAYER_STATS_MAX_SLOTS 65
+#define L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES 16
+#define L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS 32
 
 enum PlayerStatsTeam
 {
@@ -464,6 +466,10 @@ enum struct PlayerStatsRoundData
 	PlayerStatsRoundMetaData meta;
 	PlayerStatsRoundTotalsData totals;
 	PlayerStatsPlayerRoundData players[L4D2_PLAYER_STATS_MAX_SLOTS];
+	int tankVictimUserIds[L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES];
+	int tankVictimCount;
+	int witchEntityIds[L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES];
+	int witchEntityCount;
 
 	/**
 	 * @brief Resets the current round snapshot and all tracked players.
@@ -474,6 +480,14 @@ enum struct PlayerStatsRoundData
 	{
 		this.meta.Reset();
 		this.totals.Reset();
+		this.tankVictimCount = 0;
+		this.witchEntityCount = 0;
+
+		for (int boss = 0; boss < L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES; boss++)
+		{
+			this.tankVictimUserIds[boss] = 0;
+			this.witchEntityIds[boss] = 0;
+		}
 
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_SLOTS; client++)
 		{
@@ -505,6 +519,62 @@ enum struct PlayerStatsRuntimeState
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 		{
 			this.playerSlotByClient[client] = -1;
+		}
+	}
+}
+
+enum struct PlayerStatsGameRoundEntry
+{
+	bool active;
+	int roundId;
+	char map[64];
+	int durationSeconds;
+	int siKills;
+	int commonKills;
+	int deaths;
+	int incaps;
+	int kitsUsed;
+	int pillsUsed;
+	int restarts;
+
+	void Reset()
+	{
+		this.active = false;
+		this.roundId = 0;
+		this.map[0] = '\0';
+		this.durationSeconds = 0;
+		this.siKills = 0;
+		this.commonKills = 0;
+		this.deaths = 0;
+		this.incaps = 0;
+		this.kitsUsed = 0;
+		this.pillsUsed = 0;
+		this.restarts = 0;
+	}
+}
+
+enum struct PlayerStatsGameHistoryData
+{
+	bool active;
+	int seriesId;
+	int roundCount;
+	int lastCampaignScoreA;
+	int lastCampaignScoreB;
+	int restartCount;
+	PlayerStatsGameRoundEntry rounds[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS];
+
+	void Reset()
+	{
+		this.active = false;
+		this.seriesId = 0;
+		this.roundCount = 0;
+		this.lastCampaignScoreA = 0;
+		this.lastCampaignScoreB = 0;
+		this.restartCount = 0;
+
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
+		{
+			this.rounds[i].Reset();
 		}
 	}
 }
