@@ -43,8 +43,8 @@ void Series_ResetAll(const char[] reason)
 
 void Series_UpdateCampaignScores()
 {
-	int mode = L4D_GetGameModeType();
-	if (mode != GAMEMODE_VERSUS && mode != GAMEMODE_SCAVENGE)
+	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
+	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
 	{
 		g_GameHistory.lastCampaignScoreA = 0;
 		g_GameHistory.lastCampaignScoreB = 0;
@@ -74,12 +74,7 @@ int Series_GetCurrentRoundDurationSeconds()
 
 int Series_GetCurrentRoundSpecialKills()
 {
-	return g_Round.totals.survivorTotalSmokerKills
-		+ g_Round.totals.survivorTotalBoomerKills
-		+ g_Round.totals.survivorTotalHunterKills
-		+ g_Round.totals.survivorTotalSpitterKills
-		+ g_Round.totals.survivorTotalJockeyKills
-		+ g_Round.totals.survivorTotalChargerKills;
+	return Announce_GetTotalSurvivorSpecialKills();
 }
 
 void Series_ShiftEntriesLeft()
@@ -114,6 +109,8 @@ void Series_RecordRound()
 	g_GameHistory.rounds[entryIndex].Reset();
 	g_GameHistory.rounds[entryIndex].active = true;
 	g_GameHistory.rounds[entryIndex].roundId = g_Round.meta.id;
+	g_GameHistory.rounds[entryIndex].baseMode = g_Round.meta.baseMode;
+	g_GameHistory.rounds[entryIndex].historyScope = g_Round.meta.historyScope;
 	GetCurrentMap(g_GameHistory.rounds[entryIndex].map, sizeof(g_GameHistory.rounds[entryIndex].map));
 	g_GameHistory.rounds[entryIndex].durationSeconds = Series_GetCurrentRoundDurationSeconds();
 	g_GameHistory.rounds[entryIndex].siKills = Series_GetCurrentRoundSpecialKills();
@@ -123,13 +120,20 @@ void Series_RecordRound()
 	g_GameHistory.rounds[entryIndex].kitsUsed = g_Round.totals.survivorTotalMedkitsUsed;
 	g_GameHistory.rounds[entryIndex].pillsUsed = g_Round.totals.survivorTotalPillsUsed;
 	g_GameHistory.rounds[entryIndex].restarts = g_GameHistory.restartCount;
+	g_GameHistory.rounds[entryIndex].restartSource = g_GameHistory.restartSource;
+	g_GameHistory.rounds[entryIndex].endReason = g_Round.meta.endReason;
+	g_GameHistory.restartCount = 0;
+	g_GameHistory.restartSource = PlayerStatsRestartSource_None;
 	Series_UpdateCampaignScores();
 
-	Stats_Debug(PlayerStatsDebug_Core, "Game round recorded. series=%d round=%d map=%s duration=%d scoreA=%d scoreB=%d",
+	Stats_Debug(PlayerStatsDebug_Core, "Game round recorded. series=%d round=%d map=%s duration=%d end_reason=%d restarts=%d restart_source=%d scoreA=%d scoreB=%d",
 		g_GameHistory.seriesId,
 		g_GameHistory.rounds[entryIndex].roundId,
 		g_GameHistory.rounds[entryIndex].map,
 		g_GameHistory.rounds[entryIndex].durationSeconds,
+		g_GameHistory.rounds[entryIndex].endReason,
+		g_GameHistory.rounds[entryIndex].restarts,
+		g_GameHistory.rounds[entryIndex].restartSource,
 		g_GameHistory.lastCampaignScoreA,
 		g_GameHistory.lastCampaignScoreB);
 }
@@ -137,6 +141,12 @@ void Series_RecordRound()
 void Series_OnMapStart()
 {
 	Series_EnsureActive();
+
+	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
+	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
+	{
+		return;
+	}
 
 	if (!L4D_IsFirstMapInScenario())
 	{
@@ -152,6 +162,12 @@ void Series_OnMapStart()
 
 void Series_OnClearTeamScores(bool newCampaign)
 {
+	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
+	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
+	{
+		return;
+	}
+
 	Series_EnsureActive();
 	Series_UpdateCampaignScores();
 
@@ -177,4 +193,74 @@ void Series_OnSetCampaignScoresPost(int scoreA, int scoreB)
 		g_GameHistory.seriesId,
 		scoreA,
 		scoreB);
+}
+
+void Series_EventVotePassed(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+
+	if (!Stats_IsVersusMode() && !Stats_IsScavengeMode())
+	{
+		return;
+	}
+
+	char details[128];
+	event.GetString("details", details, sizeof(details));
+
+	if (!StrEqual(details, "#L4D_vote_passed_restart_game", false)
+		&& !StrEqual(details, "#L4D_vote_passed_versus_level_restart", false))
+	{
+		return;
+	}
+
+	Series_MarkPendingRestart(PlayerStatsRestartSource_VotePassed, "vote_passed");
+	Stats_Debug(PlayerStatsDebug_Core, "Competitive restart vote passed. details=%s round=%d",
+		details,
+		g_Round.meta.id);
+}
+
+void Series_MarkPendingRestart(PlayerStatsRestartSourceType source, const char[] reason)
+{
+	if (!Stats_IsVersusMode() && !Stats_IsScavengeMode())
+	{
+		return;
+	}
+
+	Series_EnsureActive();
+	g_GameHistory.restartCount++;
+	g_GameHistory.restartSource = source;
+
+	Stats_Debug(PlayerStatsDebug_Core, "Pending restart registered. series=%d pending_restarts=%d source=%d reason=%s round=%d",
+		g_GameHistory.seriesId,
+		g_GameHistory.restartCount,
+		g_GameHistory.restartSource,
+		reason,
+		g_Round.meta.id);
+}
+
+void Series_OnScavengeRoundHalftime()
+{
+	if (!Stats_IsScavengeMode())
+	{
+		return;
+	}
+
+	Series_EnsureActive();
+	Stats_Debug(PlayerStatsDebug_Core, "Scavenge halftime observed. series=%d round=%d", g_GameHistory.seriesId, g_Round.meta.id);
+}
+
+void Series_OnScavengeMatchFinished()
+{
+	if (!Stats_IsScavengeMode())
+	{
+		return;
+	}
+
+	Series_EnsureActive();
+	Series_UpdateCampaignScores();
+	Stats_Debug(PlayerStatsDebug_Core, "Scavenge match finished. series=%d round=%d scoreA=%d scoreB=%d",
+		g_GameHistory.seriesId,
+		g_Round.meta.id,
+		g_GameHistory.lastCampaignScoreA,
+		g_GameHistory.lastCampaignScoreB);
 }

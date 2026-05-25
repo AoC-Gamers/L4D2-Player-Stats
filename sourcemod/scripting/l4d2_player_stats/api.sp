@@ -19,6 +19,7 @@ void API_Init()
 	CreateNative("PlayerStats_FillRoundPlayerKeyValues", Native_PlayerStats_FillRoundPlayerKeyValues);
 	CreateNative("PlayerStats_BroadcastRoundStats", Native_PlayerStats_BroadcastRoundStats);
 	CreateNative("PlayerStats_BroadcastGameStats", Native_PlayerStats_BroadcastGameStats);
+	CreateNative("PlayerStats_MarkRestart", Native_PlayerStats_MarkRestart);
 }
 
 void API_FireRoundFinalized(int roundId)
@@ -38,9 +39,44 @@ bool API_IsRoundIdValid(int roundId)
 	return roundId > 0 && g_Round.meta.id == roundId;
 }
 
-bool API_IsCoopMode()
+bool API_IsRoundCoopMode()
 {
-	return L4D_GetGameModeType() == GAMEMODE_COOP;
+	return g_Round.meta.baseMode == PlayerStatsModeBase_Coop;
+}
+
+void API_WriteRoundContextBlock(Handle kv)
+{
+	if (!KvJumpToKey(kv, "context", true))
+	{
+		return;
+	}
+
+	char baseModeName[24];
+	char historyScopeName[24];
+	char contextName[32];
+	Stats_GetModeBaseName(g_Round.meta.baseMode, baseModeName, sizeof(baseModeName));
+	Stats_GetHistoryScopeName(g_Round.meta.historyScope, historyScopeName, sizeof(historyScopeName));
+	Stats_GetVersusContextName(g_Round.meta.versusContext, contextName, sizeof(contextName));
+
+	KvSetNum(kv, "base_mode", g_Round.meta.baseMode);
+	KvSetString(kv, "base_mode_name", baseModeName);
+	KvSetNum(kv, "is_versus", g_Round.meta.isVersusMode ? 1 : 0);
+	KvSetNum(kv, "history_scope", g_Round.meta.historyScope);
+	KvSetString(kv, "history_scope_name", historyScopeName);
+	KvSetNum(kv, "survivor_limit", g_Round.meta.configuredSurvivorLimit);
+	KvSetNum(kv, "infected_limit", g_Round.meta.configuredPlayerZombieLimit);
+	KvSetNum(kv, "si_pool_mask", g_Round.meta.siPoolMask);
+	KvSetNum(kv, "enabled_si_classes", g_Round.meta.enabledSiClassCount);
+	KvSetNum(kv, "team_size", g_Round.meta.versusTeamSize);
+	KvSetNum(kv, "versus_context", g_Round.meta.versusContext);
+	KvSetString(kv, "versus_context_name", contextName);
+	KvSetNum(kv, "round_start_signal", g_Round.meta.roundStartSignal);
+	KvSetNum(kv, "round_end_signal", g_Round.meta.roundEndSignal);
+	KvSetNum(kv, "round_live_signal", g_Round.meta.roundLiveSignal);
+	KvSetNum(kv, "restart_policy", g_Round.meta.restartPolicy);
+	KvSetNum(kv, "end_reason", g_Round.meta.endReason);
+
+	KvGoBack(kv);
 }
 
 void API_WriteIdentityBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
@@ -66,7 +102,33 @@ void API_WriteCombatBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 		return;
 	}
 
-	KvSetNum(kv, "si_damage", playerData.combat.siDamage);
+	int filteredSiDamage = 0;
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		filteredSiDamage += playerData.combat.smokerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		filteredSiDamage += playerData.combat.boomerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		filteredSiDamage += playerData.combat.hunterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		filteredSiDamage += playerData.combat.spitterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		filteredSiDamage += playerData.combat.jockeyDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		filteredSiDamage += playerData.combat.chargerDamage;
+	}
+
+	KvSetNum(kv, "si_damage", filteredSiDamage);
 	KvSetNum(kv, "smoker_damage", playerData.combat.smokerDamage);
 	KvSetNum(kv, "boomer_damage", playerData.combat.boomerDamage);
 	KvSetNum(kv, "hunter_damage", playerData.combat.hunterDamage);
@@ -165,7 +227,7 @@ void API_WriteAccuracyBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 
 void API_WriteModeBlocks(Handle kv, PlayerStatsPlayerRoundData playerData)
 {
-	if (playerData.support.rescuesGiven <= 0 || !API_IsCoopMode())
+	if (playerData.support.rescuesGiven <= 0 || !API_IsRoundCoopMode())
 	{
 		return;
 	}
@@ -186,7 +248,7 @@ void API_WriteRoundTotals(Handle kv)
 		return;
 	}
 
-	KvSetNum(kv, "si_damage", g_Round.totals.survivorTotalSiDamage);
+	KvSetNum(kv, "si_damage", Announce_GetTotalSurvivorSiDamage());
 	KvSetNum(kv, "tank_damage", g_Round.totals.survivorTotalTankDamage);
 	KvSetNum(kv, "witch_damage", g_Round.totals.survivorTotalWitchDamage);
 	KvSetNum(kv, "common_kills", g_Round.totals.survivorTotalCommonKills);
@@ -290,6 +352,7 @@ public int Native_PlayerStats_FillRoundKeyValues(Handle plugin, int numParams)
 	}
 
 	KvSetNum(kv, "id", g_Round.meta.id);
+	API_WriteRoundContextBlock(kv);
 	API_WriteRoundTotals(kv);
 	API_WriteRoundPlayersSummary(kv);
 
@@ -315,10 +378,18 @@ public int Native_PlayerStats_FillRoundPlayerKeyValues(Handle plugin, int numPar
 		return false;
 	}
 
+	API_WriteRoundContextBlock(kv);
 	API_WriteRoundPlayerDetail(kv, slot);
 
 	KvGoBack(kv);
 	KvRewind(kv);
+	return true;
+}
+
+public int Native_PlayerStats_MarkRestart(Handle plugin, int numParams)
+{
+	PlayerStatsRestartSourceType source = view_as<PlayerStatsRestartSourceType>(GetNativeCell(1));
+	Series_MarkPendingRestart(source, "native_mark_restart");
 	return true;
 }
 

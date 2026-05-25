@@ -33,9 +33,64 @@ stock bool Stats_HasRoundSnapshot()
 	return Stats_IsEnabled() && g_Round.meta.id > 0;
 }
 
+stock PlayerStatsModeBaseType Stats_GetModeBase()
+{
+	switch (L4D_GetGameModeType())
+	{
+		case GAMEMODE_COOP:
+		{
+			return PlayerStatsModeBase_Coop;
+		}
+		case GAMEMODE_VERSUS:
+		{
+			return PlayerStatsModeBase_Versus;
+		}
+		case GAMEMODE_SCAVENGE:
+		{
+			return PlayerStatsModeBase_Scavenge;
+		}
+		case GAMEMODE_SURVIVAL:
+		{
+			return PlayerStatsModeBase_Survival;
+		}
+	}
+
+	return PlayerStatsModeBase_Unknown;
+}
+
 stock bool Stats_IsSecondHalfOfRound()
 {
 	return InSecondHalfOfRound();
+}
+
+stock bool Stats_IsCoopMode()
+{
+	return Stats_GetModeBase() == PlayerStatsModeBase_Coop;
+}
+
+stock bool Stats_IsVersusMode()
+{
+	return Stats_GetModeBase() == PlayerStatsModeBase_Versus;
+}
+
+stock bool Stats_IsScavengeMode()
+{
+	return Stats_GetModeBase() == PlayerStatsModeBase_Scavenge;
+}
+
+stock bool Stats_IsSurvivalMode()
+{
+	return Stats_GetModeBase() == PlayerStatsModeBase_Survival;
+}
+
+stock int Stats_GetConfiguredSurvivorLimit()
+{
+	return g_cvSurvivorLimit != null ? g_cvSurvivorLimit.IntValue : 0;
+}
+
+stock int Stats_GetConfiguredPlayerZombieLimit()
+{
+	return g_cvMaxPlayerZombies != null ? g_cvMaxPlayerZombies.IntValue : 0;
 }
 
 /**
@@ -156,6 +211,571 @@ stock PlayerStatsAttributionType Stats_GetAttributionType(int attacker)
 stock bool IsValidTank(int client)
 {
 	return IsValidZombieClass(client, L4D2ZombieClass_Tank);
+}
+
+stock bool Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClassType zombieClass)
+{
+	if (!Stats_IsVersusMode())
+	{
+		return false;
+	}
+
+	ConVar limit = null;
+
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			limit = g_cvVersusSmokerLimit;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			limit = g_cvVersusBoomerLimit;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			limit = g_cvVersusHunterLimit;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			limit = g_cvVersusSpitterLimit;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			limit = g_cvVersusJockeyLimit;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			limit = g_cvVersusChargerLimit;
+		}
+		default:
+		{
+			return true;
+		}
+	}
+
+	return limit == null || limit.IntValue > 0;
+}
+
+stock int Stats_GetEnabledSiPoolMask()
+{
+	int mask = view_as<int>(PlayerStatsSiPool_None);
+
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Smoker))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Smoker);
+	}
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Boomer))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Boomer);
+	}
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Hunter))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Hunter);
+	}
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Spitter))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Spitter);
+	}
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Jockey))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Jockey);
+	}
+	if (Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Charger))
+	{
+		mask |= view_as<int>(PlayerStatsSiPool_Charger);
+	}
+
+	return mask;
+}
+
+stock int Stats_CountEnabledSiClassesFromMask(int mask)
+{
+	int count = 0;
+
+	if ((mask & view_as<int>(PlayerStatsSiPool_Smoker)) != 0)
+	{
+		count++;
+	}
+	if ((mask & view_as<int>(PlayerStatsSiPool_Boomer)) != 0)
+	{
+		count++;
+	}
+	if ((mask & view_as<int>(PlayerStatsSiPool_Hunter)) != 0)
+	{
+		count++;
+	}
+	if ((mask & view_as<int>(PlayerStatsSiPool_Spitter)) != 0)
+	{
+		count++;
+	}
+	if ((mask & view_as<int>(PlayerStatsSiPool_Jockey)) != 0)
+	{
+		count++;
+	}
+	if ((mask & view_as<int>(PlayerStatsSiPool_Charger)) != 0)
+	{
+		count++;
+	}
+
+	return count;
+}
+
+stock void Stats_GetModeBaseName(PlayerStatsModeBaseType baseMode, char[] buffer, int maxlen)
+{
+	switch (baseMode)
+	{
+		case PlayerStatsModeBase_Coop:
+		{
+			strcopy(buffer, maxlen, "Coop");
+		}
+		case PlayerStatsModeBase_Versus:
+		{
+			strcopy(buffer, maxlen, "Versus");
+		}
+		case PlayerStatsModeBase_Scavenge:
+		{
+			strcopy(buffer, maxlen, "Scavenge");
+		}
+		case PlayerStatsModeBase_Survival:
+		{
+			strcopy(buffer, maxlen, "Survival");
+		}
+		default:
+		{
+			strcopy(buffer, maxlen, "Unknown");
+		}
+	}
+}
+
+stock void Stats_GetHistoryScopeName(PlayerStatsHistoryScopeType scope, char[] buffer, int maxlen)
+{
+	switch (scope)
+	{
+		case PlayerStatsHistoryScope_CurrentMap:
+		{
+			strcopy(buffer, maxlen, "CurrentMap");
+		}
+		case PlayerStatsHistoryScope_CampaignRun:
+		{
+			strcopy(buffer, maxlen, "CampaignRun");
+		}
+		case PlayerStatsHistoryScope_CompetitiveSeries:
+		{
+			strcopy(buffer, maxlen, "CompetitiveSeries");
+		}
+		case PlayerStatsHistoryScope_ScavengeMatch:
+		{
+			strcopy(buffer, maxlen, "ScavengeMatch");
+		}
+		case PlayerStatsHistoryScope_SurvivalRuns:
+		{
+			strcopy(buffer, maxlen, "SurvivalRuns");
+		}
+		default:
+		{
+			strcopy(buffer, maxlen, "None");
+		}
+	}
+}
+
+stock PlayerStatsVersusContextType Stats_ClassifyVersusContext(int survivorLimit, int playerZombieLimit, int siPoolMask, int enabledSiClassCount)
+{
+	if (!Stats_IsVersusMode() || survivorLimit <= 0 || playerZombieLimit <= 0 || survivorLimit != playerZombieLimit || enabledSiClassCount <= 0)
+	{
+		return PlayerStatsVersusContext_None;
+	}
+
+	if (survivorLimit == 1 && enabledSiClassCount == 1)
+	{
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Hunter)) != 0)
+		{
+			return PlayerStatsVersusContext_Hunter1v1;
+		}
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Smoker)) != 0)
+		{
+			return PlayerStatsVersusContext_Smoker1v1;
+		}
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Boomer)) != 0)
+		{
+			return PlayerStatsVersusContext_Boomer1v1;
+		}
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Spitter)) != 0)
+		{
+			return PlayerStatsVersusContext_Spitter1v1;
+		}
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Jockey)) != 0)
+		{
+			return PlayerStatsVersusContext_Jockey1v1;
+		}
+		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Charger)) != 0)
+		{
+			return PlayerStatsVersusContext_Charger1v1;
+		}
+	}
+
+	switch (survivorLimit)
+	{
+		case 1:
+		{
+			return PlayerStatsVersusContext_MixedPool1v1;
+		}
+		case 2:
+		{
+			return PlayerStatsVersusContext_MixedPool2v2;
+		}
+		case 3:
+		{
+			return PlayerStatsVersusContext_MixedPool3v3;
+		}
+		case 4:
+		{
+			return PlayerStatsVersusContext_Versus4v4;
+		}
+	}
+
+	return PlayerStatsVersusContext_CustomTeamVersus;
+}
+
+stock void Stats_GetVersusContextName(PlayerStatsVersusContextType context, char[] buffer, int maxlen)
+{
+	switch (context)
+	{
+		case PlayerStatsVersusContext_Hunter1v1:
+		{
+			strcopy(buffer, maxlen, "Hunter1v1");
+		}
+		case PlayerStatsVersusContext_Smoker1v1:
+		{
+			strcopy(buffer, maxlen, "Smoker1v1");
+		}
+		case PlayerStatsVersusContext_Boomer1v1:
+		{
+			strcopy(buffer, maxlen, "Boomer1v1");
+		}
+		case PlayerStatsVersusContext_Spitter1v1:
+		{
+			strcopy(buffer, maxlen, "Spitter1v1");
+		}
+		case PlayerStatsVersusContext_Jockey1v1:
+		{
+			strcopy(buffer, maxlen, "Jockey1v1");
+		}
+		case PlayerStatsVersusContext_Charger1v1:
+		{
+			strcopy(buffer, maxlen, "Charger1v1");
+		}
+		case PlayerStatsVersusContext_MixedPool1v1:
+		{
+			strcopy(buffer, maxlen, "MixedPool1v1");
+		}
+		case PlayerStatsVersusContext_MixedPool2v2:
+		{
+			strcopy(buffer, maxlen, "MixedPool2v2");
+		}
+		case PlayerStatsVersusContext_MixedPool3v3:
+		{
+			strcopy(buffer, maxlen, "MixedPool3v3");
+		}
+		case PlayerStatsVersusContext_Versus4v4:
+		{
+			strcopy(buffer, maxlen, "Versus4v4");
+		}
+		case PlayerStatsVersusContext_CustomTeamVersus:
+		{
+			strcopy(buffer, maxlen, "CustomTeamVersus");
+		}
+		default:
+		{
+			strcopy(buffer, maxlen, "None");
+		}
+	}
+}
+
+stock void Stats_BuildCurrentModeContext(PlayerStatsModeContextData context)
+{
+	context.Reset();
+	context.baseMode = Stats_GetModeBase();
+	context.isVersusMode = context.baseMode == PlayerStatsModeBase_Versus;
+	context.readyUpAvailable = g_Runtime.readyUpAvailable;
+	context.configuredSurvivorLimit = Stats_GetConfiguredSurvivorLimit();
+	context.configuredPlayerZombieLimit = Stats_GetConfiguredPlayerZombieLimit();
+
+	if (!context.isVersusMode)
+	{
+		return;
+	}
+
+	context.siPoolMask = Stats_GetEnabledSiPoolMask();
+	context.enabledSiClassCount = Stats_CountEnabledSiClassesFromMask(context.siPoolMask);
+	context.versusTeamSize = context.configuredSurvivorLimit == context.configuredPlayerZombieLimit
+		? context.configuredSurvivorLimit
+		: 0;
+	context.versusContext = Stats_ClassifyVersusContext(
+		context.configuredSurvivorLimit,
+		context.configuredPlayerZombieLimit,
+		context.siPoolMask,
+		context.enabledSiClassCount);
+}
+
+stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context, PlayerStatsLifecyclePolicyData policy)
+{
+	policy.Reset();
+	policy.baseMode = context.baseMode;
+
+	switch (context.baseMode)
+	{
+		case PlayerStatsModeBase_Coop:
+		{
+			policy.historyScope = PlayerStatsHistoryScope_CampaignRun;
+			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
+			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
+			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_SafeArea;
+			policy.restartPolicy = PlayerStatsRestartPolicy_CoopFailureOrTransition;
+		}
+		case PlayerStatsModeBase_Versus:
+		{
+			policy.historyScope = PlayerStatsHistoryScope_CompetitiveSeries;
+			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
+			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
+			policy.roundLiveSignal = context.readyUpAvailable
+				? PlayerStatsRoundLiveSignal_ReadyUpOrSafeArea
+				: PlayerStatsRoundLiveSignal_SafeArea;
+			policy.restartPolicy = PlayerStatsRestartPolicy_CompetitiveVoteOrAdmin;
+		}
+		case PlayerStatsModeBase_Scavenge:
+		{
+			policy.historyScope = PlayerStatsHistoryScope_ScavengeMatch;
+			policy.roundStartSignal = PlayerStatsRoundStartSignal_ScavengeRoundStart;
+			policy.roundEndSignal = PlayerStatsRoundEndSignal_ScavengeRoundFinished;
+			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
+			policy.restartPolicy = PlayerStatsRestartPolicy_ScavengeVoteOrAdmin;
+		}
+		case PlayerStatsModeBase_Survival:
+		{
+			policy.historyScope = PlayerStatsHistoryScope_SurvivalRuns;
+			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
+			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
+			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
+			policy.restartPolicy = PlayerStatsRestartPolicy_SurvivalRunReset;
+		}
+		default:
+		{
+			policy.historyScope = PlayerStatsHistoryScope_CurrentMap;
+			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
+			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
+			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
+			policy.restartPolicy = PlayerStatsRestartPolicy_None;
+		}
+	}
+}
+
+stock void Stats_ApplyModeContextToRuntime(PlayerStatsModeContextData context, PlayerStatsLifecyclePolicyData policy)
+{
+	g_Runtime.baseMode = context.baseMode;
+	g_Runtime.configuredSurvivorLimit = context.configuredSurvivorLimit;
+	g_Runtime.configuredPlayerZombieLimit = context.configuredPlayerZombieLimit;
+	g_Runtime.siPoolMask = context.siPoolMask;
+	g_Runtime.enabledSiClassCount = context.enabledSiClassCount;
+	g_Runtime.versusTeamSize = context.versusTeamSize;
+	g_Runtime.versusContext = context.versusContext;
+	g_Runtime.historyScope = policy.historyScope;
+	g_Runtime.roundStartSignal = policy.roundStartSignal;
+	g_Runtime.roundEndSignal = policy.roundEndSignal;
+	g_Runtime.roundLiveSignal = policy.roundLiveSignal;
+	g_Runtime.restartPolicy = policy.restartPolicy;
+}
+
+stock void Stats_ApplyModeContextToRoundMeta(PlayerStatsRoundMetaData meta, PlayerStatsModeContextData context, PlayerStatsLifecyclePolicyData policy)
+{
+	meta.baseMode = context.baseMode;
+	meta.isVersusMode = context.isVersusMode;
+	meta.configuredSurvivorLimit = context.configuredSurvivorLimit;
+	meta.configuredPlayerZombieLimit = context.configuredPlayerZombieLimit;
+	meta.siPoolMask = context.siPoolMask;
+	meta.enabledSiClassCount = context.enabledSiClassCount;
+	meta.versusTeamSize = context.versusTeamSize;
+	meta.versusContext = context.versusContext;
+	meta.historyScope = policy.historyScope;
+	meta.roundStartSignal = policy.roundStartSignal;
+	meta.roundEndSignal = policy.roundEndSignal;
+	meta.roundLiveSignal = policy.roundLiveSignal;
+	meta.restartPolicy = policy.restartPolicy;
+}
+
+stock bool Stats_ShouldHandleRoundStartEvent(const char[] eventName)
+{
+	switch (g_Runtime.roundStartSignal)
+	{
+		case PlayerStatsRoundStartSignal_ScavengeRoundStart:
+		{
+			return StrEqual(eventName, "scavenge_round_start", false);
+		}
+		case PlayerStatsRoundStartSignal_GenericRoundStart:
+		{
+			return StrEqual(eventName, "round_start", false);
+		}
+	}
+
+	return false;
+}
+
+stock bool Stats_ShouldHandleRoundEndEvent(const char[] eventName)
+{
+	switch (g_Runtime.roundEndSignal)
+	{
+		case PlayerStatsRoundEndSignal_ScavengeRoundFinished:
+		{
+			return StrEqual(eventName, "scavenge_round_finished", false);
+		}
+		case PlayerStatsRoundEndSignal_GenericRoundEnd:
+		{
+			return StrEqual(eventName, "round_end", false);
+		}
+	}
+
+	return false;
+}
+
+stock void Stats_RefreshModeContext()
+{
+	PlayerStatsModeContextData context;
+	PlayerStatsLifecyclePolicyData policy;
+	Stats_BuildCurrentModeContext(context);
+	Stats_GetLifecyclePolicyForContext(context, policy);
+	Stats_ApplyModeContextToRuntime(context, policy);
+
+	char baseModeName[24];
+	char contextName[32];
+	char historyScopeName[24];
+	Stats_GetModeBaseName(g_Runtime.baseMode, baseModeName, sizeof(baseModeName));
+	Stats_GetVersusContextName(g_Runtime.versusContext, contextName, sizeof(contextName));
+	Stats_GetHistoryScopeName(g_Runtime.historyScope, historyScopeName, sizeof(historyScopeName));
+	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base=%s history=%s context=%s team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d",
+		baseModeName,
+		historyScopeName,
+		contextName,
+		g_Runtime.versusTeamSize,
+		g_Runtime.configuredSurvivorLimit,
+		g_Runtime.configuredPlayerZombieLimit,
+		g_Runtime.siPoolMask,
+		g_Runtime.enabledSiClassCount);
+}
+
+stock void Stats_RefreshVersusContext()
+{
+	Stats_RefreshModeContext();
+}
+
+stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2SkillType type)
+{
+	switch (type)
+	{
+		case L4D2Skill_HunterSkeet, L4D2Skill_HunterSkeetMelee, L4D2Skill_HunterDeadstop, L4D2Skill_HunterHighPounce:
+		{
+			return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Hunter) : true;
+		}
+		case L4D2Skill_BoomerPop, L4D2Skill_BoomerVomitLanded:
+		{
+			return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Boomer) : true;
+		}
+		case L4D2Skill_ChargerLevel, L4D2Skill_ChargerInstaKill, L4D2Skill_ChargerDeathSetup:
+		{
+			return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Charger) : true;
+		}
+		case L4D2Skill_SmokerTongueCut, L4D2Skill_SmokerSelfClear:
+		{
+			return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Smoker) : true;
+		}
+		case L4D2Skill_JockeyHighPounce:
+		{
+			return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Jockey) : true;
+		}
+	}
+
+	return true;
+}
+
+stock bool Stats_IsZombieClassEnabledInCurrentMode(L4D2ZombieClassType zombieClass)
+{
+	return Stats_IsVersusMode() ? Stats_IsVersusSpecialLimitEnabled(zombieClass) : true;
+}
+
+stock bool Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClassType zombieClass, bool isVersusMode, int siPoolMask)
+{
+	if (!isVersusMode)
+	{
+		return true;
+	}
+
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Smoker)) != 0;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Boomer)) != 0;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Hunter)) != 0;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Spitter)) != 0;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Jockey)) != 0;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			return (siPoolMask & view_as<int>(PlayerStatsSiPool_Charger)) != 0;
+		}
+	}
+
+	return true;
+}
+
+stock bool Stats_IsZombieClassEnabledForRound(L4D2ZombieClassType zombieClass)
+{
+	return Stats_IsZombieClassEnabledForSnapshot(zombieClass, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
+}
+
+stock bool Stats_IsSkillTypeEnabledForSnapshot(L4D2SkillType type, bool isVersusMode, int siPoolMask)
+{
+	switch (type)
+	{
+		case L4D2Skill_HunterSkeet, L4D2Skill_HunterSkeetMelee, L4D2Skill_HunterDeadstop, L4D2Skill_HunterHighPounce:
+		{
+			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Hunter, isVersusMode, siPoolMask);
+		}
+		case L4D2Skill_BoomerPop, L4D2Skill_BoomerVomitLanded:
+		{
+			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Boomer, isVersusMode, siPoolMask);
+		}
+		case L4D2Skill_ChargerLevel, L4D2Skill_ChargerInstaKill, L4D2Skill_ChargerDeathSetup:
+		{
+			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Charger, isVersusMode, siPoolMask);
+		}
+		case L4D2Skill_SmokerTongueCut, L4D2Skill_SmokerSelfClear:
+		{
+			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Smoker, isVersusMode, siPoolMask);
+		}
+		case L4D2Skill_JockeyHighPounce:
+		{
+			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Jockey, isVersusMode, siPoolMask);
+		}
+	}
+
+	return true;
+}
+
+stock bool Stats_IsSkillTypeEnabledForRound(L4D2SkillType type)
+{
+	return Stats_IsSkillTypeEnabledForSnapshot(type, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
 }
 
 /**

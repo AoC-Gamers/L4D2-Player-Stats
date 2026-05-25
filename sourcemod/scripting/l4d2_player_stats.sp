@@ -29,6 +29,14 @@ PlayerStatsRuntimeState g_Runtime;
 
 ConVar				 g_cvEnable = null;
 ConVar				 g_cvDebug	= null;
+ConVar				 g_cvSurvivorLimit = null;
+ConVar				 g_cvMaxPlayerZombies = null;
+ConVar				 g_cvVersusBoomerLimit = null;
+ConVar				 g_cvVersusSmokerLimit = null;
+ConVar				 g_cvVersusHunterLimit = null;
+ConVar				 g_cvVersusSpitterLimit = null;
+ConVar				 g_cvVersusJockeyLimit = null;
+ConVar				 g_cvVersusChargerLimit = null;
 char				 g_sDebugLogPath[PLATFORM_MAX_PATH];
 bool				 g_bBossPercentsAvailable = false;
 
@@ -54,17 +62,36 @@ public void OnPluginStart()
 
 	g_cvDebug  = CreateConVar("l4d2_player_stats_debug", "0", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Detect 4=Api 8=Announce 15=all.");
 	g_cvEnable = CreateConVar("l4d2_player_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
+	g_cvSurvivorLimit = FindConVar("survivor_limit");
+	g_cvMaxPlayerZombies = FindConVar("z_max_player_zombies");
 
 	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), "logs/l4d2_player_stats.log");
+	g_cvVersusBoomerLimit = FindConVar("z_versus_boomer_limit");
+	g_cvVersusSmokerLimit = FindConVar("z_versus_smoker_limit");
+	g_cvVersusHunterLimit = FindConVar("z_versus_hunter_limit");
+	g_cvVersusSpitterLimit = FindConVar("z_versus_spitter_limit");
+	g_cvVersusJockeyLimit = FindConVar("z_versus_jockey_limit");
+	g_cvVersusChargerLimit = FindConVar("z_versus_charger_limit");
+
+	g_cvSurvivorLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvMaxPlayerZombies.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusBoomerLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusSmokerLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusHunterLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusSpitterLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusJockeyLimit.AddChangeHook(ConVarChange_VersusContext);
+	g_cvVersusChargerLimit.AddChangeHook(ConVarChange_VersusContext);
 
 	AutoExecConfig(false, "l4d2_player_stats");
 	L4D2Weapons_Init();
+	Stats_RefreshModeContext();
 
 	API_Init();
 	Regcmd_Init();
 	Round_Init();
 	Series_Init();
 	Detect_Init();
+	HookEvent("vote_passed", Event_VotePassed, EventHookMode_PostNoCopy);
 
 	if (!g_Runtime.lateload)
 	{
@@ -81,6 +108,7 @@ public void OnAllPluginsLoaded()
 	g_Runtime.readyUpAvailable		= LibraryExists(READYUP_LIBRARY);
 	g_Runtime.playerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
 	g_bBossPercentsAvailable		= LibraryExists(L4D2_BOSS_PERCENTS_LIBRARY);
+	Stats_RefreshModeContext();
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -97,6 +125,8 @@ public void OnLibraryAdded(const char[] name)
 	{
 		g_bBossPercentsAvailable = true;
 	}
+
+	Stats_RefreshModeContext();
 }
 
 public void OnLibraryRemoved(const char[] name)
@@ -113,11 +143,14 @@ public void OnLibraryRemoved(const char[] name)
 	{
 		g_bBossPercentsAvailable = false;
 	}
+
+	Stats_RefreshModeContext();
 }
 
 public void OnMapStart()
 {
 	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnMapStart");
+	Stats_RefreshModeContext();
 	Series_OnMapStart();
 
 	if (g_Round.meta.active || g_Round.meta.id > 0)
@@ -135,12 +168,24 @@ public void OnMapStart()
 public void OnMapEnd()
 {
 	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnMapEnd");
+	Round_FinalizeActiveSnapshot("map_end", PlayerStatsRoundEndReason_MapEnd, false);
 	Round_ResetAll("OnMapEnd");
+}
+
+public void OnConfigsExecuted()
+{
+	Stats_RefreshModeContext();
+}
+
+public void L4D_OnGameModeChange(int gamemode)
+{
+	Stats_RefreshModeContext();
 }
 
 public void OnPluginEnd()
 {
 	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnPluginEnd");
+	Round_FinalizeActiveSnapshot("plugin_end", PlayerStatsRoundEndReason_PluginEnd, false);
 	Round_ResetAll("OnPluginEnd");
 }
 
@@ -201,6 +246,35 @@ public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 	Round_EventRoundEnd(event, name, dontBroadcast);
 }
 
+public void Event_ScavengeRoundStart(Event event, const char[] name, bool dontBroadcast)
+{
+	Round_EventRoundStart(event, name, dontBroadcast);
+}
+
+public void Event_ScavengeRoundFinished(Event event, const char[] name, bool dontBroadcast)
+{
+	Round_EventRoundEnd(event, name, dontBroadcast);
+}
+
+public void Event_ScavengeRoundHalftime(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	Round_OnScavengeRoundHalftime();
+	Series_OnScavengeRoundHalftime();
+}
+
+public void Event_ScavengeMatchFinished(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	Round_OnScavengeMatchFinished();
+	Series_OnScavengeMatchFinished();
+}
+
+public void L4D2_OnEndVersusModeRound_Post()
+{
+	Round_OnEndVersusModeRoundPost();
+}
+
 public void Event_PlayerBotReplace(Event event, const char[] name, bool dontBroadcast)
 {
 	Stats_EventPlayerBotReplace(event, name, dontBroadcast);
@@ -250,6 +324,16 @@ public void L4D_OnIncapacitated_Post(int client, int inflictor, int attacker, fl
 public void Event_WeaponFire(Event event, const char[] name, bool dontBroadcast)
 {
 	Detect_EventWeaponFire(event, name, dontBroadcast);
+}
+
+public void Event_VotePassed(Event event, const char[] name, bool dontBroadcast)
+{
+	Series_EventVotePassed(event, name, dontBroadcast);
+}
+
+public void ConVarChange_VersusContext(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	Stats_RefreshModeContext();
 }
 
 public void Event_PillsUsed(Event event, const char[] name, bool dontBroadcast)

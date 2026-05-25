@@ -105,11 +105,238 @@ void Announce_BroadcastRoundSummary(int client = 0)
 	Announce_PrintRoundSummaryLines(client, siMvp, ciMvp, ffLvp);
 }
 
+PlayerStatsHistoryScopeType Announce_GetHistoryScopeForFilter(const char[] mapFilter = "")
+{
+	for (int i = g_GameHistory.roundCount - 1; i >= 0; i--)
+	{
+		if (!g_GameHistory.rounds[i].active)
+		{
+			continue;
+		}
+
+		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
+		{
+			continue;
+		}
+
+		return g_GameHistory.rounds[i].historyScope;
+	}
+
+	return g_Runtime.historyScope;
+}
+
+PlayerStatsModeBaseType Announce_GetHistoryBaseModeForFilter(const char[] mapFilter = "")
+{
+	for (int i = g_GameHistory.roundCount - 1; i >= 0; i--)
+	{
+		if (!g_GameHistory.rounds[i].active)
+		{
+			continue;
+		}
+
+		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
+		{
+			continue;
+		}
+
+		return g_GameHistory.rounds[i].baseMode;
+	}
+
+	return g_Runtime.baseMode;
+}
+
+void Announce_GetHistoryPanelTitle(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "")
+{
+	switch (historyScope)
+	{
+		case PlayerStatsHistoryScope_CampaignRun:
+		{
+			if (mapFilter[0] != '\0')
+			{
+				Format(buffer, maxlen, "General data per campaign round -- Run %d -- %s", g_GameHistory.seriesId, mapFilter);
+			}
+			else
+			{
+				Format(buffer, maxlen, "General data per campaign round -- Run %d -- all maps", g_GameHistory.seriesId);
+			}
+		}
+		case PlayerStatsHistoryScope_CompetitiveSeries:
+		{
+			if (mapFilter[0] != '\0')
+			{
+				Format(buffer, maxlen, "General data per series round -- Series %d -- %s", g_GameHistory.seriesId, mapFilter);
+			}
+			else
+			{
+				Format(buffer, maxlen, "General data per series round -- Series %d -- all maps", g_GameHistory.seriesId);
+			}
+		}
+		case PlayerStatsHistoryScope_ScavengeMatch:
+		{
+			if (mapFilter[0] != '\0')
+			{
+				Format(buffer, maxlen, "General data per scavenge round -- Match %d -- %s", g_GameHistory.seriesId, mapFilter);
+			}
+			else
+			{
+				Format(buffer, maxlen, "General data per scavenge round -- Match %d -- all maps", g_GameHistory.seriesId);
+			}
+		}
+		case PlayerStatsHistoryScope_SurvivalRuns:
+		{
+			if (mapFilter[0] != '\0')
+			{
+				Format(buffer, maxlen, "General data per survival run -- Set %d -- %s", g_GameHistory.seriesId, mapFilter);
+			}
+			else
+			{
+				Format(buffer, maxlen, "General data per survival run -- Set %d -- all maps", g_GameHistory.seriesId);
+			}
+		}
+		default:
+		{
+			if (mapFilter[0] != '\0')
+			{
+				Format(buffer, maxlen, "General data per round -- Session %d -- %s", g_GameHistory.seriesId, mapFilter);
+			}
+			else
+			{
+				Format(buffer, maxlen, "General data per round -- Session %d -- all maps", g_GameHistory.seriesId);
+			}
+		}
+	}
+}
+
+bool Announce_ShouldShowHistoryMapColumn(PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "")
+{
+	if (mapFilter[0] == '\0')
+	{
+		return true;
+	}
+
+	return historyScope != PlayerStatsHistoryScope_ScavengeMatch
+		&& historyScope != PlayerStatsHistoryScope_SurvivalRuns;
+}
+
+bool Announce_ShouldShowHistoryRestartsColumn(PlayerStatsHistoryScopeType historyScope)
+{
+	switch (historyScope)
+	{
+		case PlayerStatsHistoryScope_CampaignRun, PlayerStatsHistoryScope_CompetitiveSeries, PlayerStatsHistoryScope_ScavengeMatch:
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Announce_GetHistoryRoundColumnLabel(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope)
+{
+	switch (historyScope)
+	{
+		case PlayerStatsHistoryScope_SurvivalRuns:
+		{
+			strcopy(buffer, maxlen, "Run");
+		}
+		default:
+		{
+			strcopy(buffer, maxlen, "Round");
+		}
+	}
+}
+
+int Announce_CountHistoryRowsForFilter(const char[] mapFilter = "")
+{
+	int count = 0;
+
+	for (int i = 0; i < g_GameHistory.roundCount; i++)
+	{
+		if (!g_GameHistory.rounds[i].active)
+		{
+			continue;
+		}
+
+		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
+		{
+			continue;
+		}
+
+		count++;
+	}
+
+	return count;
+}
+
+int Announce_GetBestHistoryDurationForFilter(const char[] mapFilter = "")
+{
+	int best = 0;
+
+	for (int i = 0; i < g_GameHistory.roundCount; i++)
+	{
+		if (!g_GameHistory.rounds[i].active)
+		{
+			continue;
+		}
+
+		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
+		{
+			continue;
+		}
+
+		if (g_GameHistory.rounds[i].durationSeconds > best)
+		{
+			best = g_GameHistory.rounds[i].durationSeconds;
+		}
+	}
+
+	return best;
+}
+
+void Announce_FormatDurationCompact(int durationSeconds, char[] buffer, int maxlen)
+{
+	int minutes = durationSeconds / 60;
+	int seconds = durationSeconds % 60;
+	Format(buffer, maxlen, "%dm %02ds", minutes, seconds);
+}
+
+void Announce_GetHistorySummaryLine(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "")
+{
+	int entryCount = Announce_CountHistoryRowsForFilter(mapFilter);
+
+	switch (historyScope)
+	{
+		case PlayerStatsHistoryScope_CampaignRun:
+		{
+			Format(buffer, maxlen, "Campaign entries: %d", entryCount);
+		}
+		case PlayerStatsHistoryScope_CompetitiveSeries:
+		{
+			Format(buffer, maxlen, "Series rounds: %d", entryCount);
+		}
+		case PlayerStatsHistoryScope_ScavengeMatch:
+		{
+			Format(buffer, maxlen, "Scavenge halves: %d", entryCount);
+		}
+		case PlayerStatsHistoryScope_SurvivalRuns:
+		{
+			int bestDuration = Announce_GetBestHistoryDurationForFilter(mapFilter);
+			char bestTime[16];
+			Announce_FormatDurationCompact(bestDuration, bestTime, sizeof(bestTime));
+			Format(buffer, maxlen, "Survival runs: %d | Best time: %s", entryCount, bestTime);
+		}
+		default:
+		{
+			Format(buffer, maxlen, "History entries: %d", entryCount);
+		}
+	}
+}
+
 void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = "")
 {
 	if (!g_GameHistory.active || g_GameHistory.roundCount <= 0)
 	{
-		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No game history available.");
+		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No history is available for the current mode.");
 		return;
 	}
 
@@ -118,24 +345,32 @@ void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = ""
 	ConsolePanel_SetWidth(panel, 100);
 	ConsolePanel_EnableSafeAscii(panel, true);
 
+	PlayerStatsHistoryScopeType historyScope = Announce_GetHistoryScopeForFilter(mapFilter);
+	PlayerStatsModeBaseType baseMode = Announce_GetHistoryBaseModeForFilter(mapFilter);
 	char line[160];
-	if (mapFilter[0] != '\0')
-	{
-		Format(line, sizeof(line), "General data per mission round -- Series %d -- %s", g_GameHistory.seriesId, mapFilter);
-	}
-	else
-	{
-		Format(line, sizeof(line), "General data per mission round -- Series %d -- all maps", g_GameHistory.seriesId);
-	}
+	Announce_GetHistoryPanelTitle(line, sizeof(line), historyScope, mapFilter);
+	ConsolePanel_AddHeaderLine(panel, line);
+	Announce_GetHistorySummaryLine(line, sizeof(line), historyScope, mapFilter);
 	ConsolePanel_AddHeaderLine(panel, line);
 
-	Format(line, sizeof(line), "Campaign Score A/B: %d / %d",
-		g_GameHistory.lastCampaignScoreA,
-		g_GameHistory.lastCampaignScoreB);
-	ConsolePanel_AddHeaderLine(panel, line);
+	if (baseMode == PlayerStatsModeBase_Versus || baseMode == PlayerStatsModeBase_Scavenge)
+	{
+		Format(line, sizeof(line), "Campaign Score A/B: %d / %d",
+			g_GameHistory.lastCampaignScoreA,
+			g_GameHistory.lastCampaignScoreB);
+		ConsolePanel_AddHeaderLine(panel, line);
+	}
 
-	ConsoleTable_AddColumn(panel.table, "Round", 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, "Map", 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	bool showMapColumn = Announce_ShouldShowHistoryMapColumn(historyScope, mapFilter);
+	bool showRestartsColumn = Announce_ShouldShowHistoryRestartsColumn(historyScope);
+	char roundLabel[12];
+	Announce_GetHistoryRoundColumnLabel(roundLabel, sizeof(roundLabel), historyScope);
+
+	ConsoleTable_AddColumn(panel.table, roundLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+	if (showMapColumn)
+	{
+		ConsoleTable_AddColumn(panel.table, "Map", 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	}
 	ConsoleTable_AddColumn(panel.table, "Time", 8, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
 	ConsoleTable_AddColumn(panel.table, "SI K", 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	ConsoleTable_AddColumn(panel.table, "Common", 7, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
@@ -143,7 +378,10 @@ void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = ""
 	ConsoleTable_AddColumn(panel.table, "Incaps", 6, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	ConsoleTable_AddColumn(panel.table, "Kits", 4, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	ConsoleTable_AddColumn(panel.table, "Pills", 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, "Restarts", 8, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+	if (showRestartsColumn)
+	{
+		ConsoleTable_AddColumn(panel.table, "Restarts", 8, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+	}
 
 	int displayedRows = 0;
 	for (int i = 0; i < g_GameHistory.roundCount; i++)
@@ -169,7 +407,10 @@ void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = ""
 		Format(duration, sizeof(duration), "%dm %02ds", minutes, seconds);
 
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].roundId);
-		ConsoleTable_AddStringCell(panel.table, g_GameHistory.rounds[i].map);
+		if (showMapColumn)
+		{
+			ConsoleTable_AddStringCell(panel.table, g_GameHistory.rounds[i].map);
+		}
 		ConsoleTable_AddStringCell(panel.table, duration);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].siKills);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].commonKills);
@@ -177,14 +418,17 @@ void Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = ""
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].incaps);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].kitsUsed);
 		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].pillsUsed);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].restarts);
+		if (showRestartsColumn)
+		{
+			ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].restarts);
+		}
 		ConsoleTable_EndRow(panel.table);
 		displayedRows++;
 	}
 
 	if (displayedRows <= 0)
 	{
-		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No mission history available for that map.");
+		ConsolePanel_PrintMessage(client, "[l4d2_player_stats] No history is available for that filter.");
 		return;
 	}
 
@@ -300,7 +544,7 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 
 		ConsoleTable_AddStringCell(panel.table, g_Round.players[slot].player.name);
 		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerDamageScore(slot));
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.siDamage);
+		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerSiDamage(slot));
 		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerSpecialKills(slot));
 		if (showTank)
 		{
@@ -326,8 +570,8 @@ void Announce_RenderRoundConsolePanel(int client = 0)
 	{
 		Format(line, sizeof(line), "%T", "RoundMVPDamageBase", LANG_SERVER,
 			g_Round.players[siMvp].player.name,
-			g_Round.players[siMvp].combat.siDamage,
-			Announce_GetPercent(g_Round.players[siMvp].combat.siDamage, g_Round.totals.survivorTotalSiDamage));
+			Announce_GetPlayerSiDamage(siMvp),
+			Announce_GetPercent(Announce_GetPlayerSiDamage(siMvp), Announce_GetTotalSurvivorSiDamage()));
 		CRemoveTags(line, sizeof(line));
 		ConsolePanel_AddFooterLine(panel, line);
 	}
@@ -413,7 +657,7 @@ void Announce_BroadcastRoundConsolePanel()
 
 		ConsoleTable_AddStringCell(panel.table, g_Round.players[slot].player.name);
 		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerDamageScore(slot));
-		ConsoleTable_AddIntCell(panel.table, g_Round.players[slot].combat.siDamage);
+		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerSiDamage(slot));
 		ConsoleTable_AddIntCell(panel.table, Announce_GetPlayerSpecialKills(slot));
 		if (showTank)
 		{
@@ -439,8 +683,8 @@ void Announce_BroadcastRoundConsolePanel()
 	{
 		Format(line, sizeof(line), "%T", "RoundMVPDamageBase", LANG_SERVER,
 			g_Round.players[siMvp].player.name,
-			g_Round.players[siMvp].combat.siDamage,
-			Announce_GetPercent(g_Round.players[siMvp].combat.siDamage, g_Round.totals.survivorTotalSiDamage));
+			Announce_GetPlayerSiDamage(siMvp),
+			Announce_GetPercent(Announce_GetPlayerSiDamage(siMvp), Announce_GetTotalSurvivorSiDamage()));
 		CRemoveTags(line, sizeof(line));
 		ConsolePanel_AddFooterLine(panel, line);
 	}
@@ -517,6 +761,11 @@ void Announce_PrintMessage(int client, const char[] message)
 
 bool Announce_ShouldShowTankDamage()
 {
+	if (g_Round.meta.storedTankPercent >= 0)
+	{
+		return g_Round.meta.storedTankPercent != 0;
+	}
+
 	if (!g_bBossPercentsAvailable || GetFeatureStatus(FeatureType_Native, "GetStoredTankPercent") == FeatureStatus_Unknown)
 	{
 		return true;
@@ -528,6 +777,11 @@ bool Announce_ShouldShowTankDamage()
 
 bool Announce_ShouldShowWitchDamage()
 {
+	if (g_Round.meta.storedWitchPercent >= 0)
+	{
+		return g_Round.meta.storedWitchPercent != 0;
+	}
+
 	if (!g_bBossPercentsAvailable || GetFeatureStatus(FeatureType_Native, "GetStoredWitchPercent") == FeatureStatus_Unknown)
 	{
 		return true;
@@ -613,8 +867,8 @@ void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phras
 {
 	bool showTank = Announce_ShouldShowTankDamage();
 	bool showWitch = Announce_ShouldShowWitchDamage();
-	int siDamage = g_Round.players[slot].combat.siDamage;
-	int siPercent = Announce_GetPercent(siDamage, g_Round.totals.survivorTotalSiDamage);
+	int siDamage = Announce_GetPlayerSiDamage(slot);
+	int siPercent = Announce_GetPercent(siDamage, Announce_GetTotalSurvivorSiDamage());
 	int tankDamage = g_Round.players[slot].combat.tankDamage;
 	int tankPercent = Announce_GetPercent(tankDamage, g_Round.totals.survivorTotalTankDamage);
 	int tankCount = Announce_GetEncounteredTankCount();
@@ -773,32 +1027,140 @@ void Announce_RenderGlobalRankPanel(int client)
 
 int Announce_GetPlayerDamageScore(int index)
 {
-	return g_Round.players[index].combat.siDamage + g_Round.players[index].combat.tankDamage + g_Round.players[index].combat.witchDamage;
+	return Announce_GetPlayerSiDamage(index) + g_Round.players[index].combat.tankDamage + g_Round.players[index].combat.witchDamage;
+}
+
+int Announce_GetPlayerSiDamage(int index)
+{
+	int total = 0;
+
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		total += g_Round.players[index].combat.smokerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		total += g_Round.players[index].combat.boomerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		total += g_Round.players[index].combat.hunterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		total += g_Round.players[index].combat.spitterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		total += g_Round.players[index].combat.jockeyDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		total += g_Round.players[index].combat.chargerDamage;
+	}
+
+	return total;
 }
 
 int Announce_GetPlayerSpecialKills(int index)
 {
-	return g_Round.players[index].combat.smokerKills
-		+ g_Round.players[index].combat.boomerKills
-		+ g_Round.players[index].combat.hunterKills
-		+ g_Round.players[index].combat.spitterKills
-		+ g_Round.players[index].combat.jockeyKills
-		+ g_Round.players[index].combat.chargerKills;
+	int total = 0;
+
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		total += g_Round.players[index].combat.smokerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		total += g_Round.players[index].combat.boomerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		total += g_Round.players[index].combat.hunterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		total += g_Round.players[index].combat.spitterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		total += g_Round.players[index].combat.jockeyKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		total += g_Round.players[index].combat.chargerKills;
+	}
+
+	return total;
 }
 
 int Announce_GetTotalSurvivorDamage()
 {
-	return g_Round.totals.survivorTotalSiDamage + g_Round.totals.survivorTotalTankDamage + g_Round.totals.survivorTotalWitchDamage;
+	return Announce_GetTotalSurvivorSiDamage() + g_Round.totals.survivorTotalTankDamage + g_Round.totals.survivorTotalWitchDamage;
+}
+
+int Announce_GetTotalSurvivorSiDamage()
+{
+	int total = 0;
+
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		total += g_Round.totals.survivorTotalSmokerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		total += g_Round.totals.survivorTotalBoomerDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		total += g_Round.totals.survivorTotalHunterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		total += g_Round.totals.survivorTotalSpitterDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		total += g_Round.totals.survivorTotalJockeyDamage;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		total += g_Round.totals.survivorTotalChargerDamage;
+	}
+
+	return total;
 }
 
 int Announce_GetTotalSurvivorSpecialKills()
 {
-	return g_Round.totals.survivorTotalSmokerKills
-		+ g_Round.totals.survivorTotalBoomerKills
-		+ g_Round.totals.survivorTotalHunterKills
-		+ g_Round.totals.survivorTotalSpitterKills
-		+ g_Round.totals.survivorTotalJockeyKills
-		+ g_Round.totals.survivorTotalChargerKills;
+	int total = 0;
+
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		total += g_Round.totals.survivorTotalSmokerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		total += g_Round.totals.survivorTotalBoomerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		total += g_Round.totals.survivorTotalHunterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		total += g_Round.totals.survivorTotalSpitterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		total += g_Round.totals.survivorTotalJockeyKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		total += g_Round.totals.survivorTotalChargerKills;
+	}
+
+	return total;
 }
 
 int Announce_GetPercent(int part, int whole)

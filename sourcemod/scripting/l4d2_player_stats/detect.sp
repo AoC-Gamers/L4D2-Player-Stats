@@ -584,6 +584,11 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 		return;
 	}
 
+	if (!Stats_IsSkillTypeEnabledForRound(type))
+	{
+		return;
+	}
+
 	switch (type)
 	{
 		case L4D2Skill_HunterSkeet:

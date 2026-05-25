@@ -14,6 +14,8 @@ Current output surface:
   - `sm_mvp_acc` prints the current round accuracy table in the user's console
 - post-round server console table with survivor totals and MVP/LVP summary
 - game-history panel available through `PlayerStats_BroadcastGameStats`
+- restart integrations:
+  - `PlayerStats_MarkRestart(source)` lets external plugins report direct restarts to the historical layer
 - legacy compatibility wrappers:
   - `survivor_mvp`
   - `l4d2_playstats`
@@ -23,7 +25,9 @@ Documentation:
 - [Build System](docs/build-system.md)
 - [Player Stats API](docs/l4d2-player-stats-api.md)
 - [Product Model](docs/l4d2-player-stats-product-model.md)
+- [Mode Lifecycle and Business Rules](docs/l4d2-mode-lifecycle-business-rules.md)
 - [Accuracy Implementation](docs/l4d2-player-stats-accuracy-implementation.md)
+- [Reduced-Team Versus Implementation](docs/l4d2-player-stats-1v1-implementation.md)
 - [Vendor l4d2util](docs/vendor-l4d2util.md)
 
 Bundled utility includes:
