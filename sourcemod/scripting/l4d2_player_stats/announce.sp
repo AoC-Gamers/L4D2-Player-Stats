@@ -766,7 +766,7 @@ bool Announce_ShouldShowTankDamage()
 		return g_Round.meta.storedTankPercent != 0;
 	}
 
-	if (!g_bBossPercentsAvailable || GetFeatureStatus(FeatureType_Native, "GetStoredTankPercent") == FeatureStatus_Unknown)
+	if (!g_Runtime.hasBossPercents || GetFeatureStatus(FeatureType_Native, "GetStoredTankPercent") == FeatureStatus_Unknown)
 	{
 		return true;
 	}
@@ -782,7 +782,7 @@ bool Announce_ShouldShowWitchDamage()
 		return g_Round.meta.storedWitchPercent != 0;
 	}
 
-	if (!g_bBossPercentsAvailable || GetFeatureStatus(FeatureType_Native, "GetStoredWitchPercent") == FeatureStatus_Unknown)
+	if (!g_Runtime.hasBossPercents || GetFeatureStatus(FeatureType_Native, "GetStoredWitchPercent") == FeatureStatus_Unknown)
 	{
 		return true;
 	}

@@ -567,7 +567,7 @@ void Detect_OnVomitedUponPost(int victim, int attacker, bool boomerExplosion)
 
 void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 {
-	if (!g_Runtime.playerSkillsAvailable || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
+	if (!g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
 	{
 		return;
 	}

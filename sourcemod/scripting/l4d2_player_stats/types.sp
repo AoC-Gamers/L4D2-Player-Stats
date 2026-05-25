@@ -282,7 +282,7 @@ enum struct PlayerStatsModeContextData
 	int enabledSiClassCount;
 	int versusTeamSize;
 	PlayerStatsVersusContextType versusContext;
-	bool readyUpAvailable;
+	bool hasReadyUp;
 
 	void Reset()
 	{
@@ -294,7 +294,7 @@ enum struct PlayerStatsModeContextData
 		this.enabledSiClassCount = 0;
 		this.versusTeamSize = 0;
 		this.versusContext = PlayerStatsVersusContext_None;
-		this.readyUpAvailable = false;
+		this.hasReadyUp = false;
 	}
 }
 
@@ -715,8 +715,10 @@ enum struct PlayerStatsRoundData
 enum struct PlayerStatsRuntimeState
 {
 	bool roundLive;
-	bool readyUpAvailable;
-	bool playerSkillsAvailable;
+	bool hasLeft4DHooks;
+	bool hasReadyUp;
+	bool hasPlayerSkills;
+	bool hasBossPercents;
 	bool lateload;
 	PlayerStatsModeBaseType baseMode;
 	int configuredSurvivorLimit;
@@ -741,8 +743,10 @@ enum struct PlayerStatsRuntimeState
 	void Reset()
 	{
 		this.roundLive = false;
-		this.readyUpAvailable = false;
-		this.playerSkillsAvailable = false;
+		this.hasLeft4DHooks = false;
+		this.hasReadyUp = false;
+		this.hasPlayerSkills = false;
+		this.hasBossPercents = false;
 		this.lateload = false;
 		this.baseMode = PlayerStatsModeBase_Unknown;
 		this.configuredSurvivorLimit = 0;

@@ -56,10 +56,10 @@ void Round_EventRoundStart(Event event, const char[] name, bool dontBroadcast)
 	g_Round.meta.active = true;
 	g_Round.meta.startedAt = GetGameTime();
 	Stats_ApplyModeContextToRoundMeta(g_Round.meta, context, policy);
-	g_Round.meta.storedTankPercent = (g_bBossPercentsAvailable && GetFeatureStatus(FeatureType_Native, "GetStoredTankPercent") != FeatureStatus_Unknown)
+	g_Round.meta.storedTankPercent = (g_Runtime.hasBossPercents && GetFeatureStatus(FeatureType_Native, "GetStoredTankPercent") != FeatureStatus_Unknown)
 		? GetStoredTankPercent()
 		: -1;
-	g_Round.meta.storedWitchPercent = (g_bBossPercentsAvailable && GetFeatureStatus(FeatureType_Native, "GetStoredWitchPercent") != FeatureStatus_Unknown)
+	g_Round.meta.storedWitchPercent = (g_Runtime.hasBossPercents && GetFeatureStatus(FeatureType_Native, "GetStoredWitchPercent") != FeatureStatus_Unknown)
 		? GetStoredWitchPercent()
 		: -1;
 	g_Runtime.roundLive = false;
@@ -172,7 +172,7 @@ void Round_OnFirstSurvivorLeftSafeArea(int client)
 		return;
 	}
 
-	if (g_Runtime.readyUpAvailable)
+	if (g_Runtime.hasReadyUp)
 	{
 		Stats_Debug(PlayerStatsDebug_Core, "First survivor left safe area but readyup is present. round=%d client=%d live=%d",
 			g_Round.meta.id,

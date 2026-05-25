@@ -19,9 +19,10 @@
 
 #include "l4d2_player_stats/types.sp"
 
-#define READYUP_LIBRARY "readyup"
-#define L4D2_PLAYER_SKILLS_LIBRARY "l4d2_player_skills"
-#define L4D2_BOSS_PERCENTS_LIBRARY "l4d_boss_percent"
+#define LIBRARY_READYUP "readyup"
+#define LIBRARY_L4D2_PLAYER_SKILLS "l4d2_player_skills"
+#define LIBRARY_L4D2_BOSS_PERCENTS "l4d_boss_percent"
+#define LIBRARY_LEFT4DHOOKS "left4dhooks"
 
 PlayerStatsRoundData g_Round;
 PlayerStatsGameHistoryData g_GameHistory;
@@ -38,7 +39,6 @@ ConVar				 g_cvVersusSpitterLimit = null;
 ConVar				 g_cvVersusJockeyLimit = null;
 ConVar				 g_cvVersusChargerLimit = null;
 char				 g_sDebugLogPath[PLATFORM_MAX_PATH];
-bool				 g_bBossPercentsAvailable = false;
 
 public Plugin myinfo =
 {
@@ -98,53 +98,63 @@ public void OnPluginStart()
 		return;
 	}
 
-	g_Runtime.readyUpAvailable		= LibraryExists(READYUP_LIBRARY);
-	g_Runtime.playerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
-	g_bBossPercentsAvailable		= LibraryExists(L4D2_BOSS_PERCENTS_LIBRARY);
+	g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
+	g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
+	g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
+	g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
 }
 
 public void OnAllPluginsLoaded()
 {
-	g_Runtime.readyUpAvailable		= LibraryExists(READYUP_LIBRARY);
-	g_Runtime.playerSkillsAvailable = LibraryExists(L4D2_PLAYER_SKILLS_LIBRARY);
-	g_bBossPercentsAvailable		= LibraryExists(L4D2_BOSS_PERCENTS_LIBRARY);
+	g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
+	g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
+	g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
+	g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
 	Stats_RefreshModeContext();
 }
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (strcmp(name, READYUP_LIBRARY) == 0)
+	if (strcmp(name, LIBRARY_LEFT4DHOOKS) == 0)
 	{
-		g_Runtime.readyUpAvailable = true;
+		g_Runtime.hasLeft4DHooks = true;
+		Stats_RefreshModeContext();
 	}
-	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
+	else if (strcmp(name, LIBRARY_READYUP) == 0)
 	{
-		g_Runtime.playerSkillsAvailable = true;
+		g_Runtime.hasReadyUp = true;
+		Stats_RefreshModeContext();
 	}
-	else if (strcmp(name, L4D2_BOSS_PERCENTS_LIBRARY) == 0)
+	else if (strcmp(name, LIBRARY_L4D2_PLAYER_SKILLS) == 0)
 	{
-		g_bBossPercentsAvailable = true;
+		g_Runtime.hasPlayerSkills = true;
 	}
-
-	Stats_RefreshModeContext();
+	else if (strcmp(name, LIBRARY_L4D2_BOSS_PERCENTS) == 0)
+	{
+		g_Runtime.hasBossPercents = true;
+	}
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if (strcmp(name, READYUP_LIBRARY) == 0)
+	if (strcmp(name, LIBRARY_LEFT4DHOOKS) == 0)
 	{
-		g_Runtime.readyUpAvailable = false;
+		g_Runtime.hasLeft4DHooks = false;
+		Stats_RefreshModeContext();
 	}
-	else if (strcmp(name, L4D2_PLAYER_SKILLS_LIBRARY) == 0)
+	else if (strcmp(name, LIBRARY_READYUP) == 0)
 	{
-		g_Runtime.playerSkillsAvailable = false;
+		g_Runtime.hasReadyUp = false;
+		Stats_RefreshModeContext();
 	}
-	else if (strcmp(name, L4D2_BOSS_PERCENTS_LIBRARY) == 0)
+	else if (strcmp(name, LIBRARY_L4D2_PLAYER_SKILLS) == 0)
 	{
-		g_bBossPercentsAvailable = false;
+		g_Runtime.hasPlayerSkills = false;
 	}
-
-	Stats_RefreshModeContext();
+	else if (strcmp(name, LIBRARY_L4D2_BOSS_PERCENTS) == 0)
+	{
+		g_Runtime.hasBossPercents = false;
+	}
 }
 
 public void OnMapStart()

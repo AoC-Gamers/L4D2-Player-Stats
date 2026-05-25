@@ -35,6 +35,12 @@ stock bool Stats_HasRoundSnapshot()
 
 stock PlayerStatsModeBaseType Stats_GetModeBase()
 {
+	if (!g_Runtime.hasLeft4DHooks
+		|| GetFeatureStatus(FeatureType_Native, "L4D_GetGameModeType") != FeatureStatus_Available)
+	{
+		return PlayerStatsModeBase_Unknown;
+	}
+
 	switch (L4D_GetGameModeType())
 	{
 		case GAMEMODE_COOP:
@@ -497,7 +503,7 @@ stock void Stats_BuildCurrentModeContext(PlayerStatsModeContextData context)
 	context.Reset();
 	context.baseMode = Stats_GetModeBase();
 	context.isVersusMode = context.baseMode == PlayerStatsModeBase_Versus;
-	context.readyUpAvailable = g_Runtime.readyUpAvailable;
+	context.hasReadyUp = g_Runtime.hasReadyUp;
 	context.configuredSurvivorLimit = Stats_GetConfiguredSurvivorLimit();
 	context.configuredPlayerZombieLimit = Stats_GetConfiguredPlayerZombieLimit();
 
@@ -538,7 +544,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 			policy.historyScope = PlayerStatsHistoryScope_CompetitiveSeries;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
-			policy.roundLiveSignal = context.readyUpAvailable
+			policy.roundLiveSignal = context.hasReadyUp
 				? PlayerStatsRoundLiveSignal_ReadyUpOrSafeArea
 				: PlayerStatsRoundLiveSignal_SafeArea;
 			policy.restartPolicy = PlayerStatsRestartPolicy_CompetitiveVoteOrAdmin;
@@ -660,11 +666,6 @@ stock void Stats_RefreshModeContext()
 		g_Runtime.configuredPlayerZombieLimit,
 		g_Runtime.siPoolMask,
 		g_Runtime.enabledSiClassCount);
-}
-
-stock void Stats_RefreshVersusContext()
-{
-	Stats_RefreshModeContext();
 }
 
 stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2SkillType type)
