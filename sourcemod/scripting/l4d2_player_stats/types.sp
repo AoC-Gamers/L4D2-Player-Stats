@@ -7,6 +7,7 @@
 #define L4D2_PLAYER_STATS_MAX_SLOTS 65
 #define L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES 16
 #define L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS 32
+#define L4D2_PLAYER_STATS_MAX_SURVIVORS 4
 
 enum PlayerStatsTeam
 {
@@ -32,6 +33,30 @@ enum PlayerStatsWeaponFamily
 	PlayerStatsWeaponFamily_Pistol
 }
 
+enum PlayerStatsWeaponDetailType
+{
+	PlayerStatsWeaponDetail_None = 0,
+	PlayerStatsWeaponDetail_PumpShotgun,
+	PlayerStatsWeaponDetail_Autoshotgun,
+	PlayerStatsWeaponDetail_ChromeShotgun,
+	PlayerStatsWeaponDetail_SpasShotgun,
+	PlayerStatsWeaponDetail_Smg,
+	PlayerStatsWeaponDetail_SmgSilenced,
+	PlayerStatsWeaponDetail_SmgMp5,
+	PlayerStatsWeaponDetail_Rifle,
+	PlayerStatsWeaponDetail_RifleAk47,
+	PlayerStatsWeaponDetail_RifleDesert,
+	PlayerStatsWeaponDetail_RifleSg552,
+	PlayerStatsWeaponDetail_RifleM60,
+	PlayerStatsWeaponDetail_HuntingRifle,
+	PlayerStatsWeaponDetail_SniperMilitary,
+	PlayerStatsWeaponDetail_SniperAwp,
+	PlayerStatsWeaponDetail_SniperScout,
+	PlayerStatsWeaponDetail_Pistol,
+	PlayerStatsWeaponDetail_Magnum,
+	PlayerStatsWeaponDetail_Count
+}
+
 enum PlayerStatsSiPoolFlag
 {
 	PlayerStatsSiPool_None = 0,
@@ -43,13 +68,20 @@ enum PlayerStatsSiPoolFlag
 	PlayerStatsSiPool_Charger = 1 << 5
 }
 
-enum PlayerStatsModeBaseType
+enum PlayerStatsFeatureFlag
 {
-	PlayerStatsModeBase_Unknown = 0,
-	PlayerStatsModeBase_Coop,
-	PlayerStatsModeBase_Versus,
-	PlayerStatsModeBase_Scavenge,
-	PlayerStatsModeBase_Survival
+	PlayerStatsFeature_None = 0,
+	PlayerStatsFeature_Enable = 1 << 0,
+	PlayerStatsFeature_Announce = 1 << 1
+}
+
+enum PlayerStatsGamemodeFlag
+{
+	PlayerStatsGamemode_None = 0,
+	PlayerStatsGamemode_Coop = 1 << 0,
+	PlayerStatsGamemode_Versus = 1 << 1,
+	PlayerStatsGamemode_Scavenge = 1 << 2,
+	PlayerStatsGamemode_Survival = 1 << 3
 }
 
 enum PlayerStatsVersusContextType
@@ -116,6 +148,8 @@ enum PlayerStatsRoundEndReasonType
 	PlayerStatsRoundEndReason_VersusModeRoundEnd,
 	PlayerStatsRoundEndReason_ScavengeRoundFinished,
 	PlayerStatsRoundEndReason_ScavengeMatchFinished,
+	PlayerStatsRoundEndReason_MapTransition,
+	PlayerStatsRoundEndReason_FinaleWin,
 	PlayerStatsRoundEndReason_MapEnd,
 	PlayerStatsRoundEndReason_PluginEnd
 }
@@ -131,9 +165,10 @@ enum PlayerStatsDebugCategory
 {
 	PlayerStatsDebug_None		= 0,
 	PlayerStatsDebug_Core		= 1 << 0,
-	PlayerStatsDebug_Detect		= 1 << 1,
-	PlayerStatsDebug_Api		= 1 << 2,
-	PlayerStatsDebug_Announce	= 1 << 3
+	PlayerStatsDebug_Event		= 1 << 1,
+	PlayerStatsDebug_Detect		= 1 << 2,
+	PlayerStatsDebug_Api		= 1 << 3,
+	PlayerStatsDebug_Announce	= 1 << 4
 }
 
 enum struct PlayerStatsPlayerRef
@@ -274,7 +309,7 @@ enum struct PlayerStatsPlayerRef
 
 enum struct PlayerStatsModeContextData
 {
-	PlayerStatsModeBaseType baseMode;
+	int baseMode;
 	bool isVersusMode;
 	int configuredSurvivorLimit;
 	int configuredPlayerZombieLimit;
@@ -286,7 +321,7 @@ enum struct PlayerStatsModeContextData
 
 	void Reset()
 	{
-		this.baseMode = PlayerStatsModeBase_Unknown;
+		this.baseMode = GAMEMODE_UNKNOWN;
 		this.isVersusMode = false;
 		this.configuredSurvivorLimit = 0;
 		this.configuredPlayerZombieLimit = 0;
@@ -300,7 +335,7 @@ enum struct PlayerStatsModeContextData
 
 enum struct PlayerStatsLifecyclePolicyData
 {
-	PlayerStatsModeBaseType baseMode;
+	int baseMode;
 	PlayerStatsHistoryScopeType historyScope;
 	PlayerStatsRoundStartSignalType roundStartSignal;
 	PlayerStatsRoundEndSignalType roundEndSignal;
@@ -309,7 +344,7 @@ enum struct PlayerStatsLifecyclePolicyData
 
 	void Reset()
 	{
-		this.baseMode = PlayerStatsModeBase_Unknown;
+		this.baseMode = GAMEMODE_UNKNOWN;
 		this.historyScope = PlayerStatsHistoryScope_None;
 		this.roundStartSignal = PlayerStatsRoundStartSignal_None;
 		this.roundEndSignal = PlayerStatsRoundEndSignal_None;
@@ -457,6 +492,9 @@ enum struct PlayerStatsResourceData
 	int molotovsThrown;
 	int pipebombsThrown;
 	int vomitjarsThrown;
+	int zombiesIgnited;
+	int playersBiled;
+	int tanksBiled;
 
 	void Reset()
 	{
@@ -467,6 +505,23 @@ enum struct PlayerStatsResourceData
 		this.molotovsThrown = 0;
 		this.pipebombsThrown = 0;
 		this.vomitjarsThrown = 0;
+		this.zombiesIgnited = 0;
+		this.playersBiled = 0;
+		this.tanksBiled = 0;
+	}
+}
+
+enum struct PlayerStatsScavengeData
+{
+	int gascansPoured;
+	int gascansDropped;
+	int gascansDestroyed;
+
+	void Reset()
+	{
+		this.gascansPoured = 0;
+		this.gascansDropped = 0;
+		this.gascansDestroyed = 0;
 	}
 }
 
@@ -502,6 +557,23 @@ enum struct PlayerStatsAccuracyData
 	}
 }
 
+enum struct PlayerStatsAccuracyDetailData
+{
+	int shots[PlayerStatsWeaponDetail_Count];
+	int hits[PlayerStatsWeaponDetail_Count];
+	int headshots[PlayerStatsWeaponDetail_Count];
+
+	void Reset()
+	{
+		for (int i = 0; i < view_as<int>(PlayerStatsWeaponDetail_Count); i++)
+		{
+			this.shots[i] = 0;
+			this.hits[i] = 0;
+			this.headshots[i] = 0;
+		}
+	}
+}
+
 enum struct PlayerStatsPlayerRoundData
 {
 	bool active;
@@ -513,7 +585,9 @@ enum struct PlayerStatsPlayerRoundData
 	PlayerStatsPressureData pressure;
 	PlayerStatsSkillData skills;
 	PlayerStatsResourceData resources;
+	PlayerStatsScavengeData scavenge;
 	PlayerStatsAccuracyData accuracy;
+	PlayerStatsAccuracyDetailData accuracyDetails;
 
 	/**
 	 * @brief Resets all tracked per-player round values.
@@ -531,7 +605,9 @@ enum struct PlayerStatsPlayerRoundData
 		this.pressure.Reset();
 		this.skills.Reset();
 		this.resources.Reset();
+		this.scavenge.Reset();
 		this.accuracy.Reset();
+		this.accuracyDetails.Reset();
 	}
 }
 
@@ -541,8 +617,13 @@ enum struct PlayerStatsRoundMetaData
 	bool active;
 	float startedAt;
 	float endedAt;
-	PlayerStatsModeBaseType baseMode;
+	int baseMode;
 	bool isVersusMode;
+	int scavengeRoundNumber;
+	bool scavengeInSecondHalf;
+	int scavengeItemsGoal;
+	bool scavengeWentOvertime;
+	bool scavengeScoreTied;
 	int configuredSurvivorLimit;
 	int configuredPlayerZombieLimit;
 	int siPoolMask;
@@ -564,8 +645,13 @@ enum struct PlayerStatsRoundMetaData
 		this.active = false;
 		this.startedAt = 0.0;
 		this.endedAt = 0.0;
-		this.baseMode = PlayerStatsModeBase_Unknown;
+		this.baseMode = GAMEMODE_UNKNOWN;
 		this.isVersusMode = false;
+		this.scavengeRoundNumber = 0;
+		this.scavengeInSecondHalf = false;
+		this.scavengeItemsGoal = 0;
+		this.scavengeWentOvertime = false;
+		this.scavengeScoreTied = false;
 		this.configuredSurvivorLimit = 0;
 		this.configuredPlayerZombieLimit = 0;
 		this.siPoolMask = PlayerStatsSiPool_None;
@@ -628,6 +714,12 @@ enum struct PlayerStatsRoundTotalsData
 	int survivorTotalMolotovsThrown;
 	int survivorTotalPipebombsThrown;
 	int survivorTotalVomitjarsThrown;
+	int survivorTotalZombiesIgnited;
+	int survivorTotalPlayersBiled;
+	int survivorTotalTanksBiled;
+	int survivorTotalGascansPoured;
+	int survivorTotalGascansDropped;
+	int survivorTotalGascansDestroyed;
 
 	void Reset()
 	{
@@ -674,6 +766,12 @@ enum struct PlayerStatsRoundTotalsData
 		this.survivorTotalMolotovsThrown = 0;
 		this.survivorTotalPipebombsThrown = 0;
 		this.survivorTotalVomitjarsThrown = 0;
+		this.survivorTotalZombiesIgnited = 0;
+		this.survivorTotalPlayersBiled = 0;
+		this.survivorTotalTanksBiled = 0;
+		this.survivorTotalGascansPoured = 0;
+		this.survivorTotalGascansDropped = 0;
+		this.survivorTotalGascansDestroyed = 0;
 	}
 }
 
@@ -717,10 +815,11 @@ enum struct PlayerStatsRuntimeState
 	bool roundLive;
 	bool hasLeft4DHooks;
 	bool hasReadyUp;
+	bool hasConfogl;
 	bool hasPlayerSkills;
 	bool hasBossPercents;
 	bool lateload;
-	PlayerStatsModeBaseType baseMode;
+	int baseMode;
 	int configuredSurvivorLimit;
 	int configuredPlayerZombieLimit;
 	int siPoolMask;
@@ -734,6 +833,7 @@ enum struct PlayerStatsRuntimeState
 	PlayerStatsRestartPolicyType restartPolicy;
 	int playerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 	PlayerStatsWeaponFamily lastWeaponFamilyByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+	PlayerStatsWeaponDetailType lastWeaponDetailByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 
 	/**
 	 * @brief Resets runtime flags and client-to-slot mappings.
@@ -745,10 +845,11 @@ enum struct PlayerStatsRuntimeState
 		this.roundLive = false;
 		this.hasLeft4DHooks = false;
 		this.hasReadyUp = false;
+		this.hasConfogl = false;
 		this.hasPlayerSkills = false;
 		this.hasBossPercents = false;
 		this.lateload = false;
-		this.baseMode = PlayerStatsModeBase_Unknown;
+		this.baseMode = GAMEMODE_UNKNOWN;
 		this.configuredSurvivorLimit = 0;
 		this.configuredPlayerZombieLimit = 0;
 		this.siPoolMask = PlayerStatsSiPool_None;
@@ -765,6 +866,7 @@ enum struct PlayerStatsRuntimeState
 		{
 			this.playerSlotByClient[client] = -1;
 			this.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
+			this.lastWeaponDetailByClient[client] = PlayerStatsWeaponDetail_None;
 		}
 	}
 }
@@ -773,7 +875,7 @@ enum struct PlayerStatsGameRoundEntry
 {
 	bool active;
 	int roundId;
-	PlayerStatsModeBaseType baseMode;
+	int baseMode;
 	PlayerStatsHistoryScopeType historyScope;
 	char map[64];
 	int durationSeconds;
@@ -791,7 +893,7 @@ enum struct PlayerStatsGameRoundEntry
 	{
 		this.active = false;
 		this.roundId = 0;
-		this.baseMode = PlayerStatsModeBase_Unknown;
+		this.baseMode = GAMEMODE_UNKNOWN;
 		this.historyScope = PlayerStatsHistoryScope_None;
 		this.map[0] = '\0';
 		this.durationSeconds = 0;
@@ -807,6 +909,80 @@ enum struct PlayerStatsGameRoundEntry
 	}
 }
 
+enum struct PlayerStatsHistoricalPlayerData
+{
+	bool active;
+	char name[MAX_NAME_LENGTH];
+	PlayerStatsCombatData combat;
+	PlayerStatsResourceData resources;
+	PlayerStatsScavengeData scavenge;
+	PlayerStatsSupportData support;
+	PlayerStatsAccuracyData accuracy;
+	PlayerStatsAccuracyDetailData accuracyDetails;
+
+	void Reset()
+	{
+		this.active = false;
+		this.name[0] = '\0';
+		this.combat.Reset();
+		this.resources.Reset();
+		this.scavenge.Reset();
+		this.support.Reset();
+		this.accuracy.Reset();
+		this.accuracyDetails.Reset();
+	}
+}
+
+enum struct PlayerStatsHistoricalRoundData
+{
+	bool active;
+	int roundId;
+	int baseMode;
+	bool isVersusMode;
+	int scavengeRoundNumber;
+	bool scavengeInSecondHalf;
+	int scavengeItemsGoal;
+	bool scavengeWentOvertime;
+	bool scavengeScoreTied;
+	int siPoolMask;
+	int durationSeconds;
+	int storedTankPercent;
+	int storedWitchPercent;
+	int tankCount;
+	int witchCount;
+	PlayerStatsRoundEndReasonType endReason;
+	PlayerStatsHistoryScopeType historyScope;
+	PlayerStatsRoundTotalsData totals;
+	PlayerStatsHistoricalPlayerData players[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+
+	void Reset()
+	{
+		this.active = false;
+		this.roundId = 0;
+		this.baseMode = GAMEMODE_UNKNOWN;
+		this.isVersusMode = false;
+		this.scavengeRoundNumber = 0;
+		this.scavengeInSecondHalf = false;
+		this.scavengeItemsGoal = 0;
+		this.scavengeWentOvertime = false;
+		this.scavengeScoreTied = false;
+		this.siPoolMask = PlayerStatsSiPool_None;
+		this.durationSeconds = 0;
+		this.storedTankPercent = -1;
+		this.storedWitchPercent = -1;
+		this.tankCount = 0;
+		this.witchCount = 0;
+		this.endReason = PlayerStatsRoundEndReason_None;
+		this.historyScope = PlayerStatsHistoryScope_None;
+		this.totals.Reset();
+
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SURVIVORS; i++)
+		{
+			this.players[i].Reset();
+		}
+	}
+}
+
 enum struct PlayerStatsGameHistoryData
 {
 	bool active;
@@ -814,6 +990,7 @@ enum struct PlayerStatsGameHistoryData
 	int roundCount;
 	int lastCampaignScoreA;
 	int lastCampaignScoreB;
+	bool pendingScavengeMatchReset;
 	int restartCount;
 	PlayerStatsRestartSourceType restartSource;
 	PlayerStatsGameRoundEntry rounds[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS];
@@ -825,6 +1002,7 @@ enum struct PlayerStatsGameHistoryData
 		this.roundCount = 0;
 		this.lastCampaignScoreA = 0;
 		this.lastCampaignScoreB = 0;
+		this.pendingScavengeMatchReset = false;
 		this.restartCount = 0;
 		this.restartSource = PlayerStatsRestartSource_None;
 

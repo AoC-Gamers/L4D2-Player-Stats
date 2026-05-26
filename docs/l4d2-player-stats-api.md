@@ -103,7 +103,8 @@ La primera forma recomendada es:
 - `combat`
 - `survivability`
 - `support`
-- `resources`
+- `items`
+- `utils`
 - `mode_*` opcional
 
 ## `identity`
@@ -166,7 +167,7 @@ Este bloque incluye solo:
 - `revives_given`
 - `revives_received`
 
-## `resources`
+## `items`
 
 Este bloque incluye solo:
 
@@ -174,9 +175,17 @@ Este bloque incluye solo:
 - `adrenaline_used`
 - `medkits_used`
 - `defibs_used`
+
+## `utils`
+
+Este bloque incluye solo:
+
 - `molotovs_thrown`
 - `pipebombs_thrown`
 - `vomitjars_thrown`
+- `zombies_ignited`
+- `players_biled`
+- `tanks_biled`
 
 ## Attribution Detail
 
@@ -191,16 +200,97 @@ Por eso esta primera versión incluye:
 - `incap_by_infected_player`
 - `incap_by_infected_ai`
 
+## `accuracy`
+
+La API actual sí expone precisión en el snapshot detallado por jugador.
+
+El contrato mantiene compatibilidad hacia atrás y tiene dos capas:
+
+- campos planos por familia
+- bloques agrupados por familia con detalle por arma
+
+Los campos planos siguen siendo:
+
+- `shotgun_shots`
+- `shotgun_hits`
+- `shotgun_headshots`
+- `smg_rifle_shots`
+- `smg_rifle_hits`
+- `smg_rifle_headshots`
+- `sniper_shots`
+- `sniper_hits`
+- `sniper_headshots`
+- `pistol_shots`
+- `pistol_hits`
+- `pistol_headshots`
+
+Además, el bloque `accuracy` ahora incluye:
+
+- `shotgun`
+- `smg_rifle`
+- `sniper`
+- `pistol`
+
+Cada familia expone:
+
+- `shots`
+- `hits`
+- `headshots`
+- `details`
+
+### `accuracy.shotgun.details`
+
+Incluye:
+
+- `pump`
+- `auto`
+- `chrome`
+- `spas`
+
+### `accuracy.smg_rifle.details`
+
+Incluye:
+
+- `smg`
+- `silenced_smg`
+- `mp5`
+- `rifle`
+- `ak47`
+- `desert_rifle`
+- `sg552`
+- `m60`
+
+### `accuracy.sniper.details`
+
+Incluye:
+
+- `hunting`
+- `military`
+- `awp`
+- `scout`
+
+### `accuracy.pistol.details`
+
+Incluye:
+
+- `pistol`
+- `magnum`
+
+Cada arma específica expone:
+
+- `shots`
+- `hits`
+- `headshots`
+
 ## Excluded For Now
 
-Estas categorías no entran en la primera versión del KV:
+Estas categorías siguen fuera del KV base:
 
 - contadores de skills consumidos desde `PlayerSkills`
 - pressure de infected
-- tablas por arma
-- precisión
 - snapshots de boss session
 - debug state
+- histórico por mapa en la API pública
 
 ## Mode Sections
 
@@ -364,15 +454,22 @@ player
         "revives_received"      "0"
     }
 
-    "resources"
+    "items"
     {
         "pills_used"            "1"
         "adrenaline_used"       "0"
         "medkits_used"          "1"
         "defibs_used"           "0"
+    }
+
+    "utils"
+    {
         "molotovs_thrown"       "1"
         "pipebombs_thrown"      "0"
         "vomitjars_thrown"      "0"
+        "zombies_ignited"       "6"
+        "players_biled"         "0"
+        "tanks_biled"           "0"
     }
 
     "mode_coop"
@@ -411,4 +508,4 @@ Por eso el contrato recomendado es:
 
 Estos son los puntos que todavía conviene seguir refinando sobre la implementación actual:
 
-- si `support` y `resources` conviene mantenerlos separados o fusionarlos en un solo bloque corto
+- si `support`, `items` y `utils` conviene mantenerlos separados o condensar parte de esos datos en una vista más compacta

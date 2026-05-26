@@ -5,9 +5,12 @@
 
 int g_iSeriesSerial = 0;
 
-void Series_Init()
+void Series_ResetRoundSnapshots()
 {
-	g_GameHistory.Reset();
+	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
+	{
+		g_RoundHistory[i].Reset();
+	}
 }
 
 void Series_EnsureActive()
@@ -20,7 +23,6 @@ void Series_EnsureActive()
 	g_GameHistory.Reset();
 	g_GameHistory.active = true;
 	g_GameHistory.seriesId = ++g_iSeriesSerial;
-	Series_UpdateCampaignScores();
 
 	Stats_Debug(PlayerStatsDebug_Core, "Game series started. series=%d scoreA=%d scoreB=%d",
 		g_GameHistory.seriesId,
@@ -38,13 +40,14 @@ void Series_ResetAll(const char[] reason)
 		g_GameHistory.lastCampaignScoreB);
 
 	g_GameHistory.Reset();
+	Series_ResetRoundSnapshots();
 	Series_EnsureActive();
 }
 
 void Series_UpdateCampaignScores()
 {
-	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
-	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
+	int baseMode = Stats_GetModeBase();
+	if (baseMode != GAMEMODE_VERSUS && baseMode != GAMEMODE_SCAVENGE)
 	{
 		g_GameHistory.lastCampaignScoreA = 0;
 		g_GameHistory.lastCampaignScoreB = 0;
@@ -82,12 +85,56 @@ void Series_ShiftEntriesLeft()
 	for (int i = 1; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
 	{
 		g_GameHistory.rounds[i - 1] = g_GameHistory.rounds[i];
+		g_RoundHistory[i - 1] = g_RoundHistory[i];
 	}
 
 	g_GameHistory.rounds[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS - 1].Reset();
+	g_RoundHistory[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS - 1].Reset();
 	if (g_GameHistory.roundCount > 0)
 	{
 		g_GameHistory.roundCount--;
+	}
+}
+
+void Series_CaptureHistoricalRoundSnapshot(int entryIndex)
+{
+	g_RoundHistory[entryIndex].Reset();
+	g_RoundHistory[entryIndex].active = true;
+	g_RoundHistory[entryIndex].roundId = g_Round.meta.id;
+	g_RoundHistory[entryIndex].baseMode = g_Round.meta.baseMode;
+	g_RoundHistory[entryIndex].isVersusMode = g_Round.meta.isVersusMode;
+	g_RoundHistory[entryIndex].scavengeRoundNumber = g_Round.meta.scavengeRoundNumber;
+	g_RoundHistory[entryIndex].scavengeInSecondHalf = g_Round.meta.scavengeInSecondHalf;
+	g_RoundHistory[entryIndex].scavengeItemsGoal = g_Round.meta.scavengeItemsGoal;
+	g_RoundHistory[entryIndex].scavengeWentOvertime = g_Round.meta.scavengeWentOvertime;
+	g_RoundHistory[entryIndex].scavengeScoreTied = g_Round.meta.scavengeScoreTied;
+	g_RoundHistory[entryIndex].siPoolMask = g_Round.meta.siPoolMask;
+	g_RoundHistory[entryIndex].durationSeconds = Series_GetCurrentRoundDurationSeconds();
+	g_RoundHistory[entryIndex].storedTankPercent = g_Round.meta.storedTankPercent;
+	g_RoundHistory[entryIndex].storedWitchPercent = g_Round.meta.storedWitchPercent;
+	g_RoundHistory[entryIndex].tankCount = g_Round.tankVictimCount;
+	g_RoundHistory[entryIndex].witchCount = g_Round.witchEntityCount;
+	g_RoundHistory[entryIndex].endReason = g_Round.meta.endReason;
+	g_RoundHistory[entryIndex].historyScope = g_Round.meta.historyScope;
+	g_RoundHistory[entryIndex].totals = g_Round.totals;
+
+	int historicalIndex = 0;
+	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && historicalIndex < L4D2_PLAYER_STATS_MAX_SURVIVORS; slot++)
+	{
+		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
+		{
+			continue;
+		}
+
+		g_RoundHistory[entryIndex].players[historicalIndex].active = true;
+		strcopy(g_RoundHistory[entryIndex].players[historicalIndex].name, sizeof(g_RoundHistory[entryIndex].players[historicalIndex].name), g_Round.players[slot].player.name);
+		g_RoundHistory[entryIndex].players[historicalIndex].combat = g_Round.players[slot].combat;
+		g_RoundHistory[entryIndex].players[historicalIndex].resources = g_Round.players[slot].resources;
+		g_RoundHistory[entryIndex].players[historicalIndex].scavenge = g_Round.players[slot].scavenge;
+		g_RoundHistory[entryIndex].players[historicalIndex].support = g_Round.players[slot].support;
+		g_RoundHistory[entryIndex].players[historicalIndex].accuracy = g_Round.players[slot].accuracy;
+		g_RoundHistory[entryIndex].players[historicalIndex].accuracyDetails = g_Round.players[slot].accuracyDetails;
+		historicalIndex++;
 	}
 }
 
@@ -122,8 +169,10 @@ void Series_RecordRound()
 	g_GameHistory.rounds[entryIndex].restarts = g_GameHistory.restartCount;
 	g_GameHistory.rounds[entryIndex].restartSource = g_GameHistory.restartSource;
 	g_GameHistory.rounds[entryIndex].endReason = g_Round.meta.endReason;
+	Series_CaptureHistoricalRoundSnapshot(entryIndex);
 	g_GameHistory.restartCount = 0;
 	g_GameHistory.restartSource = PlayerStatsRestartSource_None;
+	g_GameHistory.pendingScavengeMatchReset = false;
 	Series_UpdateCampaignScores();
 
 	Stats_Debug(PlayerStatsDebug_Core, "Game round recorded. series=%d round=%d map=%s duration=%d end_reason=%d restarts=%d restart_source=%d scoreA=%d scoreB=%d",
@@ -142,8 +191,8 @@ void Series_OnMapStart()
 {
 	Series_EnsureActive();
 
-	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
-	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
+	int baseMode = Stats_GetModeBase();
+	if (baseMode != GAMEMODE_VERSUS && baseMode != GAMEMODE_SCAVENGE)
 	{
 		return;
 	}
@@ -162,25 +211,34 @@ void Series_OnMapStart()
 
 void Series_OnClearTeamScores(bool newCampaign)
 {
-	PlayerStatsModeBaseType baseMode = Stats_GetModeBase();
-	if (baseMode != PlayerStatsModeBase_Versus && baseMode != PlayerStatsModeBase_Scavenge)
+	int baseMode = Stats_GetModeBase();
+	if (baseMode != GAMEMODE_VERSUS && baseMode != GAMEMODE_SCAVENGE)
 	{
 		return;
 	}
 
 	Series_EnsureActive();
-	Series_UpdateCampaignScores();
+	g_GameHistory.lastCampaignScoreA = 0;
+	g_GameHistory.lastCampaignScoreB = 0;
 
-	Stats_Debug(PlayerStatsDebug_Core, "Campaign scores cleared. newCampaign=%d scoreA=%d scoreB=%d",
+	Stats_Debug(PlayerStatsDebug_Core, "Campaign scores cleared. newCampaign=%d series=%d rounds=%d",
 		newCampaign,
-		g_GameHistory.lastCampaignScoreA,
-		g_GameHistory.lastCampaignScoreB);
+		g_GameHistory.seriesId,
+		g_GameHistory.roundCount);
 
-	if (newCampaign || (g_GameHistory.lastCampaignScoreA == 0 && g_GameHistory.lastCampaignScoreB == 0))
+	if (!newCampaign)
 	{
-		Series_ResetAll(newCampaign ? "clear_team_scores_new_campaign" : "clear_team_scores_zero_scores");
 		return;
 	}
+
+	if (g_GameHistory.roundCount <= 0)
+	{
+		Stats_Debug(PlayerStatsDebug_Core, "Skipping clear_team_scores reset because no rounds are recorded yet. series=%d",
+			g_GameHistory.seriesId);
+		return;
+	}
+
+	Series_ResetAll("clear_team_scores_new_campaign");
 }
 
 void Series_OnSetCampaignScoresPost(int scoreA, int scoreB)
@@ -199,7 +257,7 @@ void Series_EventVotePassed(Event event, const char[] name, bool dontBroadcast)
 {
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 
-	if (!Stats_IsVersusMode() && !Stats_IsScavengeMode())
+	if (!Stats_IsMode(GAMEMODE_VERSUS) && !Stats_IsMode(GAMEMODE_SCAVENGE))
 	{
 		return;
 	}
@@ -221,7 +279,7 @@ void Series_EventVotePassed(Event event, const char[] name, bool dontBroadcast)
 
 void Series_MarkPendingRestart(PlayerStatsRestartSourceType source, const char[] reason)
 {
-	if (!Stats_IsVersusMode() && !Stats_IsScavengeMode())
+	if (!Stats_IsMode(GAMEMODE_VERSUS) && !Stats_IsMode(GAMEMODE_SCAVENGE))
 	{
 		return;
 	}
@@ -240,7 +298,7 @@ void Series_MarkPendingRestart(PlayerStatsRestartSourceType source, const char[]
 
 void Series_OnScavengeRoundHalftime()
 {
-	if (!Stats_IsScavengeMode())
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
 	{
 		return;
 	}
@@ -249,15 +307,31 @@ void Series_OnScavengeRoundHalftime()
 	Stats_Debug(PlayerStatsDebug_Core, "Scavenge halftime observed. series=%d round=%d", g_GameHistory.seriesId, g_Round.meta.id);
 }
 
+void Series_OnScavengeRoundStartBoundary()
+{
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
+	{
+		return;
+	}
+
+	if (!g_GameHistory.pendingScavengeMatchReset)
+	{
+		return;
+	}
+
+	Series_ResetAll("scavenge_match_finished_new_round");
+}
+
 void Series_OnScavengeMatchFinished()
 {
-	if (!Stats_IsScavengeMode())
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
 	{
 		return;
 	}
 
 	Series_EnsureActive();
 	Series_UpdateCampaignScores();
+	g_GameHistory.pendingScavengeMatchReset = true;
 	Stats_Debug(PlayerStatsDebug_Core, "Scavenge match finished. series=%d round=%d scoreA=%d scoreB=%d",
 		g_GameHistory.seriesId,
 		g_Round.meta.id,

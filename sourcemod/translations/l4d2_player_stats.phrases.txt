@@ -12,79 +12,983 @@
 		"es"		"No hay estadisticas de ronda disponibles todavia."
 	}
 
+	"HistoryUnavailableCurrentMode"
+	{
+		"en"		"No history is available for the current mode."
+		"es"		"No hay historial disponible para el modo actual."
+	}
+
+	"HistoryUnavailableFilter"
+	{
+		"en"		"No history is available for that filter."
+		"es"		"No hay historial disponible para ese filtro."
+	}
+
+	"RoundSnapshotUnavailable"
+	{
+		"en"		"No round snapshot is available."
+		"es"		"No hay un snapshot de ronda disponible."
+	}
+
+	"ConsoleDeliveryNotice"
+	{
+		"en"		"The information was sent to your console."
+		"es"		"La informacion fue enviada a tu consola."
+	}
+
+	"HelpHeader"
+	{
+		"en"		"==== L4D2 Player Stats Help ===="
+		"es"		"==== Ayuda de L4D2 Player Stats ===="
+	}
+
+	"HelpCommandMVPCurrent"
+	{
+		"en"		"sm_mvp - Print the MVP summary for the current round."
+		"es"		"sm_mvp - Imprime el resumen MVP de la ronda actual."
+	}
+
+	"HelpCommandMVPMap"
+	{
+		"en"		"sm_mvp <map> - Print the MVP summary for the latest historical snapshot of that map."
+		"es"		"sm_mvp <map> - Imprime el resumen MVP de la ultima ocurrencia historica de ese mapa."
+	}
+
+	"HelpCommandMVPRank"
+	{
+		"en"		"sm_mvp_rank - Print your current ranks and the global rank table."
+		"es"		"sm_mvp_rank - Imprime tus ranks actuales y la tabla global de ranks."
+	}
+
+	"HelpCommandMVPStats"
+	{
+		"en"		"sm_mvp_stats [map|all] - Print the aggregated mission history for the current map, a requested map, or all maps."
+		"es"		"sm_mvp_stats [map|all] - Imprime el historial agregado de la campaña para el mapa actual, un mapa solicitado o todos los mapas."
+	}
+
+	"HelpCommandMVPAcc"
+	{
+		"en"		"sm_mvp_acc [map] - Print summarized accuracy for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_acc [map] - Imprime la precision resumida de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPAccDetails"
+	{
+		"en"		"sm_mvp_acc_details [map] - Print detailed per-weapon accuracy for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_acc_details [map] - Imprime la precision detallada por arma de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPUtils"
+	{
+		"en"		"sm_mvp_utils [map] - Print throwable utility tables for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_utils [map] - Imprime las tablas de utilidades lanzables de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPItems"
+	{
+		"en"		"sm_mvp_items [map] - Print consumable usage for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_items [map] - Imprime la tabla de consumibles de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPSupport"
+	{
+		"en"		"sm_mvp_support [map] - Print support stats for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_support [map] - Imprime la tabla de soporte de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPScavenge"
+	{
+		"en"		"sm_mvp_scavenge [map] - Print scavenge-specific stats for the current round or the latest historical map snapshot."
+		"es"		"sm_mvp_scavenge [map] - Imprime la tabla especifica de scavenge de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPHelp"
+	{
+		"en"		"sm_mvp_help - Print this help in console."
+		"es"		"sm_mvp_help - Imprime esta ayuda en consola."
+	}
+
+	"ModeNameUnknown"
+	{
+		"en"		"Unknown"
+		"es"		"Desconocido"
+	}
+
+	"ModeNameCoop"
+	{
+		"en"		"Coop"
+		"es"		"Campania"
+	}
+
+	"ModeNameVersus"
+	{
+		"en"		"Versus"
+		"es"		"Enfrentamiento"
+	}
+
+	"ModeNameScavenge"
+	{
+		"en"		"Scavenge"
+		"es"		"Busqueda"
+	}
+
+	"ModeNameSurvival"
+	{
+		"en"		"Survival"
+		"es"		"Supervivencia"
+	}
+
 	"RoundMVPDamageBase"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"en"		"{blue}SI MVP:{default} {olive}{1} {blue}with {green}{2} {blue}SI damage [{green}{3}%%{blue}]{default}"
-		"es"		"{blue}MVP SI:{default} {olive}{1} {blue}con {green}{2} {blue}de daño SI [{green}{3}%%{blue}]{default}"
+		"en"		"{blue}[{olive}SI MVP{blue}] {olive}{1} {blue}with {green}{2} {blue}SI damage [{green}{3}%%{blue}]"
+		"es"		"{blue}[{olive}MVP SI{blue}] {olive}{1} {blue}con {green}{2} {blue}de daño SI [{green}{3}%%{blue}]"
 	}
 
 	"RoundMVPDamageTankPercent"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]{default}"
-		"es"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]{default}"
+		"en"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]"
+		"es"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]"
 	}
 
 	"RoundMVPDamageTankCount"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Tank [x{green}{2}{blue}]{default}"
-		"es"		"{green}{1} {blue}Tank [x{green}{2}{blue}]{default}"
+		"en"		"{green}{1} {blue}Tank [{green}x{2}{blue}]"
+		"es"		"{green}{1} {blue}Tank [{green}x{2}{blue}]"
 	}
 
 	"RoundMVPDamageWitchPercent"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]{default}"
-		"es"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]{default}"
+		"en"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]"
+		"es"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]"
 	}
 
 	"RoundMVPDamageWitchCount"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Witch [x{green}{2}{blue}]{default}"
-		"es"		"{green}{1} {blue}Witch [x{green}{2}{blue}]{default}"
+		"en"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
+		"es"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
 	}
 
 	"RoundMVPCommon"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"en"		"CI MVP: {olive}{1}{default} with {green}{2}{default} common kills [{green}{3}%%{default}]."
-		"es"		"MVP CI: {olive}{1}{default} con {green}{2}{default} common kills [{green}{3}%%{default}]."
+		"en"		"{blue}[{olive}CI MVP{blue}] {olive}{1}{blue} with {green}{2}{blue} common kills [{green}{3}%%{blue}]."
+		"es"		"{blue}[{olive}MVP CI{blue}] {olive}{1}{blue} con {green}{2}{blue} common kills [{green}{3}%%{blue}]."
 	}
 
 	"RoundLVPFF"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"en"		"FF LVP: {olive}{1}{default} with {green}{2}{default} FF [{green}{3}%%{default}]."
-		"es"		"LVP FF: {olive}{1}{default} con {green}{2}{default} de FF [{green}{3}%%{default}]."
+		"en"		"{blue}[{olive}FF LVP{blue}] {olive}{1}{blue} with {green}{2}{blue} FF [{green}{3}%%{blue}]."
+		"es"		"{blue}[{olive}LVP FF{blue}] {olive}{1}{blue} con {green}{2}{blue} de FF [{green}{3}%%{blue}]."
 	}
 
 	"RoundNoFF"
 	{
-		"en"		"FF LVP: no friendly fire at all."
-		"es"		"LVP FF: no hubo friendly fire."
+		"en"		"{blue}[{olive}FF LVP{blue}] {green}no friendly fire at all."
+		"es"		"{blue}[{olive}LVP FF{blue}] {green}no hubo friendly fire."
 	}
 
 	"YourRankDamage"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your SI rank: {green}#{1}{default} with {green}{2}{default} total damage [{green}{3}%%{default}]."
-		"es"		"Tu rank SI: {green}#{1}{default} con {green}{2}{default} de daño total [{green}{3}%%{default}]."
+		"en"		"{blue}[{olive}SI Rank{blue}] {green}#{1}{blue} with {green}{2}{blue} total damage [{green}{3}%%{blue}]."
+		"es"		"{blue}[{olive}SI Rank{blue}] {green}#{1}{blue} con {green}{2}{blue} de daño total [{green}{3}%%{blue}]."
 	}
 
 	"YourRankCommon"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your CI rank: {green}#{1}{default} with {green}{2}{default} common kills [{green}{3}%%{default}]."
-		"es"		"Tu rank CI: {green}#{1}{default} con {green}{2}{default} common kills [{green}{3}%%{default}]."
+		"en"		"{blue}[{olive}CI Rank{blue}] {green}#{1}{blue} with {green}{2}{blue} common kills [{green}{3}%%{blue}]."
+		"es"		"{blue}[{olive}CI Rank{blue}] {green}#{1}{blue} con {green}{2}{blue} common kills [{green}{3}%%{blue}]."
 	}
 
 	"YourRankFF"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Your FF rank: {green}#{1}{default} with {green}{2}{default} FF [{green}{3}%%{default}]."
-		"es"		"Tu rank FF: {green}#{1}{default} con {green}{2}{default} de FF [{green}{3}%%{default}]."
+		"en"		"{blue}[{olive}FF Rank{blue}] {green}#{1}{blue} with {green}{2}{blue} FF [{green}{3}%%{blue}]."
+		"es"		"{blue}[{olive}FF Rank{blue}] {green}#{1}{blue} con {green}{2}{blue} de FF [{green}{3}%%{blue}]."
+	}
+
+	"HistoryTitleCampaignMap"
+	{
+		"#format"	"{1:s},{2:d},{3:s}"
+		"en"		"{1} - General data per campaign round -- Run {2} -- {3}"
+		"es"		"{1} - Datos generales por ronda de campaña -- Run {2} -- {3}"
+	}
+
+	"HistoryTitleCampaignAll"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - General data per campaign round -- Run {2} -- all maps"
+		"es"		"{1} - Datos generales por ronda de campaña -- Run {2} -- todos los mapas"
+	}
+
+	"HistoryTitleSeriesMap"
+	{
+		"#format"	"{1:s},{2:d},{3:s}"
+		"en"		"{1} - General data per series round -- Series {2} -- {3}"
+		"es"		"{1} - Datos generales por ronda de serie -- Series {2} -- {3}"
+	}
+
+	"HistoryTitleSeriesAll"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - General data per series round -- Series {2} -- all maps"
+		"es"		"{1} - Datos generales por ronda de serie -- Series {2} -- todos los mapas"
+	}
+
+	"HistoryTitleScavengeMap"
+	{
+		"#format"	"{1:s},{2:d},{3:s}"
+		"en"		"{1} - General data per scavenge round -- Match {2} -- {3}"
+		"es"		"{1} - Datos generales por ronda de scavenge -- Match {2} -- {3}"
+	}
+
+	"HistoryTitleScavengeAll"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - General data per scavenge round -- Match {2} -- all maps"
+		"es"		"{1} - Datos generales por ronda de scavenge -- Match {2} -- todos los mapas"
+	}
+
+	"HistoryTitleSurvivalMap"
+	{
+		"#format"	"{1:s},{2:d},{3:s}"
+		"en"		"{1} - General data per survival run -- Set {2} -- {3}"
+		"es"		"{1} - Datos generales por run de survival -- Set {2} -- {3}"
+	}
+
+	"HistoryTitleSurvivalAll"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - General data per survival run -- Set {2} -- all maps"
+		"es"		"{1} - Datos generales por run de survival -- Set {2} -- todos los mapas"
+	}
+
+	"HistoryTitleSessionMap"
+	{
+		"#format"	"{1:s},{2:d},{3:s}"
+		"en"		"{1} - General data per round -- Session {2} -- {3}"
+		"es"		"{1} - Datos generales por ronda -- Session {2} -- {3}"
+	}
+
+	"HistoryTitleSessionAll"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - General data per round -- Session {2} -- all maps"
+		"es"		"{1} - Datos generales por ronda -- Session {2} -- todos los mapas"
+	}
+
+	"HistorySummaryCampaign"
+	{
+		"#format"	"{1:d}"
+		"en"		"Campaign entries: {1}"
+		"es"		"Entradas de campaña: {1}"
+	}
+
+	"HistorySummarySeries"
+	{
+		"#format"	"{1:d}"
+		"en"		"Series rounds: {1}"
+		"es"		"Rondas de serie: {1}"
+	}
+
+	"HistorySummaryScavenge"
+	{
+		"#format"	"{1:d}"
+		"en"		"Scavenge halves: {1}"
+		"es"		"Mitades de scavenge: {1}"
+	}
+
+	"HistorySummarySurvival"
+	{
+		"#format"	"{1:d},{2:s}"
+		"en"		"Survival runs: {1} | Best time: {2}"
+		"es"		"Runs de survival: {1} | Mejor tiempo: {2}"
+	}
+
+	"HistorySummaryGeneric"
+	{
+		"#format"	"{1:d}"
+		"en"		"History entries: {1}"
+		"es"		"Entradas de historial: {1}"
+	}
+
+	"HistoryCampaignScore"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Campaign Score A/B: {1} / {2}"
+		"es"		"Score de campaña A/B: {1} / {2}"
+	}
+
+	"PanelTitleAccuracyStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Accuracy Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de precision -- Round {2}"
+	}
+
+	"PanelTitleAccuracyDetails"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Accuracy Details -- Round {2}"
+		"es"		"{1} - Detalle de precision -- Round {2}"
+	}
+
+	"PanelTitleMolotovStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Molotov Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de molotov -- Round {2}"
+	}
+
+	"PanelTitleBileStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Bile Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de bilis -- Round {2}"
+	}
+
+	"PanelTitlePipeStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Pipe Bomb Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de pipe bomb -- Round {2}"
+	}
+
+	"PanelTitleConsumableStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Consumable Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de consumibles -- Round {2}"
+	}
+
+	"PanelTitleSupportStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Support Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de soporte -- Round {2}"
+	}
+
+	"PanelTitleScavengeStats"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Scavenge Stats -- Round {2}"
+		"es"		"{1} - Estadisticas de scavenge -- Round {2}"
+	}
+
+	"PanelTitleGlobalRank"
+	{
+		"#format"	"{1:s}"
+		"en"		"{1} - Global Rank"
+		"es"		"{1} - Rank global"
+	}
+
+	"PanelGlobalRankPlayer"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"Player: {1} | Round {2}"
+		"es"		"Jugador: {1} | Round {2}"
+	}
+
+	"PanelTitleRound"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Round {2}"
+		"es"		"{1} - Round {2}"
+	}
+
+	"PanelTitleRoundTank"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"{1} - Round {2} | Tank x{3}"
+		"es"		"{1} - Round {2} | Tank x{3}"
+	}
+
+	"PanelTitleRoundWitch"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"{1} - Round {2} | Witch x{3}"
+		"es"		"{1} - Round {2} | Witch x{3}"
+	}
+
+	"PanelTitleRoundTankWitch"
+	{
+		"#format"	"{1:s},{2:d},{3:d},{4:d}"
+		"en"		"{1} - Round {2} | Tank x{3} | Witch x{4}"
+		"es"		"{1} - Round {2} | Tank x{3} | Witch x{4}"
+	}
+
+	"PanelTotalsCombat"
+	{
+		"#format"	"{1:d},{2:d},{3:d},{4:d}"
+		"en"		"Totals: Dmg {1} | SI K# {2} | CI# {3} | FF dmg {4}"
+		"es"		"Totales: Dmg {1} | SI K# {2} | CI# {3} | FF dmg {4}"
+	}
+
+	"PanelTotalsMolotov"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Totals: Count# {1} | Ignited# {2}"
+		"es"		"Totales: Count# {1} | Ignited# {2}"
+	}
+
+	"PanelTotalsBile"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Count# {1} | Players# {2} | Tank# {3}"
+		"es"		"Totales: Count# {1} | Players# {2} | Tank# {3}"
+	}
+
+	"PanelTotalsPipe"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Count# {1}"
+		"es"		"Totales: Count# {1}"
+	}
+
+	"PanelTotalsConsumables"
+	{
+		"#format"	"{1:d},{2:d},{3:d},{4:d}"
+		"en"		"Totals: Pills# {1} | Adr# {2} | Kits# {3} | Defib# {4}"
+		"es"		"Totales: Pills# {1} | Adr# {2} | Kits# {3} | Defib# {4}"
+	}
+
+	"PanelTotalsSupport"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Heals# {1} | Revives# {2} | Rescues# {3}"
+		"es"		"Totales: Heals# {1} | Revives# {2} | Rescues# {3}"
+	}
+
+	"PanelTotalsScavenge"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Poured# {1} | Dropped# {2} | Destroyed# {3}"
+		"es"		"Totales: Poured# {1} | Dropped# {2} | Destroyed# {3}"
+	}
+
+	"PanelScavengeGoal"
+	{
+		"#format"	"{1:d}"
+		"en"		"Goal: {1}"
+		"es"		"Meta: {1}"
+	}
+
+	"PanelScavengeHalfFirst"
+	{
+		"en"		"Half: First"
+		"es"		"Mitad: Primera"
+	}
+
+	"PanelScavengeHalfSecond"
+	{
+		"en"		"Half: Second"
+		"es"		"Mitad: Segunda"
+	}
+
+	"PanelScavengeOvertimeYes"
+	{
+		"en"		"Overtime: Yes"
+		"es"		"Overtime: Si"
+	}
+
+	"PanelScavengeOvertimeNo"
+	{
+		"en"		"Overtime: No"
+		"es"		"Overtime: No"
+	}
+
+	"PanelScavengeScoreTiedYes"
+	{
+		"en"		"Score tied: Yes"
+		"es"		"Score empatado: Si"
+	}
+
+	"PanelScavengeScoreTiedNo"
+	{
+		"en"		"Score tied: No"
+		"es"		"Score empatado: No"
+	}
+
+	"PanelSupportHeals"
+	{
+		"en"		"Heals"
+		"es"		"Curas"
+	}
+
+	"PanelSupportRevives"
+	{
+		"en"		"Revives"
+		"es"		"Revives"
+	}
+
+	"PanelSupportRescues"
+	{
+		"en"		"Rescues"
+		"es"		"Rescues"
+	}
+
+	"PanelRoundDuration"
+	{
+		"#format"	"{1:s}"
+		"en"		"Round Duration: {1}"
+		"es"		"Duracion de ronda: {1}"
+	}
+
+	"PanelMVPCommon"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"CI MVP: {1} ({2}, {3}%%)"
+		"es"		"MVP CI: {1} ({2}, {3}%%)"
+	}
+
+	"PanelFFLVPNone"
+	{
+		"en"		"FF LVP: none"
+		"es"		"LVP FF: none"
+	}
+
+	"PanelFFLVP"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"FF LVP: {1} ({2}, {3}%%)"
+		"es"		"LVP FF: {1} ({2}, {3}%%)"
+	}
+
+	"PanelMVPDamageBase"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"MVP SI: {1} with {2} SI damage [{3}%%]"
+		"es"		"MVP SI: {1} con {2} de dano SI [{3}%%]"
+	}
+
+	"PanelMVPDamageTankPercent"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Tank [{2}%%]"
+		"es"		"{1} Tank [{2}%%]"
+	}
+
+	"PanelMVPDamageTankCount"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Tank [x{2}]"
+		"es"		"{1} Tank [x{2}]"
+	}
+
+	"PanelMVPDamageWitchPercent"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Witch [{2}%%]"
+		"es"		"{1} Witch [{2}%%]"
+	}
+
+	"PanelMVPDamageWitchCount"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Witch [x{2}]"
+		"es"		"{1} Witch [x{2}]"
+	}
+
+	"ColumnRound"
+	{
+		"en"		"Round"
+		"es"		"Round"
+	}
+
+	"ColumnRun"
+	{
+		"en"		"Run"
+		"es"		"Run"
+	}
+
+	"ColumnMap"
+	{
+		"en"		"Map"
+		"es"		"Mapa"
+	}
+
+	"ColumnTime"
+	{
+		"en"		"Time"
+		"es"		"Tiempo"
+	}
+
+	"ColumnSIKills"
+	{
+		"en"		"SI K"
+		"es"		"SI K"
+	}
+
+	"ColumnCommon"
+	{
+		"en"		"Common"
+		"es"		"Common"
+	}
+
+	"ColumnDeaths"
+	{
+		"en"		"Deaths"
+		"es"		"Deaths"
+	}
+
+	"ColumnIncaps"
+	{
+		"en"		"Incaps"
+		"es"		"Incaps"
+	}
+
+	"ColumnKits"
+	{
+		"en"		"Kits"
+		"es"		"Kits"
+	}
+
+	"ColumnPills"
+	{
+		"en"		"Pills"
+		"es"		"Pills"
+	}
+
+	"ColumnRestarts"
+	{
+		"en"		"Restarts"
+		"es"		"Reinicios"
+	}
+
+	"ColumnPlayer"
+	{
+		"en"		"Player"
+		"es"		"Jugador"
+	}
+
+	"ColumnMetric"
+	{
+		"en"		"Metric"
+		"es"		"Metrica"
+	}
+
+	"ColumnCount"
+	{
+		"en"		"Count"
+		"es"		"Count"
+	}
+
+	"ColumnPoured"
+	{
+		"en"		"Poured"
+		"es"		"Llenados"
+	}
+
+	"ColumnDropped"
+	{
+		"en"		"Dropped"
+		"es"		"Caidos"
+	}
+
+	"ColumnDestroyed"
+	{
+		"en"		"Destroyed"
+		"es"		"Destruidos"
+	}
+
+	"ColumnIgnited"
+	{
+		"en"		"Ignited"
+		"es"		"Ignited"
+	}
+
+	"ColumnShotgun"
+	{
+		"en"		"Shotgun"
+		"es"		"Escopeta"
+	}
+
+	"ColumnSmgRifle"
+	{
+		"en"		"SMG/Rf"
+		"es"		"SMG/Rf"
+	}
+
+	"ColumnSniper"
+	{
+		"en"		"Sniper"
+		"es"		"Sniper"
+	}
+
+	"ColumnPistol"
+	{
+		"en"		"Pistol"
+		"es"		"Pistola"
+	}
+
+	"ColumnWeapon"
+	{
+		"en"		"Weapon"
+		"es"		"Arma"
+	}
+
+	"ColumnHits"
+	{
+		"en"		"Hits"
+		"es"		"Golpes"
+	}
+
+	"ColumnShots"
+	{
+		"en"		"Shots"
+		"es"		"Tiros"
+	}
+
+	"ColumnAcc"
+	{
+		"en"		"Acc"
+		"es"		"Prec"
+	}
+
+	"ColumnHeadshots"
+	{
+		"en"		"HS"
+		"es"		"HS"
+	}
+
+	"ColumnMolo"
+	{
+		"en"		"Molo"
+		"es"		"Molo"
+	}
+
+	"ColumnPipe"
+	{
+		"en"		"Pipe"
+		"es"		"Pipe"
+	}
+
+	"ColumnBile"
+	{
+		"en"		"Bile"
+		"es"		"Bilis"
+	}
+
+	"ColumnIgn"
+	{
+		"en"		"Ign"
+		"es"		"Ign"
+	}
+
+	"ColumnPlayers"
+	{
+		"en"		"Plyr"
+		"es"		"Jugs"
+	}
+
+	"ColumnTank"
+	{
+		"en"		"Tank"
+		"es"		"Tank"
+	}
+
+	"ColumnAdr"
+	{
+		"en"		"Adr"
+		"es"		"Adr"
+	}
+
+	"ColumnDefib"
+	{
+		"en"		"Defib"
+		"es"		"Defib"
+	}
+
+	"ColumnHeals"
+	{
+		"en"		"Heals"
+		"es"		"Curas"
+	}
+
+	"ColumnRev"
+	{
+		"en"		"Rev"
+		"es"		"Rev"
+	}
+
+	"ColumnResc"
+	{
+		"en"		"Resc"
+		"es"		"Resc"
+	}
+
+	"ColumnDamage"
+	{
+		"en"		"DMG"
+		"es"		"DMG"
+	}
+
+	"ColumnDamageShort"
+	{
+		"en"		"Dmg"
+		"es"		"Dmg"
+	}
+
+	"ColumnSI"
+	{
+		"en"		"SI"
+		"es"		"SI"
+	}
+
+	"ColumnWitch"
+	{
+		"en"		"Witch"
+		"es"		"Witch"
+	}
+
+	"ColumnCI"
+	{
+		"en"		"CI"
+		"es"		"CI"
+	}
+
+	"ColumnFF"
+	{
+		"en"		"FF"
+		"es"		"FF"
+	}
+
+	"ColumnSIRank"
+	{
+		"en"		"SI#"
+		"es"		"SI#"
+	}
+
+	"ColumnCIRank"
+	{
+		"en"		"CI#"
+		"es"		"CI#"
+	}
+
+	"ColumnFFRank"
+	{
+		"en"		"FF#"
+		"es"		"FF#"
+	}
+
+	"WeaponDetailPumpShotgun"
+	{
+		"en"		"Pump"
+		"es"		"Pump"
+	}
+
+	"WeaponDetailAutoshotgun"
+	{
+		"en"		"Auto"
+		"es"		"Auto"
+	}
+
+	"WeaponDetailChromeShotgun"
+	{
+		"en"		"Chrome"
+		"es"		"Chrome"
+	}
+
+	"WeaponDetailSpasShotgun"
+	{
+		"en"		"SPAS"
+		"es"		"SPAS"
+	}
+
+	"WeaponDetailSmg"
+	{
+		"en"		"SMG"
+		"es"		"SMG"
+	}
+
+	"WeaponDetailSmgSilenced"
+	{
+		"en"		"Silenced SMG"
+		"es"		"SMG Silenc."
+	}
+
+	"WeaponDetailSmgMp5"
+	{
+		"en"		"MP5"
+		"es"		"MP5"
+	}
+
+	"WeaponDetailRifle"
+	{
+		"en"		"Rifle"
+		"es"		"Rifle"
+	}
+
+	"WeaponDetailRifleAk47"
+	{
+		"en"		"AK47"
+		"es"		"AK47"
+	}
+
+	"WeaponDetailRifleDesert"
+	{
+		"en"		"Desert Rifle"
+		"es"		"Rifle Desert"
+	}
+
+	"WeaponDetailRifleSg552"
+	{
+		"en"		"SG552"
+		"es"		"SG552"
+	}
+
+	"WeaponDetailRifleM60"
+	{
+		"en"		"M60"
+		"es"		"M60"
+	}
+
+	"WeaponDetailHuntingRifle"
+	{
+		"en"		"Hunting"
+		"es"		"Caza"
+	}
+
+	"WeaponDetailSniperMilitary"
+	{
+		"en"		"Military"
+		"es"		"Militar"
+	}
+
+	"WeaponDetailSniperAwp"
+	{
+		"en"		"AWP"
+		"es"		"AWP"
+	}
+
+	"WeaponDetailSniperScout"
+	{
+		"en"		"Scout"
+		"es"		"Scout"
+	}
+
+	"WeaponDetailPistol"
+	{
+		"en"		"Pistol"
+		"es"		"Pistola"
+	}
+
+	"WeaponDetailMagnum"
+	{
+		"en"		"Magnum"
+		"es"		"Magnum"
+	}
+
+	"WeaponDetailUnknown"
+	{
+		"en"		"Unknown"
+		"es"		"Desconocida"
 	}
 }

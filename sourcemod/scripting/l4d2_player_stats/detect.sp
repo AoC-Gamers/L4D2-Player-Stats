@@ -3,21 +3,6 @@
 #endif
 #define _l4d2_player_stats_detect_included
 
-void Detect_Init()
-{
-	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Post);
-	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
-	HookEvent("infected_death", Event_InfectedDeath, EventHookMode_Post);
-	HookEvent("infected_hurt", Event_InfectedHurt, EventHookMode_Post);
-	HookEvent("weapon_fire", Event_WeaponFire, EventHookMode_Post);
-	HookEvent("pills_used", Event_PillsUsed, EventHookMode_Post);
-	HookEvent("adrenaline_used", Event_AdrenalineUsed, EventHookMode_Post);
-	HookEvent("heal_success", Event_HealSuccess, EventHookMode_Post);
-	HookEvent("defibrillator_used", Event_DefibrillatorUsed, EventHookMode_Post);
-	HookEvent("revive_success", Event_ReviveSuccess, EventHookMode_Post);
-	HookEvent("survivor_rescued", Event_SurvivorRescued, EventHookMode_Post);
-}
-
 void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 {
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
@@ -39,6 +24,11 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 	if (IsValidSurvivor(attacker) && IsValidInfected(victim))
 	{
+		if (!Stats_IsTrackingEnabled() && !Stats_IsAccuracyEnabled())
+		{
+			return;
+		}
+
 		int index = Stats_EnsurePlayerRoundSlot(attacker);
 		if (index == -1)
 		{
@@ -48,11 +38,22 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 		char weapon[64];
 		event.GetString("weapon", weapon, sizeof(weapon));
 		PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+		PlayerStatsWeaponDetailType detail = Stats_GetWeaponDetailType(weapon);
 		if (family == PlayerStatsWeaponFamily_None)
 		{
 			family = Stats_GetLastWeaponFamily(attacker);
 		}
+		if (detail == PlayerStatsWeaponDetail_None)
+		{
+			detail = Stats_GetLastWeaponDetail(attacker);
+		}
 		Stats_RecordAccuracyHit(index, family, headshot);
+		Stats_RecordAccuracyDetailHit(index, detail, headshot);
+
+		if (!Stats_IsTrackingEnabled())
+		{
+			return;
+		}
 
 		if (IsValidTank(victim))
 		{
@@ -72,6 +73,11 @@ void Detect_EventPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 	if (IsValidSurvivor(attacker) && IsValidSurvivor(victim) && attacker != victim)
 	{
+		if (!Stats_IsTrackingEnabled())
+		{
+			return;
+		}
+
 		int index = Stats_EnsurePlayerRoundSlot(attacker);
 		if (index == -1)
 		{
@@ -88,6 +94,11 @@ void Detect_EventPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 
 	if (!Stats_IsRoundLive())
+	{
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
 	{
 		return;
 	}
@@ -153,6 +164,11 @@ void Detect_EventInfectedDeath(Event event, const char[] name, bool dontBroadcas
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled())
+	{
+		return;
+	}
+
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	if (!IsValidSurvivor(attacker))
 	{
@@ -184,6 +200,11 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled() && !Stats_IsAccuracyEnabled() && !Stats_IsThrowablesEnabled())
+	{
+		return;
+	}
+
 	int entity = event.GetInt("entityid");
 	if (!IsWitchEntity(entity))
 	{
@@ -210,11 +231,22 @@ void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast
 	char weapon[64];
 	event.GetString("weapon", weapon, sizeof(weapon));
 	PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+	PlayerStatsWeaponDetailType detail = Stats_GetWeaponDetailType(weapon);
 	if (family == PlayerStatsWeaponFamily_None)
 	{
 		family = Stats_GetLastWeaponFamily(attacker);
 	}
+	if (detail == PlayerStatsWeaponDetail_None)
+	{
+		detail = Stats_GetLastWeaponDetail(attacker);
+	}
 	Stats_RecordAccuracyHit(index, family, headshot);
+	Stats_RecordAccuracyDetailHit(index, detail, headshot);
+
+	if (!Stats_IsTrackingEnabled())
+	{
+		return;
+	}
 
 	g_Round.players[index].combat.witchDamage += damage;
 	g_Round.totals.survivorTotalWitchDamage += damage;
@@ -227,6 +259,11 @@ void Detect_OnIncapacitatedPost(int victim, int inflictor, int attacker, float d
 	}
 
 	if (!Stats_IsRoundLive())
+	{
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
 	{
 		return;
 	}
@@ -271,6 +308,11 @@ void Detect_EventWeaponFire(Event event, const char[] name, bool dontBroadcast)
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled() && !Stats_IsAccuracyEnabled())
+	{
+		return;
+	}
+
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (!IsValidSurvivor(client))
 	{
@@ -291,28 +333,134 @@ void Detect_EventWeaponFire(Event event, const char[] name, bool dontBroadcast)
 	}
 
 	PlayerStatsWeaponFamily family = Stats_GetWeaponFamily(weapon);
+	PlayerStatsWeaponDetailType detail = Stats_GetWeaponDetailType(weapon);
+	if (family == PlayerStatsWeaponFamily_None && detail != PlayerStatsWeaponDetail_None)
+	{
+		family = Stats_GetWeaponFamilyFromDetail(detail);
+	}
 	Stats_SetLastWeaponFamily(client, family);
+	Stats_SetLastWeaponDetail(client, detail);
 	Stats_RecordAccuracyShot(index, family);
+	Stats_RecordAccuracyDetailShot(index, detail);
 
-	if (StrEqual(weapon, "molotov", false) || StrEqual(weapon, "weapon_molotov", false))
+	if (!Stats_IsThrowablesEnabled())
 	{
-		g_Round.players[index].resources.molotovsThrown++;
-		g_Round.totals.survivorTotalMolotovsThrown++;
 		return;
 	}
 
-	if (StrEqual(weapon, "pipe_bomb", false) || StrEqual(weapon, "weapon_pipe_bomb", false))
+	char normalized[64];
+	if (strncmp(weapon, "weapon_", 7, false) == 0)
 	{
-		g_Round.players[index].resources.pipebombsThrown++;
-		g_Round.totals.survivorTotalPipebombsThrown++;
+		strcopy(normalized, sizeof(normalized), weapon);
+	}
+	else
+	{
+		Format(normalized, sizeof(normalized), "weapon_%s", weapon);
+	}
+
+	switch (WeaponNameToId(normalized))
+	{
+		case WEPID_MOLOTOV:
+		{
+			g_Round.players[index].resources.molotovsThrown++;
+			g_Round.totals.survivorTotalMolotovsThrown++;
+		}
+		case WEPID_PIPE_BOMB:
+		{
+			g_Round.players[index].resources.pipebombsThrown++;
+			g_Round.totals.survivorTotalPipebombsThrown++;
+		}
+		case WEPID_VOMITJAR:
+		{
+			g_Round.players[index].resources.vomitjarsThrown++;
+			g_Round.totals.survivorTotalVomitjarsThrown++;
+		}
+	}
+}
+
+void Detect_EventPlayerNowIt(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+
+	if (!Stats_IsRoundLive() || !Stats_IsThrowablesEnabled())
+	{
 		return;
 	}
 
-	if (StrEqual(weapon, "vomitjar", false) || StrEqual(weapon, "weapon_vomitjar", false))
+	if (event.GetBool("by_boomer"))
 	{
-		g_Round.players[index].resources.vomitjarsThrown++;
-		g_Round.totals.survivorTotalVomitjarsThrown++;
+		return;
 	}
+
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
+	if (!IsValidSurvivor(attacker))
+	{
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(attacker);
+	if (index == -1)
+	{
+		return;
+	}
+
+	g_Round.players[index].resources.playersBiled++;
+	g_Round.totals.survivorTotalPlayersBiled++;
+}
+
+void Detect_EventVomitBombTank(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+
+	if (!Stats_IsRoundLive() || !Stats_IsThrowablesEnabled())
+	{
+		return;
+	}
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (!IsValidSurvivor(client))
+	{
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(client);
+	if (index == -1)
+	{
+		return;
+	}
+
+	g_Round.players[index].resources.tanksBiled++;
+	g_Round.totals.survivorTotalTanksBiled++;
+}
+
+void Detect_EventZombieIgnited(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+
+	if (!Stats_IsRoundLive() || !Stats_IsThrowablesEnabled())
+	{
+		return;
+	}
+
+	if (event.GetBool("fire_ammo"))
+	{
+		return;
+	}
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (!IsValidSurvivor(client))
+	{
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(client);
+	if (index == -1)
+	{
+		return;
+	}
+
+	g_Round.players[index].resources.zombiesIgnited++;
+	g_Round.totals.survivorTotalZombiesIgnited++;
 }
 
 void Detect_EventPillsUsed(Event event, const char[] name, bool dontBroadcast)
@@ -320,6 +468,11 @@ void Detect_EventPillsUsed(Event event, const char[] name, bool dontBroadcast)
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 
 	if (!Stats_IsRoundLive())
+	{
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
 	{
 		return;
 	}
@@ -349,6 +502,11 @@ void Detect_EventAdrenalineUsed(Event event, const char[] name, bool dontBroadca
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled())
+	{
+		return;
+	}
+
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (!IsValidSurvivor(client))
 	{
@@ -370,6 +528,11 @@ void Detect_EventHealSuccess(Event event, const char[] name, bool dontBroadcast)
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 
 	if (!Stats_IsRoundLive())
+	{
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
 	{
 		return;
 	}
@@ -412,6 +575,11 @@ void Detect_EventDefibrillatorUsed(Event event, const char[] name, bool dontBroa
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled())
+	{
+		return;
+	}
+
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (!IsValidSurvivor(client))
 	{
@@ -433,6 +601,11 @@ void Detect_EventReviveSuccess(Event event, const char[] name, bool dontBroadcas
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 
 	if (!Stats_IsRoundLive())
+	{
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
 	{
 		return;
 	}
@@ -469,6 +642,11 @@ void Detect_EventSurvivorRescued(Event event, const char[] name, bool dontBroadc
 		return;
 	}
 
+	if (!Stats_IsTrackingEnabled())
+	{
+		return;
+	}
+
 	int rescuer = GetClientOfUserId(event.GetInt("rescuer"));
 	int victim = GetClientOfUserId(event.GetInt("victim"));
 
@@ -492,9 +670,159 @@ void Detect_EventSurvivorRescued(Event event, const char[] name, bool dontBroadc
 	}
 }
 
+void Detect_EventGascanPourCompleted(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	int userid = event.GetInt("userid");
+
+	if (!Stats_IsRoundLive())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because round is not live. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because tracking is disabled. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s outside scavenge mode. userid=%d base_mode=%d", name, userid, g_Round.meta.baseMode);
+		return;
+	}
+
+	int client = GetClientOfUserId(userid);
+	if (!IsValidSurvivor(client))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because userid did not resolve to a survivor. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(client);
+	if (index == -1)
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because no round slot could be assigned. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	g_Round.players[index].scavenge.gascansPoured++;
+	g_Round.totals.survivorTotalGascansPoured++;
+	Stats_Debug(PlayerStatsDebug_Core, "Scavenge gascan poured. round=%d scav_round=%d second_half=%d client=%d slot=%d player=%s poured=%d total=%d",
+		g_Round.meta.id,
+		g_Round.meta.scavengeRoundNumber,
+		g_Round.meta.scavengeInSecondHalf,
+		client,
+		index,
+		g_Round.players[index].player.name,
+		g_Round.players[index].scavenge.gascansPoured,
+		g_Round.totals.survivorTotalGascansPoured);
+}
+
+void Detect_EventGascanDropped(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	int userid = event.GetInt("userid");
+
+	if (!Stats_IsRoundLive())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because round is not live. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because tracking is disabled. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s outside scavenge mode. userid=%d base_mode=%d", name, userid, g_Round.meta.baseMode);
+		return;
+	}
+
+	int client = GetClientOfUserId(userid);
+	if (!IsValidSurvivor(client))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because userid did not resolve to a survivor. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(client);
+	if (index == -1)
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because no round slot could be assigned. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	g_Round.players[index].scavenge.gascansDropped++;
+	g_Round.totals.survivorTotalGascansDropped++;
+	Stats_Debug(PlayerStatsDebug_Core, "Scavenge gascan dropped. round=%d scav_round=%d second_half=%d client=%d slot=%d player=%s dropped=%d total=%d",
+		g_Round.meta.id,
+		g_Round.meta.scavengeRoundNumber,
+		g_Round.meta.scavengeInSecondHalf,
+		client,
+		index,
+		g_Round.players[index].player.name,
+		g_Round.players[index].scavenge.gascansDropped,
+		g_Round.totals.survivorTotalGascansDropped);
+}
+
+void Detect_EventScavengeGascanDestroyed(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	int userid = event.GetInt("userid");
+
+	if (!Stats_IsRoundLive())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because round is not live. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsTrackingEnabled())
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because tracking is disabled. userid=%d round=%d", name, userid, g_Round.meta.id);
+		return;
+	}
+
+	if (!Stats_IsMode(GAMEMODE_SCAVENGE))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s outside scavenge mode. userid=%d base_mode=%d", name, userid, g_Round.meta.baseMode);
+		return;
+	}
+
+	int client = GetClientOfUserId(userid);
+	if (!IsValidSurvivor(client))
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because userid did not resolve to a survivor. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(client);
+	if (index == -1)
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because no round slot could be assigned. userid=%d client=%d", name, userid, client);
+		return;
+	}
+
+	g_Round.players[index].scavenge.gascansDestroyed++;
+	g_Round.totals.survivorTotalGascansDestroyed++;
+	Stats_Debug(PlayerStatsDebug_Core, "Scavenge gascan destroyed. round=%d scav_round=%d second_half=%d client=%d slot=%d player=%s destroyed=%d total=%d",
+		g_Round.meta.id,
+		g_Round.meta.scavengeRoundNumber,
+		g_Round.meta.scavengeInSecondHalf,
+		client,
+		index,
+		g_Round.players[index].player.name,
+		g_Round.players[index].scavenge.gascansDestroyed,
+		g_Round.totals.survivorTotalGascansDestroyed);
+}
+
 void Detect_OnGrabWithTonguePost(int victim, int attacker)
 {
-	if (!Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
+	if (!Stats_IsTrackingEnabled() || !Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
 	{
 		return;
 	}
@@ -511,7 +839,7 @@ void Detect_OnGrabWithTonguePost(int victim, int attacker)
 
 void Detect_OnPouncedOnSurvivorPost(int victim, int attacker)
 {
-	if (!Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
+	if (!Stats_IsTrackingEnabled() || !Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
 	{
 		return;
 	}
@@ -528,7 +856,7 @@ void Detect_OnPouncedOnSurvivorPost(int victim, int attacker)
 
 void Detect_OnJockeyRidePost(int victim, int attacker)
 {
-	if (!Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
+	if (!Stats_IsTrackingEnabled() || !Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
 	{
 		return;
 	}
@@ -550,7 +878,7 @@ void Detect_OnVomitedUponPost(int victim, int attacker, bool boomerExplosion)
 		return;
 	}
 
-	if (!Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
+	if (!Stats_IsTrackingEnabled() || !Stats_IsRoundLive() || !IsValidSurvivor(victim) || !IsValidInfected(attacker))
 	{
 		return;
 	}
@@ -567,7 +895,7 @@ void Detect_OnVomitedUponPost(int victim, int attacker, bool boomerExplosion)
 
 void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 {
-	if (!g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
+	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
 	{
 		return;
 	}

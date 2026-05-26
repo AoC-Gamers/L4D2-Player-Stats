@@ -68,6 +68,66 @@ Eso cubre modos normales y mantiene una frontera razonable entre:
 - pre-live
 - live
 
+## Coop Findings From Real Runs
+
+En `Coop`, el cierre de una ronda no depende de una sola señal canónica.
+
+En logs reales de una campaña completa se observaron al menos estos patrones:
+
+- capítulos intermedios:
+  - `map_transition`
+- intento fallido de un mapa final:
+  - `round_end`
+- cierre exitoso del mapa final:
+  - `finale_win`
+
+Eso implica que en `Coop` no es correcto asumir que:
+
+- `round_end` siempre llega
+- `map_transition` siempre representa el mismo tipo de cierre
+- `OnMapEnd` es un buen punto primario para imprimir resultados visibles
+
+La lectura correcta es:
+
+1. usar `round_end` si aparece
+2. usar `map_transition` como cierre natural de capítulos intermedios
+3. usar `finale_win` como cierre natural del final exitoso
+4. dejar `OnMapEnd` solo como fallback defensivo para persistencia
+
+### Consecuencia para Broadcasts
+
+Si la impresión visible de MVP o resumen depende solo de `OnMapEnd`, puede llegar demasiado tarde:
+
+- el mapa ya está en transición
+- el chat puede no mostrarse de forma confiable
+- la consola puede sobrevivir más tiempo que el chat
+
+Por eso, en `Coop`, los broadcasts visibles deben preferir:
+
+- `round_end`
+- `map_transition`
+- `finale_win`
+
+y no esperar a `OnMapEnd` como punto principal de salida.
+
+### Consecuencia para Restarts
+
+También se observó un caso real de retry del mismo mapa final:
+
+- se cerró un intento del mapa
+- luego volvió a empezar otra ronda en el mismo mapa
+- eso representa un restart real del contexto `Coop`
+
+Entonces, para `Coop`, un restart no debe modelarse solo con señales administrativas.
+
+También debe contemplarse el patrón:
+
+- mismo mapa
+- nueva ronda
+- intento previo terminado sin transición natural al siguiente mapa
+
+Eso representa un retry funcional del capítulo actual.
+
 ## What Should Not Count Before Live
 
 Por defecto, estas categorías no deben contar antes de `round live`:

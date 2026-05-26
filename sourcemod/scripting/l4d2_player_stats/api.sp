@@ -5,12 +5,13 @@
 
 Handle g_hForwardRoundFinalized = INVALID_HANDLE;
 
-void API_Init()
+void API_CreateForwards()
 {
-	RegPluginLibrary("l4d2_player_stats");
-
 	g_hForwardRoundFinalized = CreateGlobalForward("PlayerStats_OnRoundFinalized", ET_Ignore, Param_Cell);
+}
 
+void API_CreateNatives()
+{
 	CreateNative("PlayerStats_IsRoundActive", Native_PlayerStats_IsRoundActive);
 	CreateNative("PlayerStats_GetRoundId", Native_PlayerStats_GetRoundId);
 	CreateNative("PlayerStats_IsRoundPlayerSlotValid", Native_PlayerStats_IsRoundPlayerSlotValid);
@@ -41,7 +42,7 @@ bool API_IsRoundIdValid(int roundId)
 
 bool API_IsRoundCoopMode()
 {
-	return g_Round.meta.baseMode == PlayerStatsModeBase_Coop;
+	return g_Round.meta.baseMode == GAMEMODE_COOP;
 }
 
 void API_WriteRoundContextBlock(Handle kv)
@@ -51,25 +52,20 @@ void API_WriteRoundContextBlock(Handle kv)
 		return;
 	}
 
-	char baseModeName[24];
-	char historyScopeName[24];
-	char contextName[32];
-	Stats_GetModeBaseName(g_Round.meta.baseMode, baseModeName, sizeof(baseModeName));
-	Stats_GetHistoryScopeName(g_Round.meta.historyScope, historyScopeName, sizeof(historyScopeName));
-	Stats_GetVersusContextName(g_Round.meta.versusContext, contextName, sizeof(contextName));
-
 	KvSetNum(kv, "base_mode", g_Round.meta.baseMode);
-	KvSetString(kv, "base_mode_name", baseModeName);
 	KvSetNum(kv, "is_versus", g_Round.meta.isVersusMode ? 1 : 0);
+	KvSetNum(kv, "scavenge_round_number", g_Round.meta.scavengeRoundNumber);
+	KvSetNum(kv, "second_half", g_Round.meta.scavengeInSecondHalf ? 1 : 0);
+	KvSetNum(kv, "scavenge_items_goal", g_Round.meta.scavengeItemsGoal);
+	KvSetNum(kv, "scavenge_overtime", g_Round.meta.scavengeWentOvertime ? 1 : 0);
+	KvSetNum(kv, "scavenge_score_tied", g_Round.meta.scavengeScoreTied ? 1 : 0);
 	KvSetNum(kv, "history_scope", g_Round.meta.historyScope);
-	KvSetString(kv, "history_scope_name", historyScopeName);
 	KvSetNum(kv, "survivor_limit", g_Round.meta.configuredSurvivorLimit);
 	KvSetNum(kv, "infected_limit", g_Round.meta.configuredPlayerZombieLimit);
 	KvSetNum(kv, "si_pool_mask", g_Round.meta.siPoolMask);
 	KvSetNum(kv, "enabled_si_classes", g_Round.meta.enabledSiClassCount);
 	KvSetNum(kv, "team_size", g_Round.meta.versusTeamSize);
 	KvSetNum(kv, "versus_context", g_Round.meta.versusContext);
-	KvSetString(kv, "versus_context_name", contextName);
 	KvSetNum(kv, "round_start_signal", g_Round.meta.roundStartSignal);
 	KvSetNum(kv, "round_end_signal", g_Round.meta.roundEndSignal);
 	KvSetNum(kv, "round_live_signal", g_Round.meta.roundLiveSignal);
@@ -184,9 +180,9 @@ void API_WriteSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvGoBack(kv);
 }
 
-void API_WriteResourcesBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+void API_WriteItemsBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 {
-	if (!KvJumpToKey(kv, "resources", true))
+	if (!KvJumpToKey(kv, "items", true))
 	{
 		return;
 	}
@@ -195,9 +191,37 @@ void API_WriteResourcesBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvSetNum(kv, "adrenaline_used", playerData.resources.adrenalineUsed);
 	KvSetNum(kv, "medkits_used", playerData.resources.medkitsUsed);
 	KvSetNum(kv, "defibs_used", playerData.resources.defibsUsed);
+
+	KvGoBack(kv);
+}
+
+void API_WriteScavengeBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "scavenge", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "gascans_poured", playerData.scavenge.gascansPoured);
+	KvSetNum(kv, "gascans_dropped", playerData.scavenge.gascansDropped);
+	KvSetNum(kv, "gascans_destroyed", playerData.scavenge.gascansDestroyed);
+
+	KvGoBack(kv);
+}
+
+void API_WriteUtilitiesBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "utils", true))
+	{
+		return;
+	}
+
 	KvSetNum(kv, "molotovs_thrown", playerData.resources.molotovsThrown);
 	KvSetNum(kv, "pipebombs_thrown", playerData.resources.pipebombsThrown);
 	KvSetNum(kv, "vomitjars_thrown", playerData.resources.vomitjarsThrown);
+	KvSetNum(kv, "zombies_ignited", playerData.resources.zombiesIgnited);
+	KvSetNum(kv, "players_biled", playerData.resources.playersBiled);
+	KvSetNum(kv, "tanks_biled", playerData.resources.tanksBiled);
 
 	KvGoBack(kv);
 }
@@ -222,6 +246,147 @@ void API_WriteAccuracyBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvSetNum(kv, "pistol_hits", playerData.accuracy.pistolHits);
 	KvSetNum(kv, "pistol_headshots", playerData.accuracy.pistolHeadshots);
 
+	API_WriteAccuracyFamilyBlock(kv, "shotgun",
+		playerData.accuracy.shotgunShots,
+		playerData.accuracy.shotgunHits,
+		playerData.accuracy.shotgunHeadshots,
+		playerData,
+		4,
+		PlayerStatsWeaponDetail_PumpShotgun,
+		PlayerStatsWeaponDetail_Autoshotgun,
+		PlayerStatsWeaponDetail_ChromeShotgun,
+		PlayerStatsWeaponDetail_SpasShotgun,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None);
+	API_WriteAccuracyFamilyBlock(kv, "smg_rifle",
+		playerData.accuracy.smgRifleShots,
+		playerData.accuracy.smgRifleHits,
+		playerData.accuracy.smgRifleHeadshots,
+		playerData,
+		8,
+		PlayerStatsWeaponDetail_Smg,
+		PlayerStatsWeaponDetail_SmgSilenced,
+		PlayerStatsWeaponDetail_SmgMp5,
+		PlayerStatsWeaponDetail_Rifle,
+		PlayerStatsWeaponDetail_RifleAk47,
+		PlayerStatsWeaponDetail_RifleDesert,
+		PlayerStatsWeaponDetail_RifleSg552,
+		PlayerStatsWeaponDetail_RifleM60);
+	API_WriteAccuracyFamilyBlock(kv, "sniper",
+		playerData.accuracy.sniperShots,
+		playerData.accuracy.sniperHits,
+		playerData.accuracy.sniperHeadshots,
+		playerData,
+		4,
+		PlayerStatsWeaponDetail_HuntingRifle,
+		PlayerStatsWeaponDetail_SniperMilitary,
+		PlayerStatsWeaponDetail_SniperAwp,
+		PlayerStatsWeaponDetail_SniperScout,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None);
+	API_WriteAccuracyFamilyBlock(kv, "pistol",
+		playerData.accuracy.pistolShots,
+		playerData.accuracy.pistolHits,
+		playerData.accuracy.pistolHeadshots,
+		playerData,
+		2,
+		PlayerStatsWeaponDetail_Pistol,
+		PlayerStatsWeaponDetail_Magnum,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None,
+		PlayerStatsWeaponDetail_None);
+
+	KvGoBack(kv);
+}
+
+void API_WriteAccuracyFamilyBlock(Handle kv, const char[] familyName, int shots, int hits, int headshots, PlayerStatsPlayerRoundData playerData, int detailCount,
+	PlayerStatsWeaponDetailType detailA,
+	PlayerStatsWeaponDetailType detailB,
+	PlayerStatsWeaponDetailType detailC,
+	PlayerStatsWeaponDetailType detailD,
+	PlayerStatsWeaponDetailType detailE,
+	PlayerStatsWeaponDetailType detailF,
+	PlayerStatsWeaponDetailType detailG,
+	PlayerStatsWeaponDetailType detailH)
+{
+	if (!KvJumpToKey(kv, familyName, true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "shots", shots);
+	KvSetNum(kv, "hits", hits);
+	KvSetNum(kv, "headshots", headshots);
+
+	if (KvJumpToKey(kv, "details", true))
+	{
+		PlayerStatsWeaponDetailType details[8];
+		details[0] = detailA;
+		details[1] = detailB;
+		details[2] = detailC;
+		details[3] = detailD;
+		details[4] = detailE;
+		details[5] = detailF;
+		details[6] = detailG;
+		details[7] = detailH;
+
+		for (int i = 0; i < detailCount && i < sizeof(details); i++)
+		{
+			API_WriteAccuracyDetailEntry(kv, playerData, details[i]);
+		}
+
+		KvGoBack(kv);
+	}
+
+	KvGoBack(kv);
+}
+
+void API_WriteAccuracyDetailEntry(Handle kv, PlayerStatsPlayerRoundData playerData, PlayerStatsWeaponDetailType detail)
+{
+	if (detail <= PlayerStatsWeaponDetail_None || detail >= PlayerStatsWeaponDetail_Count)
+	{
+		return;
+	}
+
+	char key[32];
+	switch (detail)
+	{
+		case PlayerStatsWeaponDetail_PumpShotgun: strcopy(key, sizeof(key), "pump");
+		case PlayerStatsWeaponDetail_Autoshotgun: strcopy(key, sizeof(key), "auto");
+		case PlayerStatsWeaponDetail_ChromeShotgun: strcopy(key, sizeof(key), "chrome");
+		case PlayerStatsWeaponDetail_SpasShotgun: strcopy(key, sizeof(key), "spas");
+		case PlayerStatsWeaponDetail_Smg: strcopy(key, sizeof(key), "smg");
+		case PlayerStatsWeaponDetail_SmgSilenced: strcopy(key, sizeof(key), "silenced_smg");
+		case PlayerStatsWeaponDetail_SmgMp5: strcopy(key, sizeof(key), "mp5");
+		case PlayerStatsWeaponDetail_Rifle: strcopy(key, sizeof(key), "rifle");
+		case PlayerStatsWeaponDetail_RifleAk47: strcopy(key, sizeof(key), "ak47");
+		case PlayerStatsWeaponDetail_RifleDesert: strcopy(key, sizeof(key), "desert_rifle");
+		case PlayerStatsWeaponDetail_RifleSg552: strcopy(key, sizeof(key), "sg552");
+		case PlayerStatsWeaponDetail_RifleM60: strcopy(key, sizeof(key), "m60");
+		case PlayerStatsWeaponDetail_HuntingRifle: strcopy(key, sizeof(key), "hunting");
+		case PlayerStatsWeaponDetail_SniperMilitary: strcopy(key, sizeof(key), "military");
+		case PlayerStatsWeaponDetail_SniperAwp: strcopy(key, sizeof(key), "awp");
+		case PlayerStatsWeaponDetail_SniperScout: strcopy(key, sizeof(key), "scout");
+		case PlayerStatsWeaponDetail_Pistol: strcopy(key, sizeof(key), "pistol");
+		case PlayerStatsWeaponDetail_Magnum: strcopy(key, sizeof(key), "magnum");
+		default: return;
+	}
+
+	if (!KvJumpToKey(kv, key, true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "shots", playerData.accuracyDetails.shots[detail]);
+	KvSetNum(kv, "hits", playerData.accuracyDetails.hits[detail]);
+	KvSetNum(kv, "headshots", playerData.accuracyDetails.headshots[detail]);
 	KvGoBack(kv);
 }
 
@@ -300,7 +465,9 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 	API_WriteCombatBlock(kv, g_Round.players[slot]);
 	API_WriteSurvivabilityBlock(kv, g_Round.players[slot]);
 	API_WriteSupportBlock(kv, g_Round.players[slot]);
-	API_WriteResourcesBlock(kv, g_Round.players[slot]);
+	API_WriteScavengeBlock(kv, g_Round.players[slot]);
+	API_WriteItemsBlock(kv, g_Round.players[slot]);
+	API_WriteUtilitiesBlock(kv, g_Round.players[slot]);
 	API_WriteAccuracyBlock(kv, g_Round.players[slot]);
 	API_WriteModeBlocks(kv, g_Round.players[slot]);
 }
