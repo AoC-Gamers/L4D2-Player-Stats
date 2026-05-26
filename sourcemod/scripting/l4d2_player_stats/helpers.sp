@@ -1276,29 +1276,29 @@ stock void Stats_RecordAccuracyDetailHit(int index, PlayerStatsWeaponDetailType 
 	}
 }
 
-stock void Stats_GetWeaponDetailName(PlayerStatsWeaponDetailType detail, char[] buffer, int maxlen, int client = LANG_SERVER)
+stock void Stats_GetWeaponDetailName(PlayerStatsWeaponDetailType detail, char[] buffer, int maxlen)
 {
 	switch (detail)
 	{
-		case PlayerStatsWeaponDetail_PumpShotgun: Format(buffer, maxlen, "%T", "WeaponDetailPumpShotgun", client);
-		case PlayerStatsWeaponDetail_Autoshotgun: Format(buffer, maxlen, "%T", "WeaponDetailAutoshotgun", client);
-		case PlayerStatsWeaponDetail_ChromeShotgun: Format(buffer, maxlen, "%T", "WeaponDetailChromeShotgun", client);
-		case PlayerStatsWeaponDetail_SpasShotgun: Format(buffer, maxlen, "%T", "WeaponDetailSpasShotgun", client);
-		case PlayerStatsWeaponDetail_Smg: Format(buffer, maxlen, "%T", "WeaponDetailSmg", client);
-		case PlayerStatsWeaponDetail_SmgSilenced: Format(buffer, maxlen, "%T", "WeaponDetailSmgSilenced", client);
-		case PlayerStatsWeaponDetail_SmgMp5: Format(buffer, maxlen, "%T", "WeaponDetailSmgMp5", client);
-		case PlayerStatsWeaponDetail_Rifle: Format(buffer, maxlen, "%T", "WeaponDetailRifle", client);
-		case PlayerStatsWeaponDetail_RifleAk47: Format(buffer, maxlen, "%T", "WeaponDetailRifleAk47", client);
-		case PlayerStatsWeaponDetail_RifleDesert: Format(buffer, maxlen, "%T", "WeaponDetailRifleDesert", client);
-		case PlayerStatsWeaponDetail_RifleSg552: Format(buffer, maxlen, "%T", "WeaponDetailRifleSg552", client);
-		case PlayerStatsWeaponDetail_RifleM60: Format(buffer, maxlen, "%T", "WeaponDetailRifleM60", client);
-		case PlayerStatsWeaponDetail_HuntingRifle: Format(buffer, maxlen, "%T", "WeaponDetailHuntingRifle", client);
-		case PlayerStatsWeaponDetail_SniperMilitary: Format(buffer, maxlen, "%T", "WeaponDetailSniperMilitary", client);
-		case PlayerStatsWeaponDetail_SniperAwp: Format(buffer, maxlen, "%T", "WeaponDetailSniperAwp", client);
-		case PlayerStatsWeaponDetail_SniperScout: Format(buffer, maxlen, "%T", "WeaponDetailSniperScout", client);
-		case PlayerStatsWeaponDetail_Pistol: Format(buffer, maxlen, "%T", "WeaponDetailPistol", client);
-		case PlayerStatsWeaponDetail_Magnum: Format(buffer, maxlen, "%T", "WeaponDetailMagnum", client);
-		default: Format(buffer, maxlen, "%T", "WeaponDetailUnknown", client);
+		case PlayerStatsWeaponDetail_PumpShotgun: strcopy(buffer, maxlen, "Pump");
+		case PlayerStatsWeaponDetail_Autoshotgun: strcopy(buffer, maxlen, "Auto");
+		case PlayerStatsWeaponDetail_ChromeShotgun: strcopy(buffer, maxlen, "Chrome");
+		case PlayerStatsWeaponDetail_SpasShotgun: strcopy(buffer, maxlen, "SPAS");
+		case PlayerStatsWeaponDetail_Smg: strcopy(buffer, maxlen, "SMG");
+		case PlayerStatsWeaponDetail_SmgSilenced: strcopy(buffer, maxlen, "Silenced SMG");
+		case PlayerStatsWeaponDetail_SmgMp5: strcopy(buffer, maxlen, "MP5");
+		case PlayerStatsWeaponDetail_Rifle: strcopy(buffer, maxlen, "Rifle");
+		case PlayerStatsWeaponDetail_RifleAk47: strcopy(buffer, maxlen, "AK47");
+		case PlayerStatsWeaponDetail_RifleDesert: strcopy(buffer, maxlen, "Rifle Desert");
+		case PlayerStatsWeaponDetail_RifleSg552: strcopy(buffer, maxlen, "SG552");
+		case PlayerStatsWeaponDetail_RifleM60: strcopy(buffer, maxlen, "M60");
+		case PlayerStatsWeaponDetail_HuntingRifle: strcopy(buffer, maxlen, "Hunting");
+		case PlayerStatsWeaponDetail_SniperMilitary: strcopy(buffer, maxlen, "Military");
+		case PlayerStatsWeaponDetail_SniperAwp: strcopy(buffer, maxlen, "AWP");
+		case PlayerStatsWeaponDetail_SniperScout: strcopy(buffer, maxlen, "Scout");
+		case PlayerStatsWeaponDetail_Pistol: strcopy(buffer, maxlen, "Pistol");
+		case PlayerStatsWeaponDetail_Magnum: strcopy(buffer, maxlen, "Magnum");
+		default: strcopy(buffer, maxlen, "Unknown");
 	}
 }
 

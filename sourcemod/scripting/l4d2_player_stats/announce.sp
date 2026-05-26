@@ -920,7 +920,7 @@ bool Announce_RenderAccuracyDetailsPanel(int client = 0)
 			int headshots = g_Round.players[slot].accuracyDetails.headshots[detail];
 			char weaponName[32];
 			char accuracy[16];
-			Stats_GetWeaponDetailName(view_as<PlayerStatsWeaponDetailType>(detail), weaponName, sizeof(weaponName), client > 0 ? client : LANG_SERVER);
+			Stats_GetWeaponDetailName(view_as<PlayerStatsWeaponDetailType>(detail), weaponName, sizeof(weaponName));
 			Format(accuracy, sizeof(accuracy), "%d%%", Announce_GetPercent(hits, shots));
 
 			ConsoleTable_AddStringCell(panel.table, j == 0 ? g_Round.players[slot].player.name : "");
