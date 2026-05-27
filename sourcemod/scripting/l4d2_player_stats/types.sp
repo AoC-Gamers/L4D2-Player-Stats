@@ -8,6 +8,17 @@
 #define L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES 16
 #define L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS 32
 #define L4D2_PLAYER_STATS_MAX_SURVIVORS 4
+#define L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS 8
+#define L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS 16
+#define L4D2_PLAYER_STATS_MAX_TANK_SESSIONS 4
+#define L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS 4
+
+enum PlayerStatsValidDamageFlag
+{
+	PlayerStatsValidDamage_None = 0,
+	PlayerStatsValidDamage_ExcludeIncap = 1 << 0,
+	PlayerStatsValidDamage_ExcludeLedge = 1 << 1
+}
 
 enum PlayerStatsTeam
 {
@@ -87,15 +98,9 @@ enum PlayerStatsGamemodeFlag
 enum PlayerStatsVersusContextType
 {
 	PlayerStatsVersusContext_None = 0,
-	PlayerStatsVersusContext_Hunter1v1,
-	PlayerStatsVersusContext_Smoker1v1,
-	PlayerStatsVersusContext_Boomer1v1,
-	PlayerStatsVersusContext_Spitter1v1,
-	PlayerStatsVersusContext_Jockey1v1,
-	PlayerStatsVersusContext_Charger1v1,
-	PlayerStatsVersusContext_MixedPool1v1,
-	PlayerStatsVersusContext_MixedPool2v2,
-	PlayerStatsVersusContext_MixedPool3v3,
+	PlayerStatsVersusContext_Versus1v1,
+	PlayerStatsVersusContext_Versus2v2,
+	PlayerStatsVersusContext_Versus3v3,
 	PlayerStatsVersusContext_Versus4v4,
 	PlayerStatsVersusContext_CustomTeamVersus
 }
@@ -457,6 +462,42 @@ enum struct PlayerStatsPressureData
 	}
 }
 
+enum struct PlayerStatsInfectedGrabData
+{
+	int smokerDamage;
+	int hunterDamage;
+	int jockeyDamage;
+	int chargerDamage;
+	int totalDamage;
+	int tongueGrabs;
+	int hunterPounces;
+	int jockeyRides;
+
+	void Reset()
+	{
+		this.smokerDamage = 0;
+		this.hunterDamage = 0;
+		this.jockeyDamage = 0;
+		this.chargerDamage = 0;
+		this.totalDamage = 0;
+		this.tongueGrabs = 0;
+		this.hunterPounces = 0;
+		this.jockeyRides = 0;
+	}
+}
+
+enum struct PlayerStatsInfectedSupportData
+{
+	int boomerVomitVictims;
+	int spitterDamage;
+
+	void Reset()
+	{
+		this.boomerVomitVictims = 0;
+		this.spitterDamage = 0;
+	}
+}
+
 enum struct PlayerStatsSkillData
 {
 	int skeets;
@@ -583,6 +624,8 @@ enum struct PlayerStatsPlayerRoundData
 	PlayerStatsSurvivabilityData survivability;
 	PlayerStatsSupportData support;
 	PlayerStatsPressureData pressure;
+	PlayerStatsInfectedGrabData infectedGrab;
+	PlayerStatsInfectedSupportData infectedSupport;
 	PlayerStatsSkillData skills;
 	PlayerStatsResourceData resources;
 	PlayerStatsScavengeData scavenge;
@@ -603,6 +646,8 @@ enum struct PlayerStatsPlayerRoundData
 		this.survivability.Reset();
 		this.support.Reset();
 		this.pressure.Reset();
+		this.infectedGrab.Reset();
+		this.infectedSupport.Reset();
 		this.skills.Reset();
 		this.resources.Reset();
 		this.scavenge.Reset();
@@ -698,6 +743,12 @@ enum struct PlayerStatsRoundTotalsData
 	int infectedTotalHunterPouncesLanded;
 	int infectedTotalJockeyRidesLanded;
 	int infectedTotalBoomerVomitVictims;
+	int infectedTotalSmokerDamage;
+	int infectedTotalHunterDamage;
+	int infectedTotalJockeyDamage;
+	int infectedTotalChargerDamage;
+	int infectedTotalGrabDamage;
+	int infectedTotalSpitterDamage;
 	int survivorTotalSkeets;
 	int survivorTotalSkeetMelees;
 	int survivorTotalDeadstops;
@@ -750,6 +801,12 @@ enum struct PlayerStatsRoundTotalsData
 		this.infectedTotalHunterPouncesLanded = 0;
 		this.infectedTotalJockeyRidesLanded = 0;
 		this.infectedTotalBoomerVomitVictims = 0;
+		this.infectedTotalSmokerDamage = 0;
+		this.infectedTotalHunterDamage = 0;
+		this.infectedTotalJockeyDamage = 0;
+		this.infectedTotalChargerDamage = 0;
+		this.infectedTotalGrabDamage = 0;
+		this.infectedTotalSpitterDamage = 0;
 		this.survivorTotalSkeets = 0;
 		this.survivorTotalSkeetMelees = 0;
 		this.survivorTotalDeadstops = 0;
@@ -775,6 +832,87 @@ enum struct PlayerStatsRoundTotalsData
 	}
 }
 
+enum struct PlayerStatsTankControllerData
+{
+	bool active;
+	char name[MAX_NAME_LENGTH];
+	bool bot;
+	float startedAt;
+	float endedAt;
+	int damage;
+	int incaps;
+	int deaths;
+	bool wipe;
+	int punches;
+	int rocks;
+	int hittables;
+
+	void Reset()
+	{
+		this.active = false;
+		this.name[0] = '\0';
+		this.bot = false;
+		this.startedAt = 0.0;
+		this.endedAt = 0.0;
+		this.damage = 0;
+		this.incaps = 0;
+		this.deaths = 0;
+		this.wipe = false;
+		this.punches = 0;
+		this.rocks = 0;
+		this.hittables = 0;
+	}
+}
+
+enum struct PlayerStatsTankSessionData
+{
+	bool active;
+	int sessionId;
+	float startedAt;
+	float endedAt;
+	bool endedAsBot;
+	int totalDamage;
+	int incaps;
+	int deaths;
+	bool wipe;
+	int punches;
+	int rocks;
+	int hittables;
+	int currentControllerClient;
+	char lastHumanName[MAX_NAME_LENGTH];
+	int controllerCount;
+	PlayerStatsTankControllerData controllers[L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS];
+	int lastHealthByVictim[L4D2_PLAYER_STATS_MAX_PLAYERS];
+
+	void Reset()
+	{
+		this.active = false;
+		this.sessionId = 0;
+		this.startedAt = 0.0;
+		this.endedAt = 0.0;
+		this.endedAsBot = false;
+		this.totalDamage = 0;
+		this.incaps = 0;
+		this.deaths = 0;
+		this.wipe = false;
+		this.punches = 0;
+		this.rocks = 0;
+		this.hittables = 0;
+		this.currentControllerClient = 0;
+		this.lastHumanName[0] = '\0';
+		this.controllerCount = 0;
+
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS; i++)
+		{
+			this.controllers[i].Reset();
+		}
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_PLAYERS; i++)
+		{
+			this.lastHealthByVictim[i] = 0;
+		}
+	}
+}
+
 enum struct PlayerStatsRoundData
 {
 	PlayerStatsRoundMetaData meta;
@@ -784,6 +922,8 @@ enum struct PlayerStatsRoundData
 	int tankVictimCount;
 	int witchEntityIds[L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES];
 	int witchEntityCount;
+	int tankSessionCount;
+	PlayerStatsTankSessionData tankSessions[L4D2_PLAYER_STATS_MAX_TANK_SESSIONS];
 
 	/**
 	 * @brief Resets the current round snapshot and all tracked players.
@@ -796,11 +936,16 @@ enum struct PlayerStatsRoundData
 		this.totals.Reset();
 		this.tankVictimCount = 0;
 		this.witchEntityCount = 0;
+		this.tankSessionCount = 0;
 
 		for (int boss = 0; boss < L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES; boss++)
 		{
 			this.tankVictimUserIds[boss] = 0;
 			this.witchEntityIds[boss] = 0;
+		}
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; i++)
+		{
+			this.tankSessions[i].Reset();
 		}
 
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_SLOTS; client++)
@@ -912,22 +1057,32 @@ enum struct PlayerStatsGameRoundEntry
 enum struct PlayerStatsHistoricalPlayerData
 {
 	bool active;
+	bool bot;
 	char name[MAX_NAME_LENGTH];
+	PlayerStatsTeam team;
 	PlayerStatsCombatData combat;
 	PlayerStatsResourceData resources;
 	PlayerStatsScavengeData scavenge;
 	PlayerStatsSupportData support;
+	PlayerStatsInfectedGrabData infectedGrab;
+	PlayerStatsInfectedSupportData infectedSupport;
+	PlayerStatsSkillData skills;
 	PlayerStatsAccuracyData accuracy;
 	PlayerStatsAccuracyDetailData accuracyDetails;
 
 	void Reset()
 	{
 		this.active = false;
+		this.bot = false;
 		this.name[0] = '\0';
+		this.team = PlayerStatsTeam_None;
 		this.combat.Reset();
 		this.resources.Reset();
 		this.scavenge.Reset();
 		this.support.Reset();
+		this.infectedGrab.Reset();
+		this.infectedSupport.Reset();
+		this.skills.Reset();
 		this.accuracy.Reset();
 		this.accuracyDetails.Reset();
 	}
@@ -950,10 +1105,12 @@ enum struct PlayerStatsHistoricalRoundData
 	int storedWitchPercent;
 	int tankCount;
 	int witchCount;
+	int tankSessionCount;
+	PlayerStatsTankSessionData tankSessions[L4D2_PLAYER_STATS_MAX_TANK_SESSIONS];
 	PlayerStatsRoundEndReasonType endReason;
 	PlayerStatsHistoryScopeType historyScope;
 	PlayerStatsRoundTotalsData totals;
-	PlayerStatsHistoricalPlayerData players[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+	PlayerStatsHistoricalPlayerData players[L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS];
 
 	void Reset()
 	{
@@ -972,14 +1129,47 @@ enum struct PlayerStatsHistoricalRoundData
 		this.storedWitchPercent = -1;
 		this.tankCount = 0;
 		this.witchCount = 0;
+		this.tankSessionCount = 0;
 		this.endReason = PlayerStatsRoundEndReason_None;
 		this.historyScope = PlayerStatsHistoryScope_None;
 		this.totals.Reset();
 
-		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SURVIVORS; i++)
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS; i++)
 		{
 			this.players[i].Reset();
 		}
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; i++)
+		{
+			this.tankSessions[i].Reset();
+		}
+	}
+}
+
+enum struct PlayerStatsSubstitutionSnapshotData
+{
+	bool active;
+	bool restored;
+	char substitutionId[64];
+	int accountId;
+	int timestamp;
+	int roundId;
+	int slot;
+	int baseMode;
+	char map[64];
+	PlayerStatsPlayerRoundData player;
+
+	void Reset()
+	{
+		this.active = false;
+		this.restored = false;
+		this.substitutionId[0] = '\0';
+		this.accountId = 0;
+		this.timestamp = 0;
+		this.roundId = 0;
+		this.slot = -1;
+		this.baseMode = GAMEMODE_UNKNOWN;
+		this.map[0] = '\0';
+		this.player.Reset();
 	}
 }
 

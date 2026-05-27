@@ -24,6 +24,12 @@
 		"es"		"No hay historial disponible para ese filtro."
 	}
 
+	"CompetitiveCommandOnly"
+	{
+		"en"		"This command is only available in Versus or Scavenge."
+		"es"		"Este comando solo esta disponible en Versus o Busqueda."
+	}
+
 	"RoundSnapshotUnavailable"
 	{
 		"en"		"No round snapshot is available."
@@ -44,68 +50,99 @@
 
 	"HelpCommandMVPCurrent"
 	{
-		"en"		"sm_mvp - Print the MVP summary for the current round."
-		"es"		"sm_mvp - Imprime el resumen MVP de la ronda actual."
+		"en"		"sm_stats_mvp - Print the MVP summary for the current round."
+		"es"		"sm_stats_mvp - Imprime el resumen MVP de la ronda actual."
 	}
 
 	"HelpCommandMVPMap"
 	{
-		"en"		"sm_mvp <map> - Print the MVP summary for the latest historical snapshot of that map."
-		"es"		"sm_mvp <map> - Imprime el resumen MVP de la ultima ocurrencia historica de ese mapa."
+		"en"		"sm_stats_mvp <map> - Print the MVP summary for the latest historical snapshot of that map."
+		"es"		"sm_stats_mvp <map> - Imprime el resumen MVP de la ultima ocurrencia historica de ese mapa."
 	}
 
 	"HelpCommandMVPRank"
 	{
-		"en"		"sm_mvp_rank - Print your current ranks and the global rank table."
-		"es"		"sm_mvp_rank - Imprime tus ranks actuales y la tabla global de ranks."
+		"en"		"sm_stats_rank - Print your current ranks and the global rank table."
+		"es"		"sm_stats_rank - Imprime tus ranks actuales y la tabla global de ranks."
 	}
 
 	"HelpCommandMVPStats"
 	{
-		"en"		"sm_mvp_stats [map|all] - Print the aggregated mission history for the current map, a requested map, or all maps."
-		"es"		"sm_mvp_stats [map|all] - Imprime el historial agregado de la campaña para el mapa actual, un mapa solicitado o todos los mapas."
+		"en"		"sm_stats_history [map|all] - Print the aggregated mission history for the current map, a requested map, or all maps."
+		"es"		"sm_stats_history [map|all] - Imprime el historial agregado de la campaña para el mapa actual, un mapa solicitado o todos los mapas."
 	}
 
 	"HelpCommandMVPAcc"
 	{
-		"en"		"sm_mvp_acc [map] - Print summarized accuracy for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_acc [map] - Imprime la precision resumida de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_acc [map] - Print summarized accuracy for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_acc [map] - Imprime la precision resumida de la ronda actual o de la ultima ocurrencia historica del mapa."
 	}
 
 	"HelpCommandMVPAccDetails"
 	{
-		"en"		"sm_mvp_acc_details [map] - Print detailed per-weapon accuracy for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_acc_details [map] - Imprime la precision detallada por arma de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_acc_details [map] - Print detailed per-weapon accuracy for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_acc_details [map] - Imprime la precision detallada por arma de la ronda actual o de la ultima ocurrencia historica del mapa."
 	}
 
 	"HelpCommandMVPUtils"
 	{
-		"en"		"sm_mvp_utils [map] - Print throwable utility tables for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_utils [map] - Imprime las tablas de utilidades lanzables de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_utils [map] - Print throwable utility tables for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_utils [map] - Imprime las tablas de utilidades lanzables de la ronda actual o de la ultima ocurrencia historica del mapa."
 	}
 
 	"HelpCommandMVPItems"
 	{
-		"en"		"sm_mvp_items [map] - Print consumable usage for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_items [map] - Imprime la tabla de consumibles de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_items [map] - Print consumable usage for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_items [map] - Imprime la tabla de consumibles de la ronda actual o de la ultima ocurrencia historica del mapa."
 	}
 
 	"HelpCommandMVPSupport"
 	{
-		"en"		"sm_mvp_support [map] - Print support stats for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_support [map] - Imprime la tabla de soporte de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_support [map] - Print support stats for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_support [map] - Imprime la tabla de soporte de la ronda actual o de la ultima ocurrencia historica del mapa."
 	}
 
 	"HelpCommandMVPScavenge"
 	{
-		"en"		"sm_mvp_scavenge [map] - Print scavenge-specific stats for the current round or the latest historical map snapshot."
-		"es"		"sm_mvp_scavenge [map] - Imprime la tabla especifica de scavenge de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_scavenge [map] - Print scavenge-specific stats for the current round or the latest historical map snapshot."
+		"es"		"sm_stats_scavenge [map] - Imprime la tabla especifica de scavenge de la ronda actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPInfect"
+	{
+		"en"		"sm_stats_infect [map] - Print infected grab and support stats for the current half or the latest historical map snapshot."
+		"es"		"sm_stats_infect [map] - Imprime las tablas de infectados de agarre y soporte de la mitad actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPTank"
+	{
+		"en"		"sm_stats_tank [map] - Print tank session stats for the current half or the latest historical map snapshot."
+		"es"		"sm_stats_tank [map] - Imprime las tablas de sesiones de tank de la mitad actual o de la ultima ocurrencia historica del mapa."
+	}
+
+	"HelpCommandMVPSubs"
+	{
+		"en"		"sm_stats_subs - Print substitution snapshots currently kept in memory."
+		"es"		"sm_stats_subs - Imprime los snapshots de sustitucion actualmente guardados en memoria."
 	}
 
 	"HelpCommandMVPHelp"
 	{
-		"en"		"sm_mvp_help - Print this help in console."
-		"es"		"sm_mvp_help - Imprime esta ayuda en consola."
+		"en"		"sm_stats_help - Print this help in console."
+		"es"		"sm_stats_help - Imprime esta ayuda en consola."
+	}
+
+	"SubstitutionSnapshotsUnavailable"
+	{
+		"en"		"No substitution snapshots are available."
+		"es"		"No hay snapshots de sustitucion disponibles."
+	}
+
+	"SubstitutionSnapshotsHeader"
+	{
+		"#format"	"{1:d}"
+		"en"		"==== Substitution Snapshots ({1}) ===="
+		"es"		"==== Snapshots de sustitucion ({1}) ===="
 	}
 
 	"ModeNameUnknown"
@@ -193,6 +230,20 @@
 		"es"		"{blue}[{olive}LVP FF{blue}] {green}no hubo friendly fire."
 	}
 
+	"RoundMVPInfected"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{blue}[{olive}MVP INF{blue}] {olive}{1}{blue} with {green}{2}{blue} grab damage."
+		"es"		"{blue}[{olive}MVP INF{blue}] {olive}{1}{blue} con {green}{2}{blue} de daño de agarre."
+	}
+
+	"RoundSupportInfected"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"{blue}[{olive}SUP INF{blue}] {olive}{1}{blue} with {green}{2}{blue} vomits and {green}{3}{blue} spit damage."
+		"es"		"{blue}[{olive}SUP INF{blue}] {olive}{1}{blue} con {green}{2}{blue} vomits y {green}{3}{blue} de daño de spit."
+	}
+
 	"YourRankDamage"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
@@ -245,15 +296,15 @@
 	"HistoryTitleScavengeMap"
 	{
 		"#format"	"{1:s},{2:d},{3:s}"
-		"en"		"{1} - General data per scavenge round -- Match {2} -- {3}"
-		"es"		"{1} - Datos generales por ronda de scavenge -- Match {2} -- {3}"
+		"en"		"{1} - General data per scavenge half -- Match {2} -- {3}"
+		"es"		"{1} - Datos generales por mitad de scavenge -- Match {2} -- {3}"
 	}
 
 	"HistoryTitleScavengeAll"
 	{
 		"#format"	"{1:s},{2:d}"
-		"en"		"{1} - General data per scavenge round -- Match {2} -- all maps"
-		"es"		"{1} - Datos generales por ronda de scavenge -- Match {2} -- todos los mapas"
+		"en"		"{1} - General data per scavenge half -- Match {2} -- all maps"
+		"es"		"{1} - Datos generales por mitad de scavenge -- Match {2} -- todos los mapas"
 	}
 
 	"HistoryTitleSurvivalMap"
@@ -359,6 +410,48 @@
 		"#format"	"{1:s},{2:d}"
 		"en"		"{1} - Pipe Bomb Stats -- Round {2}"
 		"es"		"{1} - Estadisticas de pipe bomb -- Round {2}"
+	}
+
+	"PanelTitleInfectedGrab"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Infected Grab -- Round {2}"
+		"es"		"{1} - Infected Grab -- Round {2}"
+	}
+
+	"PanelTotalsInfectedGrab"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Dmg {1} | Tongues# {2} | Pins# {3}"
+		"es"		"Totales: Dmg {1} | Tongues# {2} | Pins# {3}"
+	}
+
+	"PanelTitleInfectedSupport"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Infected Support -- Round {2}"
+		"es"		"{1} - Infected Support -- Round {2}"
+	}
+
+	"PanelTotalsInfectedSupport"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Totals: Boomer# {1} | Spit dmg {2}"
+		"es"		"Totales: Boomer# {1} | Spit dmg {2}"
+	}
+
+	"PanelTitleTankStats"
+	{
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"{1} - Tank Session {3} -- Round {2}"
+		"es"		"{1} - Tank Session {3} -- Round {2}"
+	}
+
+	"PanelTotalsTank"
+	{
+		"#format"	"{1:d},{2:d},{3:d}"
+		"en"		"Totals: Dmg {1} | Incaps# {2} | Deaths# {3}"
+		"es"		"Totales: Dmg {1} | Incaps# {2} | Deaths# {3}"
 	}
 
 	"PanelTitleConsumableStats"
@@ -668,6 +761,12 @@
 		"es"		"Jugador"
 	}
 
+	"ColumnAI"
+	{
+		"en"		"AI"
+		"es"		"IA"
+	}
+
 	"ColumnMetric"
 	{
 		"en"		"Metric"
@@ -678,6 +777,12 @@
 	{
 		"en"		"Count"
 		"es"		"Count"
+	}
+
+	"ColumnTotal"
+	{
+		"en"		"Total"
+		"es"		"Total"
 	}
 
 	"ColumnPoured"
@@ -702,6 +807,60 @@
 	{
 		"en"		"Ignited"
 		"es"		"Ignited"
+	}
+
+	"ColumnSmoker"
+	{
+		"en"		"Smoker"
+		"es"		"Smoker"
+	}
+
+	"ColumnHunter"
+	{
+		"en"		"Hunter"
+		"es"		"Hunter"
+	}
+
+	"ColumnJockey"
+	{
+		"en"		"Jockey"
+		"es"		"Jockey"
+	}
+
+	"ColumnCharger"
+	{
+		"en"		"Charger"
+		"es"		"Charger"
+	}
+
+	"ColumnTongues"
+	{
+		"en"		"Tongues"
+		"es"		"Tongues"
+	}
+
+	"ColumnPounces"
+	{
+		"en"		"Pounces"
+		"es"		"Pounces"
+	}
+
+	"ColumnRides"
+	{
+		"en"		"Rides"
+		"es"		"Rides"
+	}
+
+	"ColumnBoomerHits"
+	{
+		"en"		"Boomer"
+		"es"		"Boomer"
+	}
+
+	"ColumnSpit"
+	{
+		"en"		"Spit"
+		"es"		"Spit"
 	}
 
 	"ColumnShotgun"
@@ -858,6 +1017,30 @@
 	{
 		"en"		"FF"
 		"es"		"FF"
+	}
+
+	"ColumnWipe"
+	{
+		"en"		"Wipe"
+		"es"		"Wipe"
+	}
+
+	"ColumnPunches"
+	{
+		"en"		"Punches"
+		"es"		"Punches"
+	}
+
+	"ColumnRocks"
+	{
+		"en"		"Rocks"
+		"es"		"Rocks"
+	}
+
+	"ColumnHittables"
+	{
+		"en"		"Hittables"
+		"es"		"Hittables"
 	}
 
 	"ColumnSIRank"

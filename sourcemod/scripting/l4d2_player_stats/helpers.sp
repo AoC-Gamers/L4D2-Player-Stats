@@ -129,6 +129,60 @@ stock bool Stats_IsThrowablesAnnounceEnabled()
 	return Stats_IsModeEnabledForBaseMode(baseMode) && Stats_HasFeatureFlag(g_cvThrowables, PlayerStatsFeature_Announce);
 }
 
+stock bool Stats_IsCompetitiveMode()
+{
+	int baseMode = g_Round.meta.baseMode != GAMEMODE_UNKNOWN ? g_Round.meta.baseMode : g_Runtime.baseMode;
+	return baseMode == GAMEMODE_VERSUS || baseMode == GAMEMODE_SCAVENGE;
+}
+
+stock int Stats_GetValidDamagePolicy(ConVar cvar)
+{
+	return cvar != null ? cvar.IntValue : view_as<int>(PlayerStatsValidDamage_ExcludeIncap) | view_as<int>(PlayerStatsValidDamage_ExcludeLedge);
+}
+
+stock bool Stats_ShouldCountVictimForDamage(int victim, ConVar cvar)
+{
+	if (!IsValidSurvivor(victim))
+	{
+		return false;
+	}
+
+	int policy = Stats_GetValidDamagePolicy(cvar);
+	if ((policy & view_as<int>(PlayerStatsValidDamage_ExcludeIncap)) != 0 && Stats_IsSurvivorIncapacitated(victim))
+	{
+		return false;
+	}
+
+	if ((policy & view_as<int>(PlayerStatsValidDamage_ExcludeLedge)) != 0 && Stats_IsSurvivorHanging(victim))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+stock bool Stats_IsSurvivorIncapacitated(int client)
+{
+	return IsValidSurvivor(client) && GetEntProp(client, Prop_Send, "m_isIncapacitated") != 0;
+}
+
+stock bool Stats_IsSurvivorHanging(int client)
+{
+	return IsValidSurvivor(client) && GetEntProp(client, Prop_Send, "m_isHangingFromLedge") != 0;
+}
+
+stock int Stats_GetSurvivorCurrentHealthTotal(int client)
+{
+	if (!IsValidSurvivor(client))
+	{
+		return 0;
+	}
+
+	float tempHealth = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
+	int total = GetClientHealth(client) + RoundToFloor(tempHealth);
+	return total > 0 ? total : 0;
+}
+
 /**
  * @brief Checks whether the current round is active and already live.
  *
@@ -402,54 +456,26 @@ stock int Stats_CountEnabledSiClassesFromMask(int mask)
 	return count;
 }
 
-stock PlayerStatsVersusContextType Stats_ClassifyVersusContext(int survivorLimit, int playerZombieLimit, int siPoolMask, int enabledSiClassCount)
+stock PlayerStatsVersusContextType Stats_ClassifyVersusContext(int survivorLimit, int playerZombieLimit, int enabledSiClassCount)
 {
 	if (!Stats_IsMode(GAMEMODE_VERSUS) || survivorLimit <= 0 || playerZombieLimit <= 0 || survivorLimit != playerZombieLimit || enabledSiClassCount <= 0)
 	{
 		return PlayerStatsVersusContext_None;
 	}
 
-	if (survivorLimit == 1 && enabledSiClassCount == 1)
-	{
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Hunter)) != 0)
-		{
-			return PlayerStatsVersusContext_Hunter1v1;
-		}
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Smoker)) != 0)
-		{
-			return PlayerStatsVersusContext_Smoker1v1;
-		}
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Boomer)) != 0)
-		{
-			return PlayerStatsVersusContext_Boomer1v1;
-		}
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Spitter)) != 0)
-		{
-			return PlayerStatsVersusContext_Spitter1v1;
-		}
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Jockey)) != 0)
-		{
-			return PlayerStatsVersusContext_Jockey1v1;
-		}
-		if ((siPoolMask & view_as<int>(PlayerStatsSiPool_Charger)) != 0)
-		{
-			return PlayerStatsVersusContext_Charger1v1;
-		}
-	}
-
 	switch (survivorLimit)
 	{
 		case 1:
 		{
-			return PlayerStatsVersusContext_MixedPool1v1;
+			return PlayerStatsVersusContext_Versus1v1;
 		}
 		case 2:
 		{
-			return PlayerStatsVersusContext_MixedPool2v2;
+			return PlayerStatsVersusContext_Versus2v2;
 		}
 		case 3:
 		{
-			return PlayerStatsVersusContext_MixedPool3v3;
+			return PlayerStatsVersusContext_Versus3v3;
 		}
 		case 4:
 		{
@@ -482,7 +508,6 @@ stock void Stats_BuildCurrentModeContext(PlayerStatsModeContextData context)
 	context.versusContext = Stats_ClassifyVersusContext(
 		context.configuredSurvivorLimit,
 		context.configuredPlayerZombieLimit,
-		context.siPoolMask,
 		context.enabledSiClassCount);
 }
 
@@ -1334,6 +1359,263 @@ stock void Stats_AssignClientToSlot(int client, int slot)
 	g_Round.players[slot].team = Stats_GetPlayerTeam(client);
 }
 
+stock void Stats_AssignBotToSlotPreserveIdentity(int bot, int slot)
+{
+	if (!IsValidClient(bot) || !Stats_IsValidRoundSlot(slot))
+	{
+		return;
+	}
+
+	g_Runtime.playerSlotByClient[bot] = slot;
+	g_Round.players[slot].player.client = bot;
+	g_Round.players[slot].player.userid = GetClientUserId(bot);
+	g_Round.players[slot].player.bot = true;
+	g_Round.players[slot].player.character = (L4D_GetClientTeam(bot) == L4DTeam_Survivor)
+		? GetEntProp(bot, Prop_Send, "m_survivorCharacter")
+		: -1;
+	g_Round.players[slot].team = Stats_GetPlayerTeam(bot);
+}
+
+stock void Stats_SubtractPlayerRoundDataFromTotals(PlayerStatsPlayerRoundData playerData)
+{
+	g_Round.totals.survivorTotalSiDamage -= playerData.combat.siDamage;
+	g_Round.totals.survivorTotalSmokerDamage -= playerData.combat.smokerDamage;
+	g_Round.totals.survivorTotalBoomerDamage -= playerData.combat.boomerDamage;
+	g_Round.totals.survivorTotalHunterDamage -= playerData.combat.hunterDamage;
+	g_Round.totals.survivorTotalSpitterDamage -= playerData.combat.spitterDamage;
+	g_Round.totals.survivorTotalJockeyDamage -= playerData.combat.jockeyDamage;
+	g_Round.totals.survivorTotalChargerDamage -= playerData.combat.chargerDamage;
+	g_Round.totals.survivorTotalTankDamage -= playerData.combat.tankDamage;
+	g_Round.totals.survivorTotalWitchDamage -= playerData.combat.witchDamage;
+	g_Round.totals.survivorTotalCommonKills -= playerData.combat.commonKills;
+	g_Round.totals.survivorTotalSmokerKills -= playerData.combat.smokerKills;
+	g_Round.totals.survivorTotalBoomerKills -= playerData.combat.boomerKills;
+	g_Round.totals.survivorTotalHunterKills -= playerData.combat.hunterKills;
+	g_Round.totals.survivorTotalSpitterKills -= playerData.combat.spitterKills;
+	g_Round.totals.survivorTotalJockeyKills -= playerData.combat.jockeyKills;
+	g_Round.totals.survivorTotalChargerKills -= playerData.combat.chargerKills;
+	g_Round.totals.survivorTotalTankKills -= playerData.combat.tankKills;
+	g_Round.totals.survivorTotalFF -= playerData.combat.ffGiven;
+	g_Round.totals.survivorTotalDeaths -= playerData.survivability.deaths;
+	g_Round.totals.survivorTotalIncaps -= playerData.survivability.incaps;
+	g_Round.totals.survivorTotalHealsGiven -= playerData.support.healsGiven;
+	g_Round.totals.survivorTotalRevivesGiven -= playerData.support.revivesGiven;
+	g_Round.totals.survivorTotalRescuesGiven -= playerData.support.rescuesGiven;
+	g_Round.totals.infectedTotalTongueGrabs -= playerData.infectedGrab.tongueGrabs;
+	g_Round.totals.infectedTotalHunterPouncesLanded -= playerData.infectedGrab.hunterPounces;
+	g_Round.totals.infectedTotalJockeyRidesLanded -= playerData.infectedGrab.jockeyRides;
+	g_Round.totals.infectedTotalBoomerVomitVictims -= playerData.infectedSupport.boomerVomitVictims;
+	g_Round.totals.infectedTotalSmokerDamage -= playerData.infectedGrab.smokerDamage;
+	g_Round.totals.infectedTotalHunterDamage -= playerData.infectedGrab.hunterDamage;
+	g_Round.totals.infectedTotalJockeyDamage -= playerData.infectedGrab.jockeyDamage;
+	g_Round.totals.infectedTotalChargerDamage -= playerData.infectedGrab.chargerDamage;
+	g_Round.totals.infectedTotalGrabDamage -= playerData.infectedGrab.totalDamage;
+	g_Round.totals.infectedTotalSpitterDamage -= playerData.infectedSupport.spitterDamage;
+	g_Round.totals.survivorTotalSkeets -= playerData.skills.skeets;
+	g_Round.totals.survivorTotalSkeetMelees -= playerData.skills.skeetMelees;
+	g_Round.totals.survivorTotalDeadstops -= playerData.skills.deadstops;
+	g_Round.totals.survivorTotalBoomerPops -= playerData.skills.boomerPops;
+	g_Round.totals.survivorTotalLevels -= playerData.skills.levels;
+	g_Round.totals.survivorTotalCrowns -= playerData.skills.crowns;
+	g_Round.totals.survivorTotalTongueCuts -= playerData.skills.tongueCuts;
+	g_Round.totals.survivorTotalSmokerSelfClears -= playerData.skills.smokerSelfClears;
+	g_Round.totals.survivorTotalInstaKills -= playerData.skills.instaKills;
+	g_Round.totals.survivorTotalPillsUsed -= playerData.resources.pillsUsed;
+	g_Round.totals.survivorTotalAdrenalineUsed -= playerData.resources.adrenalineUsed;
+	g_Round.totals.survivorTotalMedkitsUsed -= playerData.resources.medkitsUsed;
+	g_Round.totals.survivorTotalDefibsUsed -= playerData.resources.defibsUsed;
+	g_Round.totals.survivorTotalMolotovsThrown -= playerData.resources.molotovsThrown;
+	g_Round.totals.survivorTotalPipebombsThrown -= playerData.resources.pipebombsThrown;
+	g_Round.totals.survivorTotalVomitjarsThrown -= playerData.resources.vomitjarsThrown;
+	g_Round.totals.survivorTotalZombiesIgnited -= playerData.resources.zombiesIgnited;
+	g_Round.totals.survivorTotalPlayersBiled -= playerData.resources.playersBiled;
+	g_Round.totals.survivorTotalTanksBiled -= playerData.resources.tanksBiled;
+	g_Round.totals.survivorTotalGascansPoured -= playerData.scavenge.gascansPoured;
+	g_Round.totals.survivorTotalGascansDropped -= playerData.scavenge.gascansDropped;
+	g_Round.totals.survivorTotalGascansDestroyed -= playerData.scavenge.gascansDestroyed;
+}
+
+stock void Stats_AddPlayerRoundDataToTotals(PlayerStatsPlayerRoundData playerData)
+{
+	g_Round.totals.survivorTotalSiDamage += playerData.combat.siDamage;
+	g_Round.totals.survivorTotalSmokerDamage += playerData.combat.smokerDamage;
+	g_Round.totals.survivorTotalBoomerDamage += playerData.combat.boomerDamage;
+	g_Round.totals.survivorTotalHunterDamage += playerData.combat.hunterDamage;
+	g_Round.totals.survivorTotalSpitterDamage += playerData.combat.spitterDamage;
+	g_Round.totals.survivorTotalJockeyDamage += playerData.combat.jockeyDamage;
+	g_Round.totals.survivorTotalChargerDamage += playerData.combat.chargerDamage;
+	g_Round.totals.survivorTotalTankDamage += playerData.combat.tankDamage;
+	g_Round.totals.survivorTotalWitchDamage += playerData.combat.witchDamage;
+	g_Round.totals.survivorTotalCommonKills += playerData.combat.commonKills;
+	g_Round.totals.survivorTotalSmokerKills += playerData.combat.smokerKills;
+	g_Round.totals.survivorTotalBoomerKills += playerData.combat.boomerKills;
+	g_Round.totals.survivorTotalHunterKills += playerData.combat.hunterKills;
+	g_Round.totals.survivorTotalSpitterKills += playerData.combat.spitterKills;
+	g_Round.totals.survivorTotalJockeyKills += playerData.combat.jockeyKills;
+	g_Round.totals.survivorTotalChargerKills += playerData.combat.chargerKills;
+	g_Round.totals.survivorTotalTankKills += playerData.combat.tankKills;
+	g_Round.totals.survivorTotalFF += playerData.combat.ffGiven;
+	g_Round.totals.survivorTotalDeaths += playerData.survivability.deaths;
+	g_Round.totals.survivorTotalIncaps += playerData.survivability.incaps;
+	g_Round.totals.survivorTotalHealsGiven += playerData.support.healsGiven;
+	g_Round.totals.survivorTotalRevivesGiven += playerData.support.revivesGiven;
+	g_Round.totals.survivorTotalRescuesGiven += playerData.support.rescuesGiven;
+	g_Round.totals.infectedTotalTongueGrabs += playerData.infectedGrab.tongueGrabs;
+	g_Round.totals.infectedTotalHunterPouncesLanded += playerData.infectedGrab.hunterPounces;
+	g_Round.totals.infectedTotalJockeyRidesLanded += playerData.infectedGrab.jockeyRides;
+	g_Round.totals.infectedTotalBoomerVomitVictims += playerData.infectedSupport.boomerVomitVictims;
+	g_Round.totals.infectedTotalSmokerDamage += playerData.infectedGrab.smokerDamage;
+	g_Round.totals.infectedTotalHunterDamage += playerData.infectedGrab.hunterDamage;
+	g_Round.totals.infectedTotalJockeyDamage += playerData.infectedGrab.jockeyDamage;
+	g_Round.totals.infectedTotalChargerDamage += playerData.infectedGrab.chargerDamage;
+	g_Round.totals.infectedTotalGrabDamage += playerData.infectedGrab.totalDamage;
+	g_Round.totals.infectedTotalSpitterDamage += playerData.infectedSupport.spitterDamage;
+	g_Round.totals.survivorTotalSkeets += playerData.skills.skeets;
+	g_Round.totals.survivorTotalSkeetMelees += playerData.skills.skeetMelees;
+	g_Round.totals.survivorTotalDeadstops += playerData.skills.deadstops;
+	g_Round.totals.survivorTotalBoomerPops += playerData.skills.boomerPops;
+	g_Round.totals.survivorTotalLevels += playerData.skills.levels;
+	g_Round.totals.survivorTotalCrowns += playerData.skills.crowns;
+	g_Round.totals.survivorTotalTongueCuts += playerData.skills.tongueCuts;
+	g_Round.totals.survivorTotalSmokerSelfClears += playerData.skills.smokerSelfClears;
+	g_Round.totals.survivorTotalInstaKills += playerData.skills.instaKills;
+	g_Round.totals.survivorTotalPillsUsed += playerData.resources.pillsUsed;
+	g_Round.totals.survivorTotalAdrenalineUsed += playerData.resources.adrenalineUsed;
+	g_Round.totals.survivorTotalMedkitsUsed += playerData.resources.medkitsUsed;
+	g_Round.totals.survivorTotalDefibsUsed += playerData.resources.defibsUsed;
+	g_Round.totals.survivorTotalMolotovsThrown += playerData.resources.molotovsThrown;
+	g_Round.totals.survivorTotalPipebombsThrown += playerData.resources.pipebombsThrown;
+	g_Round.totals.survivorTotalVomitjarsThrown += playerData.resources.vomitjarsThrown;
+	g_Round.totals.survivorTotalZombiesIgnited += playerData.resources.zombiesIgnited;
+	g_Round.totals.survivorTotalPlayersBiled += playerData.resources.playersBiled;
+	g_Round.totals.survivorTotalTanksBiled += playerData.resources.tanksBiled;
+	g_Round.totals.survivorTotalGascansPoured += playerData.scavenge.gascansPoured;
+	g_Round.totals.survivorTotalGascansDropped += playerData.scavenge.gascansDropped;
+	g_Round.totals.survivorTotalGascansDestroyed += playerData.scavenge.gascansDestroyed;
+}
+
+stock void Stats_ClearSlotRuntimeBindings(int slot)
+{
+	for (int client = 1; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
+	{
+		if (g_Runtime.playerSlotByClient[client] != slot)
+		{
+			continue;
+		}
+
+		g_Runtime.playerSlotByClient[client] = -1;
+		g_Runtime.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
+		g_Runtime.lastWeaponDetailByClient[client] = PlayerStatsWeaponDetail_None;
+	}
+}
+
+stock void Stats_ResetRoundSlotForReplacement(int slot)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		return;
+	}
+
+	Stats_SubtractPlayerRoundDataFromTotals(g_Round.players[slot]);
+	Stats_ClearSlotRuntimeBindings(slot);
+	g_Round.players[slot].Reset();
+}
+
+stock void Stats_BuildSubstitutionId(int accountId, int timestamp, char[] buffer, int maxlen)
+{
+	Format(buffer, maxlen, "%d:%d", accountId, timestamp);
+}
+
+stock bool Stats_StoreSubstitutionSnapshot(int slot, char[] substitutionId, int maxlen)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		if (maxlen > 0)
+		{
+			substitutionId[0] = '\0';
+		}
+		return false;
+	}
+
+	int timestamp = GetTime();
+	PlayerStatsSubstitutionSnapshotData snapshot;
+	snapshot.Reset();
+	snapshot.active = true;
+	snapshot.restored = false;
+	snapshot.accountId = g_Round.players[slot].player.accountId;
+	snapshot.timestamp = timestamp;
+	snapshot.roundId = g_Round.meta.id;
+	snapshot.slot = slot;
+	snapshot.baseMode = g_Round.meta.baseMode;
+	GetCurrentMap(snapshot.map, sizeof(snapshot.map));
+	Stats_BuildSubstitutionId(snapshot.accountId, snapshot.timestamp, snapshot.substitutionId, sizeof(snapshot.substitutionId));
+	while (API_FindSubstitutionSnapshotById(snapshot.substitutionId) != -1)
+	{
+		snapshot.timestamp = timestamp + ++g_iSubstitutionSnapshotSerial;
+		Stats_BuildSubstitutionId(snapshot.accountId, snapshot.timestamp, snapshot.substitutionId, sizeof(snapshot.substitutionId));
+	}
+	snapshot.player = g_Round.players[slot];
+	snapshot.player.player.DetachClient();
+	snapshot.player.player.bot = false;
+
+	int writeIndex = g_iSubstitutionSnapshotNext;
+	g_SubstitutionSnapshots[writeIndex] = snapshot;
+	g_iSubstitutionSnapshotNext = (g_iSubstitutionSnapshotNext + 1) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
+	if (g_iSubstitutionSnapshotCount < L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS)
+	{
+		g_iSubstitutionSnapshotCount++;
+	}
+
+	strcopy(substitutionId, maxlen, snapshot.substitutionId);
+	return true;
+}
+
+stock int Stats_FindRestorableSubstitutionSnapshotIndex(int accountId, int roundId, int slot)
+{
+	if (accountId <= 0 || roundId <= 0 || slot < 0)
+	{
+		return -1;
+	}
+
+	for (int offset = 1; offset <= g_iSubstitutionSnapshotCount; offset++)
+	{
+		int snapshotIndex = (g_iSubstitutionSnapshotNext - offset + L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
+		if (!g_SubstitutionSnapshots[snapshotIndex].active || g_SubstitutionSnapshots[snapshotIndex].restored)
+		{
+			continue;
+		}
+
+		if (g_SubstitutionSnapshots[snapshotIndex].accountId != accountId
+			|| g_SubstitutionSnapshots[snapshotIndex].roundId != roundId
+			|| g_SubstitutionSnapshots[snapshotIndex].slot != slot)
+		{
+			continue;
+		}
+
+		return snapshotIndex;
+	}
+
+	return -1;
+}
+
+stock bool Stats_RestoreSubstitutionSnapshotToSlot(int snapshotIndex, int slot, int client)
+{
+	if (snapshotIndex < 0 || snapshotIndex >= L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS
+		|| !g_SubstitutionSnapshots[snapshotIndex].active
+		|| g_SubstitutionSnapshots[snapshotIndex].restored
+		|| !IsValidClient(client))
+	{
+		return false;
+	}
+
+	g_Round.players[slot] = g_SubstitutionSnapshots[snapshotIndex].player;
+	g_Round.players[slot].active = true;
+	Stats_AddPlayerRoundDataToTotals(g_Round.players[slot]);
+	g_SubstitutionSnapshots[snapshotIndex].restored = true;
+	Stats_AssignClientToSlot(client, slot);
+	return true;
+}
+
 /**
  * @brief Finds an existing persistent slot matching the client identity.
  *
@@ -1592,7 +1874,7 @@ stock void Stats_EventPlayerBotReplace(Event event, const char[] name, bool dont
 		g_Runtime.playerSlotByClient[player] = -1;
 	}
 
-	Stats_AssignClientToSlot(bot, slot);
+	Stats_AssignBotToSlotPreserveIdentity(bot, slot);
 }
 
 /**
@@ -1627,6 +1909,30 @@ stock void Stats_EventBotPlayerReplace(Event event, const char[] name, bool dont
 		g_Runtime.playerSlotByClient[bot] = -1;
 	}
 
+	if (g_Round.players[slot].player.IsSamePersistentPlayer(player))
+	{
+		Stats_AssignClientToSlot(player, slot);
+		return;
+	}
+
+	char substitutionId[64];
+	Stats_StoreSubstitutionSnapshot(slot, substitutionId, sizeof(substitutionId));
+	Stats_ResetRoundSlotForReplacement(slot);
+	Action substitutionAction = API_FirePlayerSubstituted(substitutionId, g_Round.meta.id, slot, player);
+	if (substitutionAction >= Plugin_Handled)
+	{
+		g_Round.players[slot].active = true;
+		Stats_AssignClientToSlot(player, slot);
+		return;
+	}
+
+	int restoreIndex = Stats_FindRestorableSubstitutionSnapshotIndex(GetSteamAccountID(player), g_Round.meta.id, slot);
+	if (restoreIndex != -1 && Stats_RestoreSubstitutionSnapshotToSlot(restoreIndex, slot, player))
+	{
+		return;
+	}
+
+	g_Round.players[slot].active = true;
 	Stats_AssignClientToSlot(player, slot);
 }
 

@@ -61,8 +61,56 @@ void Announce_PrintHelpToConsole(int client)
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPScavenge", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
+	Format(line, sizeof(line), "%T", "HelpCommandMVPInfect", phraseTarget);
+	Announce_PrintConsoleLine(client, line);
+	Format(line, sizeof(line), "%T", "HelpCommandMVPTank", phraseTarget);
+	Announce_PrintConsoleLine(client, line);
+	Format(line, sizeof(line), "%T", "HelpCommandMVPSubs", phraseTarget);
+	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPHelp", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
+}
+
+bool Announce_PrintSubstitutionSnapshotsToConsole(int client)
+{
+	if (g_iSubstitutionSnapshotCount <= 0)
+	{
+		Announce_ReplyCommandPhrase(client, "SubstitutionSnapshotsUnavailable");
+		return false;
+	}
+
+	char line[256];
+	int phraseTarget = client > 0 ? client : LANG_SERVER;
+	Format(line, sizeof(line), "%T", "SubstitutionSnapshotsHeader", phraseTarget, g_iSubstitutionSnapshotCount);
+	Announce_PrintConsoleLine(client, line);
+
+	for (int i = 0; i < g_iSubstitutionSnapshotCount; i++)
+	{
+		int bufferSlot = API_GetSubstitutionBufferSlot(i);
+		if (bufferSlot == -1 || !g_SubstitutionSnapshots[bufferSlot].active)
+		{
+			continue;
+		}
+
+		PlayerStatsSubstitutionSnapshotData snapshot;
+		snapshot = g_SubstitutionSnapshots[bufferSlot];
+		Format(line, sizeof(line), "#%d id=%s round=%d slot=%d mode=%d restored=%d map=%s", i, snapshot.substitutionId, snapshot.roundId, snapshot.slot, snapshot.baseMode, snapshot.restored ? 1 : 0, snapshot.map);
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  player=%s accountid=%d team=%d bot=%d timestamp=%d", snapshot.player.player.name, snapshot.accountId, snapshot.player.team, snapshot.player.player.bot ? 1 : 0, snapshot.timestamp);
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  combat: si_dmg=%d ci=%d ff=%d tank=%d witch=%d si_kills=%d", snapshot.player.combat.siDamage, snapshot.player.combat.commonKills, snapshot.player.combat.ffGiven, snapshot.player.combat.tankDamage, snapshot.player.combat.witchDamage, Announce_GetSiKillTotalForPlayer(snapshot.player));
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  survivability/support: deaths=%d incaps=%d heals=%d revives=%d rescues=%d", snapshot.player.survivability.deaths, snapshot.player.survivability.incaps, snapshot.player.support.healsGiven, snapshot.player.support.revivesGiven, snapshot.player.support.rescuesGiven);
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  items/utils: pills=%d adr=%d kits=%d defib=%d molo=%d pipe=%d bile=%d ign=%d biled=%d tank_biled=%d", snapshot.player.resources.pillsUsed, snapshot.player.resources.adrenalineUsed, snapshot.player.resources.medkitsUsed, snapshot.player.resources.defibsUsed, snapshot.player.resources.molotovsThrown, snapshot.player.resources.pipebombsThrown, snapshot.player.resources.vomitjarsThrown, snapshot.player.resources.zombiesIgnited, snapshot.player.resources.playersBiled, snapshot.player.resources.tanksBiled);
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  infect/scav: grab_dmg=%d tongues=%d pounces=%d rides=%d booms=%d spit_dmg=%d poured=%d dropped=%d destroyed=%d", snapshot.player.infectedGrab.totalDamage, snapshot.player.infectedGrab.tongueGrabs, snapshot.player.infectedGrab.hunterPounces, snapshot.player.infectedGrab.jockeyRides, snapshot.player.infectedSupport.boomerVomitVictims, snapshot.player.infectedSupport.spitterDamage, snapshot.player.scavenge.gascansPoured, snapshot.player.scavenge.gascansDropped, snapshot.player.scavenge.gascansDestroyed);
+		Announce_PrintConsoleLine(client, line);
+		Format(line, sizeof(line), "  accuracy: shotgun=%d/%d smg=%d/%d sniper=%d/%d pistol=%d/%d", snapshot.player.accuracy.shotgunHits, snapshot.player.accuracy.shotgunShots, snapshot.player.accuracy.smgRifleHits, snapshot.player.accuracy.smgRifleShots, snapshot.player.accuracy.sniperHits, snapshot.player.accuracy.sniperShots, snapshot.player.accuracy.pistolHits, snapshot.player.accuracy.pistolShots);
+		Announce_PrintConsoleLine(client, line);
+	}
+
+	return true;
 }
 
 void Announce_GetColumnLabel(char[] buffer, int maxlen, const char[] phrase, int client = LANG_SERVER)
@@ -139,8 +187,14 @@ bool Announce_LoadHistoricalRoundByMap(const char[] mapFilter)
 	g_Round.totals = g_RoundHistory[index].totals;
 	g_Round.tankVictimCount = g_RoundHistory[index].tankCount;
 	g_Round.witchEntityCount = g_RoundHistory[index].witchCount;
+	g_Round.tankSessionCount = g_RoundHistory[index].tankSessionCount;
 
-	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SURVIVORS; i++)
+	for (int tankIndex = 0; tankIndex < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; tankIndex++)
+	{
+		g_Round.tankSessions[tankIndex] = g_RoundHistory[index].tankSessions[tankIndex];
+	}
+
+	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS; i++)
 	{
 		if (!g_RoundHistory[index].players[i].active)
 		{
@@ -149,12 +203,16 @@ bool Announce_LoadHistoricalRoundByMap(const char[] mapFilter)
 
 		g_Round.players[i].Reset();
 		g_Round.players[i].active = true;
-		g_Round.players[i].team = PlayerStatsTeam_Survivor;
+		g_Round.players[i].player.bot = g_RoundHistory[index].players[i].bot;
+		g_Round.players[i].team = g_RoundHistory[index].players[i].team;
 		strcopy(g_Round.players[i].player.name, sizeof(g_Round.players[i].player.name), g_RoundHistory[index].players[i].name);
 		g_Round.players[i].combat = g_RoundHistory[index].players[i].combat;
 		g_Round.players[i].resources = g_RoundHistory[index].players[i].resources;
 		g_Round.players[i].scavenge = g_RoundHistory[index].players[i].scavenge;
 		g_Round.players[i].support = g_RoundHistory[index].players[i].support;
+		g_Round.players[i].infectedGrab = g_RoundHistory[index].players[i].infectedGrab;
+		g_Round.players[i].infectedSupport = g_RoundHistory[index].players[i].infectedSupport;
+		g_Round.players[i].skills = g_RoundHistory[index].players[i].skills;
 		g_Round.players[i].accuracy = g_RoundHistory[index].players[i].accuracy;
 		g_Round.players[i].accuracyDetails = g_RoundHistory[index].players[i].accuracyDetails;
 	}
@@ -165,6 +223,32 @@ bool Announce_LoadHistoricalRoundByMap(const char[] mapFilter)
 void Announce_RestoreHistoricalRound()
 {
 	g_Round = g_RoundBackup;
+}
+
+bool Announce_RenderHistoricalInfectedPanels(int client, const char[] mapFilter)
+{
+	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
+	{
+		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
+		return false;
+	}
+
+	bool rendered = Announce_RenderInfectedPanels(client);
+	Announce_RestoreHistoricalRound();
+	return rendered;
+}
+
+bool Announce_RenderHistoricalTankPanels(int client, const char[] mapFilter)
+{
+	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
+	{
+		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
+		return false;
+	}
+
+	bool rendered = Announce_RenderTankPanels(client);
+	Announce_RestoreHistoricalRound();
+	return rendered;
 }
 
 void Announce_GetTitleName(char[] buffer, int maxlen, int baseMode = GAMEMODE_UNKNOWN, int client = LANG_SERVER)
@@ -211,6 +295,17 @@ void Announce_GetTitleName(char[] buffer, int maxlen, int baseMode = GAMEMODE_UN
 			Format(buffer, maxlen, "%T", "ModeNameUnknown", client);
 		}
 	}
+}
+
+bool Announce_RequireCompetitiveModeForCommand(int client)
+{
+	if (Stats_IsCompetitiveMode())
+	{
+		return true;
+	}
+
+	Announce_ReplyCommandPhrase(client, "CompetitiveCommandOnly");
+	return false;
 }
 
 bool Announce_BroadcastRoundSummary(int client = 0)
@@ -783,7 +878,7 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 	for (int i = 0; i < survivorCount; i++)
 	{
 		int slot = survivorSlots[i];
-		Announce_FormatAccuracyCell(shotgunValues[i], sizeof(shotgunValues[]), g_Round.players[slot].accuracy.shotgunHits, g_Round.players[slot].accuracy.shotgunShots);
+		Announce_FormatAccuracyCell(shotgunValues[i], sizeof(shotgunValues[]), g_Round.players[slot].accuracy.shotgunHits, g_Round.players[slot].accuracy.shotgunShots, true);
 		Announce_FormatAccuracyCell(smgRifleValues[i], sizeof(smgRifleValues[]), g_Round.players[slot].accuracy.smgRifleHits, g_Round.players[slot].accuracy.smgRifleShots);
 		Announce_FormatAccuracyCell(sniperValues[i], sizeof(sniperValues[]), g_Round.players[slot].accuracy.sniperHits, g_Round.players[slot].accuracy.sniperShots);
 		Announce_FormatAccuracyCell(pistolValues[i], sizeof(pistolValues[]), g_Round.players[slot].accuracy.pistolHits, g_Round.players[slot].accuracy.pistolShots);
@@ -918,14 +1013,15 @@ bool Announce_RenderAccuracyDetailsPanel(int client = 0)
 			int shots = g_Round.players[slot].accuracyDetails.shots[detail];
 			int hits = g_Round.players[slot].accuracyDetails.hits[detail];
 			int headshots = g_Round.players[slot].accuracyDetails.headshots[detail];
+			bool clampToShots = Stats_GetWeaponFamilyFromDetail(view_as<PlayerStatsWeaponDetailType>(detail)) == PlayerStatsWeaponFamily_Shotgun;
 			char weaponName[32];
 			char accuracy[16];
 			Stats_GetWeaponDetailName(view_as<PlayerStatsWeaponDetailType>(detail), weaponName, sizeof(weaponName));
-			Format(accuracy, sizeof(accuracy), "%d%%", Announce_GetPercent(hits, shots));
+			Format(accuracy, sizeof(accuracy), "%d%%", Announce_GetDisplayAccuracyPercent(hits, shots, clampToShots));
 
 			ConsoleTable_AddStringCell(panel.table, j == 0 ? g_Round.players[slot].player.name : "");
 			ConsoleTable_AddStringCell(panel.table, weaponName);
-			ConsoleTable_AddIntCell(panel.table, hits);
+			ConsoleTable_AddIntCell(panel.table, Announce_GetDisplayAccuracyHits(hits, shots, clampToShots));
 			ConsoleTable_AddIntCell(panel.table, shots);
 			ConsoleTable_AddStringCell(panel.table, accuracy);
 			ConsoleTable_AddIntCell(panel.table, headshots);
@@ -1175,6 +1271,484 @@ bool Announce_RenderScavengePanel(int client = 0)
 
 	ConsolePanel_RenderToClient(panel, client);
 	return true;
+}
+
+int Announce_GetPlayerInfectedGrabScore(int slot)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		return 0;
+	}
+
+	return g_Round.players[slot].infectedGrab.totalDamage;
+}
+
+int Announce_GetPlayerInfectedSupportScore(int slot)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		return 0;
+	}
+
+	return (g_Round.players[slot].infectedSupport.boomerVomitVictims * 1000)
+		+ g_Round.players[slot].infectedSupport.spitterDamage;
+}
+
+int Announce_GetInfectedAiAggregateGrabDamage()
+{
+	int total = 0;
+
+	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
+	{
+		if (!Stats_IsValidRoundSlot(slot)
+			|| g_Round.players[slot].team != PlayerStatsTeam_Infected
+			|| !g_Round.players[slot].player.bot)
+		{
+			continue;
+		}
+
+		total += g_Round.players[slot].infectedGrab.totalDamage;
+	}
+
+	return total;
+}
+
+bool Announce_HasInfectedGrabStats()
+{
+	return g_Round.totals.infectedTotalGrabDamage > 0
+		|| g_Round.totals.infectedTotalTongueGrabs > 0
+		|| g_Round.totals.infectedTotalHunterPouncesLanded > 0
+		|| g_Round.totals.infectedTotalJockeyRidesLanded > 0;
+}
+
+bool Announce_HasInfectedSupportStats()
+{
+	return g_Round.totals.infectedTotalBoomerVomitVictims > 0
+		|| g_Round.totals.infectedTotalSpitterDamage > 0;
+}
+
+bool Announce_HasTankStats()
+{
+	for (int i = 0; i < g_Round.tankSessionCount; i++)
+	{
+		if (g_Round.tankSessions[i].sessionId > 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+int Announce_CollectSortedInfectedHumanSlots(int[] slots, int maxSlots)
+{
+	int count = 0;
+
+	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
+	{
+		if (!Stats_IsValidRoundSlot(slot)
+			|| g_Round.players[slot].team != PlayerStatsTeam_Infected
+			|| g_Round.players[slot].player.bot)
+		{
+			continue;
+		}
+
+		slots[count++] = slot;
+	}
+
+	for (int i = 1; i < count; i++)
+	{
+		int currentSlot = slots[i];
+		int currentScore = Announce_GetPlayerInfectedGrabScore(currentSlot) + Announce_GetPlayerInfectedSupportScore(currentSlot);
+		int j = i - 1;
+
+		while (j >= 0)
+		{
+			int compareSlot = slots[j];
+			int compareScore = Announce_GetPlayerInfectedGrabScore(compareSlot) + Announce_GetPlayerInfectedSupportScore(compareSlot);
+			if (compareScore > currentScore)
+			{
+				break;
+			}
+
+			slots[j + 1] = compareSlot;
+			j--;
+		}
+
+		slots[j + 1] = currentSlot;
+	}
+
+	return count;
+}
+
+bool Announce_HasInfectedAiAggregate()
+{
+	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
+	{
+		if (!Stats_IsValidRoundSlot(slot)
+			|| g_Round.players[slot].team != PlayerStatsTeam_Infected
+			|| !g_Round.players[slot].player.bot)
+		{
+			continue;
+		}
+
+		if (g_Round.players[slot].infectedGrab.totalDamage > 0
+			|| g_Round.players[slot].infectedGrab.tongueGrabs > 0
+			|| g_Round.players[slot].infectedGrab.hunterPounces > 0
+			|| g_Round.players[slot].infectedGrab.jockeyRides > 0
+			|| g_Round.players[slot].infectedSupport.boomerVomitVictims > 0
+			|| g_Round.players[slot].infectedSupport.spitterDamage > 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Announce_PrintInfectedSummaryLines(int client, int[] infectedSlots, int infectedCount)
+{
+	if (!Announce_WasCommandInvokedFromChat(client) || infectedCount <= 0)
+	{
+		return;
+	}
+
+	int bestGrabSlot = -1;
+	int bestSupportSlot = -1;
+
+	for (int i = 0; i < infectedCount; i++)
+	{
+		int slot = infectedSlots[i];
+		if (bestGrabSlot == -1 || Announce_GetPlayerInfectedGrabScore(slot) > Announce_GetPlayerInfectedGrabScore(bestGrabSlot))
+		{
+			bestGrabSlot = slot;
+		}
+
+		if (bestSupportSlot == -1 || Announce_GetPlayerInfectedSupportScore(slot) > Announce_GetPlayerInfectedSupportScore(bestSupportSlot))
+		{
+			bestSupportSlot = slot;
+		}
+	}
+
+	if (Stats_IsValidRoundSlot(bestGrabSlot) && Announce_GetPlayerInfectedGrabScore(bestGrabSlot) > 0)
+	{
+		CReplyToCommand(client, "%t", "RoundMVPInfected",
+			g_Round.players[bestGrabSlot].player.name,
+			g_Round.players[bestGrabSlot].infectedGrab.totalDamage);
+	}
+
+	if (Stats_IsValidRoundSlot(bestSupportSlot) && Announce_GetPlayerInfectedSupportScore(bestSupportSlot) > 0)
+	{
+		CReplyToCommand(client, "%t", "RoundSupportInfected",
+			g_Round.players[bestSupportSlot].player.name,
+			g_Round.players[bestSupportSlot].infectedSupport.boomerVomitVictims,
+			g_Round.players[bestSupportSlot].infectedSupport.spitterDamage);
+	}
+}
+
+bool Announce_RenderInfectedPanels(int client = 0)
+{
+	if (!Announce_RequireCompetitiveModeForCommand(client))
+	{
+		return false;
+	}
+
+	if (!Stats_HasRoundSnapshot())
+	{
+		Announce_ReplyCommandPhrase(client, "RoundSnapshotUnavailable");
+		return false;
+	}
+
+	if (!Announce_HasInfectedGrabStats() && !Announce_HasInfectedSupportStats())
+	{
+		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
+		return false;
+	}
+
+	int infectedSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+	int infectedCount = Announce_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
+	bool includeAi = Announce_HasInfectedAiAggregate();
+	int columnCount = infectedCount + (includeAi ? 1 : 0);
+	if (columnCount <= 0)
+	{
+		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
+		return false;
+	}
+
+	Announce_PrintInfectedSummaryLines(client, infectedSlots, infectedCount);
+
+	bool rendered = false;
+	int phraseTarget = client > 0 ? client : LANG_SERVER;
+	char columnNames[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1][MAX_NAME_LENGTH];
+
+	for (int i = 0; i < infectedCount; i++)
+	{
+		strcopy(columnNames[i], sizeof(columnNames[]), g_Round.players[infectedSlots[i]].player.name);
+	}
+	if (includeAi)
+	{
+		Format(columnNames[infectedCount], sizeof(columnNames[]), "%T", "ColumnAI", phraseTarget);
+	}
+
+	if (Announce_HasInfectedGrabStats())
+	{
+		ConsolePanel panel;
+		Announce_BuildMetricPanel(panel, phraseTarget, "PanelTitleInfectedGrab", "PanelTotalsInfectedGrab",
+			g_Round.totals.infectedTotalGrabDamage,
+			g_Round.totals.infectedTotalTongueGrabs,
+			g_Round.totals.infectedTotalHunterPouncesLanded + g_Round.totals.infectedTotalJockeyRidesLanded);
+
+		char totalLabel[16];
+		char smokerLabel[16];
+		char hunterLabel[16];
+		char jockeyLabel[16];
+		char chargerLabel[16];
+		char tongueLabel[16];
+		char pounceLabel[16];
+		char rideLabel[16];
+		Format(totalLabel, sizeof(totalLabel), "%T", "ColumnTotal", phraseTarget);
+		Format(smokerLabel, sizeof(smokerLabel), "%T", "ColumnSmoker", phraseTarget);
+		Format(hunterLabel, sizeof(hunterLabel), "%T", "ColumnHunter", phraseTarget);
+		Format(jockeyLabel, sizeof(jockeyLabel), "%T", "ColumnJockey", phraseTarget);
+		Format(chargerLabel, sizeof(chargerLabel), "%T", "ColumnCharger", phraseTarget);
+		Format(tongueLabel, sizeof(tongueLabel), "%T", "ColumnTongues", phraseTarget);
+		Format(pounceLabel, sizeof(pounceLabel), "%T", "ColumnPounces", phraseTarget);
+		Format(rideLabel, sizeof(rideLabel), "%T", "ColumnRides", phraseTarget);
+		Announce_FormatMetricUnitLabel(totalLabel, sizeof(totalLabel), totalLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(smokerLabel, sizeof(smokerLabel), smokerLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(hunterLabel, sizeof(hunterLabel), hunterLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(jockeyLabel, sizeof(jockeyLabel), jockeyLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(chargerLabel, sizeof(chargerLabel), chargerLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(tongueLabel, sizeof(tongueLabel), tongueLabel, "#");
+		Announce_FormatMetricUnitLabel(pounceLabel, sizeof(pounceLabel), pounceLabel, "#");
+		Announce_FormatMetricUnitLabel(rideLabel, sizeof(rideLabel), rideLabel, "#");
+
+		int values[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1];
+		Announce_AddNamedMetricIntColumns(panel, phraseTarget, columnNames, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.totalDamage;
+		if (includeAi) values[infectedCount] = Announce_GetInfectedAiAggregateGrabDamage();
+		Announce_AddMetricRowValues(panel, totalLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.smokerDamage;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.smokerDamage; }
+		Announce_AddMetricRowValues(panel, smokerLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.hunterDamage;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.hunterDamage; }
+		Announce_AddMetricRowValues(panel, hunterLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.jockeyDamage;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.jockeyDamage; }
+		Announce_AddMetricRowValues(panel, jockeyLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.chargerDamage;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.chargerDamage; }
+		Announce_AddMetricRowValues(panel, chargerLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.tongueGrabs;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.tongueGrabs; }
+		Announce_AddMetricRowValues(panel, tongueLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.hunterPounces;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.hunterPounces; }
+		Announce_AddMetricRowValues(panel, pounceLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.jockeyRides;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.jockeyRides; }
+		Announce_AddMetricRowValues(panel, rideLabel, values, columnCount);
+
+		ConsolePanel_RenderToClient(panel, client);
+		rendered = true;
+	}
+
+	if (Announce_HasInfectedSupportStats())
+	{
+		ConsolePanel panel;
+		Announce_BuildMetricPanel(panel, phraseTarget, "PanelTitleInfectedSupport", "PanelTotalsInfectedSupport",
+			g_Round.totals.infectedTotalBoomerVomitVictims,
+			g_Round.totals.infectedTotalSpitterDamage);
+
+		char boomerLabel[16];
+		char spitLabel[16];
+		Format(boomerLabel, sizeof(boomerLabel), "%T", "ColumnBoomerHits", phraseTarget);
+		Format(spitLabel, sizeof(spitLabel), "%T", "ColumnSpit", phraseTarget);
+		Announce_FormatMetricUnitLabel(boomerLabel, sizeof(boomerLabel), boomerLabel, "#");
+		Announce_FormatMetricUnitLabel(spitLabel, sizeof(spitLabel), spitLabel, "dmg", false);
+
+		int values[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1];
+		Announce_AddNamedMetricIntColumns(panel, phraseTarget, columnNames, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedSupport.boomerVomitVictims;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedSupport.boomerVomitVictims; }
+		Announce_AddMetricRowValues(panel, boomerLabel, values, columnCount);
+
+		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedSupport.spitterDamage;
+		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedSupport.spitterDamage; }
+		Announce_AddMetricRowValues(panel, spitLabel, values, columnCount);
+
+		ConsolePanel_RenderToClient(panel, client);
+		rendered = true;
+	}
+
+	return rendered;
+}
+
+void Announce_GetMetricTimeCell(char[] buffer, int maxlen, float startedAt, float endedAt)
+{
+	float finish = endedAt > 0.0 ? endedAt : GetGameTime();
+	int duration = startedAt > 0.0 && finish > startedAt ? RoundToFloor(finish - startedAt) : 0;
+	Format(buffer, maxlen, "%dm %02ds", duration / 60, duration % 60);
+}
+
+void Announce_AddNamedMetricStringColumns(ConsolePanel panel, int phraseTarget, char[][] names, int count)
+{
+	char metricLabel[16];
+	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
+	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+
+	for (int i = 0; i < count; i++)
+	{
+		ConsoleTable_AddColumn(panel.table, names[i], 14, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+	}
+}
+
+void Announce_AddNamedMetricIntColumns(ConsolePanel panel, int phraseTarget, char[][] names, int count)
+{
+	char metricLabel[16];
+	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
+	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+
+	for (int i = 0; i < count; i++)
+	{
+		ConsoleTable_AddColumn(panel.table, names[i], 14, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+	}
+}
+
+bool Announce_RenderTankPanels(int client = 0)
+{
+	if (!Announce_RequireCompetitiveModeForCommand(client))
+	{
+		return false;
+	}
+
+	if (!Stats_HasRoundSnapshot())
+	{
+		Announce_ReplyCommandPhrase(client, "RoundSnapshotUnavailable");
+		return false;
+	}
+
+	if (!Announce_HasTankStats())
+	{
+		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
+		return false;
+	}
+
+	bool rendered = false;
+	int phraseTarget = client > 0 ? client : LANG_SERVER;
+
+	for (int sessionIndex = 0; sessionIndex < g_Round.tankSessionCount; sessionIndex++)
+	{
+		if (g_Round.tankSessions[sessionIndex].sessionId <= 0)
+		{
+			continue;
+		}
+
+		int controllerCount = g_Round.tankSessions[sessionIndex].controllerCount;
+		if (controllerCount <= 0)
+		{
+			continue;
+		}
+
+		ConsolePanel panel;
+		ConsolePanel_Reset(panel);
+		ConsolePanel_SetWidth(panel, 100);
+		ConsolePanel_EnableSafeAscii(panel, false);
+
+		char line[128];
+		char titleName[64];
+		Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, phraseTarget);
+		Format(line, sizeof(line), "%T", "PanelTitleTankStats", phraseTarget, titleName, g_Round.meta.id, g_Round.tankSessions[sessionIndex].sessionId);
+		ConsolePanel_AddHeaderLine(panel, line);
+		Format(line, sizeof(line), "%T", "PanelTotalsTank", phraseTarget,
+			g_Round.tankSessions[sessionIndex].totalDamage,
+			g_Round.tankSessions[sessionIndex].incaps,
+			g_Round.tankSessions[sessionIndex].deaths);
+		ConsolePanel_AddHeaderLine(panel, line);
+
+		char controllerNames[L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS][MAX_NAME_LENGTH];
+		for (int i = 0; i < controllerCount; i++)
+		{
+			strcopy(controllerNames[i], sizeof(controllerNames[]), g_Round.tankSessions[sessionIndex].controllers[i].name);
+		}
+
+		Announce_AddNamedMetricStringColumns(panel, phraseTarget, controllerNames, controllerCount);
+
+		char timeA[16], timeB[16], timeC[16], timeD[16];
+		timeA[0] = '\0'; timeB[0] = '\0'; timeC[0] = '\0'; timeD[0] = '\0';
+		if (controllerCount > 0) Announce_GetMetricTimeCell(timeA, sizeof(timeA), g_Round.tankSessions[sessionIndex].controllers[0].startedAt, g_Round.tankSessions[sessionIndex].controllers[0].endedAt);
+		if (controllerCount > 1) Announce_GetMetricTimeCell(timeB, sizeof(timeB), g_Round.tankSessions[sessionIndex].controllers[1].startedAt, g_Round.tankSessions[sessionIndex].controllers[1].endedAt);
+		if (controllerCount > 2) Announce_GetMetricTimeCell(timeC, sizeof(timeC), g_Round.tankSessions[sessionIndex].controllers[2].startedAt, g_Round.tankSessions[sessionIndex].controllers[2].endedAt);
+		if (controllerCount > 3) Announce_GetMetricTimeCell(timeD, sizeof(timeD), g_Round.tankSessions[sessionIndex].controllers[3].startedAt, g_Round.tankSessions[sessionIndex].controllers[3].endedAt);
+
+		char timeLabel[16], dmgLabel[16], incapLabel[16], deathLabel[16], wipeLabel[16], punchLabel[16], rockLabel[16], hitLabel[16];
+		Format(timeLabel, sizeof(timeLabel), "%T", "ColumnTime", phraseTarget);
+		Format(dmgLabel, sizeof(dmgLabel), "%T", "ColumnDamageShort", phraseTarget);
+		Format(incapLabel, sizeof(incapLabel), "%T", "ColumnIncaps", phraseTarget);
+		Format(deathLabel, sizeof(deathLabel), "%T", "ColumnDeaths", phraseTarget);
+		Format(wipeLabel, sizeof(wipeLabel), "%T", "ColumnWipe", phraseTarget);
+		Format(punchLabel, sizeof(punchLabel), "%T", "ColumnPunches", phraseTarget);
+		Format(rockLabel, sizeof(rockLabel), "%T", "ColumnRocks", phraseTarget);
+		Format(hitLabel, sizeof(hitLabel), "%T", "ColumnHittables", phraseTarget);
+		Announce_FormatMetricUnitLabel(dmgLabel, sizeof(dmgLabel), dmgLabel, "dmg", false);
+		Announce_FormatMetricUnitLabel(incapLabel, sizeof(incapLabel), incapLabel, "#");
+		Announce_FormatMetricUnitLabel(deathLabel, sizeof(deathLabel), deathLabel, "#");
+		Announce_FormatMetricUnitLabel(punchLabel, sizeof(punchLabel), punchLabel, "#");
+		Announce_FormatMetricUnitLabel(rockLabel, sizeof(rockLabel), rockLabel, "#");
+		Announce_FormatMetricUnitLabel(hitLabel, sizeof(hitLabel), hitLabel, "#");
+
+		Announce_AddMetricStringRow(panel, timeLabel, controllerCount, timeA, timeB, timeC, timeD);
+		Announce_AddMetricRow(panel, dmgLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].damage,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].damage : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].damage : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].damage : 0);
+		Announce_AddMetricRow(panel, incapLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].incaps,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].incaps : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].incaps : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].incaps : 0);
+		Announce_AddMetricRow(panel, deathLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].deaths,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].deaths : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].deaths : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].deaths : 0);
+		Announce_AddMetricRow(panel, wipeLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].wipe ? 1 : 0,
+			controllerCount > 1 ? (g_Round.tankSessions[sessionIndex].controllers[1].wipe ? 1 : 0) : 0,
+			controllerCount > 2 ? (g_Round.tankSessions[sessionIndex].controllers[2].wipe ? 1 : 0) : 0,
+			controllerCount > 3 ? (g_Round.tankSessions[sessionIndex].controllers[3].wipe ? 1 : 0) : 0);
+		Announce_AddMetricRow(panel, punchLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].punches,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].punches : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].punches : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].punches : 0);
+		Announce_AddMetricRow(panel, rockLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].rocks,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].rocks : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].rocks : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].rocks : 0);
+		Announce_AddMetricRow(panel, hitLabel, controllerCount,
+			g_Round.tankSessions[sessionIndex].controllers[0].hittables,
+			controllerCount > 1 ? g_Round.tankSessions[sessionIndex].controllers[1].hittables : 0,
+			controllerCount > 2 ? g_Round.tankSessions[sessionIndex].controllers[2].hittables : 0,
+			controllerCount > 3 ? g_Round.tankSessions[sessionIndex].controllers[3].hittables : 0);
+
+		ConsolePanel_RenderToClient(panel, client);
+		rendered = true;
+	}
+
+	return rendered;
 }
 
 bool Announce_RenderRoundConsolePanel(int client = 0)
@@ -1545,6 +2119,23 @@ void Announce_AddMetricRow(ConsolePanel panel, const char[] metricLabel, int sur
 	ConsoleTable_EndRow(panel.table);
 }
 
+void Announce_AddMetricRowValues(ConsolePanel panel, const char[] metricLabel, int[] values, int valueCount)
+{
+	if (!ConsoleTable_BeginRow(panel.table))
+	{
+		return;
+	}
+
+	ConsoleTable_AddStringCell(panel.table, metricLabel);
+
+	for (int i = 0; i < valueCount; i++)
+	{
+		ConsoleTable_AddIntCell(panel.table, values[i]);
+	}
+
+	ConsoleTable_EndRow(panel.table);
+}
+
 void Announce_AddMetricStringRow(ConsolePanel panel, const char[] metricLabel, int survivorCount, const char[] valueA, const char[] valueB = "", const char[] valueC = "", const char[] valueD = "")
 {
 	if (!ConsoleTable_BeginRow(panel.table))
@@ -1567,6 +2158,7 @@ void Announce_AddMetricStringRow(ConsolePanel panel, const char[] metricLabel, i
 
 	ConsoleTable_EndRow(panel.table);
 }
+
 
 void Announce_BuildMetricPanel(ConsolePanel panel, int phraseTarget, const char[] titlePhrase, const char[] totalsPhrase, int totalA, int totalB = 0, int totalC = 0)
 {
@@ -2016,9 +2608,25 @@ void Announce_FormatRoundDurationLine(char[] buffer, int maxlen)
 	Format(buffer, maxlen, "%T", "PanelRoundDuration", LANG_SERVER, duration);
 }
 
-void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots)
+int Announce_GetDisplayAccuracyHits(int hits, int shots, bool clampToShots = false)
 {
-	Format(buffer, maxlen, "%d/%d %d%%", hits, shots, Announce_GetPercent(hits, shots));
+	if (!clampToShots || shots <= 0 || hits <= shots)
+	{
+		return hits;
+	}
+
+	return shots;
+}
+
+int Announce_GetDisplayAccuracyPercent(int hits, int shots, bool clampToShots = false)
+{
+	return Announce_GetPercent(Announce_GetDisplayAccuracyHits(hits, shots, clampToShots), shots);
+}
+
+void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots, bool clampToShots = false)
+{
+	int displayHits = Announce_GetDisplayAccuracyHits(hits, shots, clampToShots);
+	Format(buffer, maxlen, "%d/%d %d%%", displayHits, shots, Announce_GetDisplayAccuracyPercent(hits, shots, clampToShots));
 }
 
 void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phraseTarget = LANG_SERVER)
@@ -2352,6 +2960,38 @@ int Announce_GetPlayerSpecialKills(int index)
 	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
 	{
 		total += g_Round.players[index].combat.chargerKills;
+	}
+
+	return total;
+}
+
+int Announce_GetSiKillTotalForPlayer(PlayerStatsPlayerRoundData playerData)
+{
+	int total = 0;
+
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	{
+		total += playerData.combat.smokerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
+	{
+		total += playerData.combat.boomerKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
+	{
+		total += playerData.combat.hunterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
+	{
+		total += playerData.combat.spitterKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
+	{
+		total += playerData.combat.jockeyKills;
+	}
+	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
+	{
+		total += playerData.combat.chargerKills;
 	}
 
 	return total;

@@ -185,10 +185,7 @@ void Round_OnScavengeRoundHalftime()
 		g_Round.meta.active,
 		g_Runtime.roundLive);
 
-	if (g_Round.meta.active)
-	{
-		g_Round.meta.scavengeInSecondHalf = true;
-	}
+	Round_FinalizeActiveSnapshot("scavenge_round_halftime", PlayerStatsRoundEndReason_ScavengeRoundFinished, true);
 }
 
 void Round_OnScavengeOvertime()
@@ -343,6 +340,7 @@ void Round_FinalizeActiveSnapshot(const char[] reason, PlayerStatsRoundEndReason
 		g_Round.meta.endedAt = GetGameTime();
 	}
 	g_Runtime.roundLive = false;
+	Detect_FinalizeActiveTankSessions();
 
 	Stats_Debug(PlayerStatsDebug_Core, "Round finalized. reason=%s round=%d scav_round=%d second_half=%d si=%d ci=%d ff=%d",
 		reason,

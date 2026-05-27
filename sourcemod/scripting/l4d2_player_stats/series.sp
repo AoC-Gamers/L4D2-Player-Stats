@@ -117,21 +117,37 @@ void Series_CaptureHistoricalRoundSnapshot(int entryIndex)
 	g_RoundHistory[entryIndex].endReason = g_Round.meta.endReason;
 	g_RoundHistory[entryIndex].historyScope = g_Round.meta.historyScope;
 	g_RoundHistory[entryIndex].totals = g_Round.totals;
+	g_RoundHistory[entryIndex].tankSessionCount = g_Round.tankSessionCount;
+
+	for (int tankIndex = 0; tankIndex < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; tankIndex++)
+	{
+		g_RoundHistory[entryIndex].tankSessions[tankIndex] = g_Round.tankSessions[tankIndex];
+	}
 
 	int historicalIndex = 0;
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && historicalIndex < L4D2_PLAYER_STATS_MAX_SURVIVORS; slot++)
+	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && historicalIndex < L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS; slot++)
 	{
-		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
+		if (!g_Round.players[slot].active)
+		{
+			continue;
+		}
+
+		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor && g_Round.players[slot].team != PlayerStatsTeam_Infected)
 		{
 			continue;
 		}
 
 		g_RoundHistory[entryIndex].players[historicalIndex].active = true;
+		g_RoundHistory[entryIndex].players[historicalIndex].bot = g_Round.players[slot].player.bot;
+		g_RoundHistory[entryIndex].players[historicalIndex].team = g_Round.players[slot].team;
 		strcopy(g_RoundHistory[entryIndex].players[historicalIndex].name, sizeof(g_RoundHistory[entryIndex].players[historicalIndex].name), g_Round.players[slot].player.name);
 		g_RoundHistory[entryIndex].players[historicalIndex].combat = g_Round.players[slot].combat;
 		g_RoundHistory[entryIndex].players[historicalIndex].resources = g_Round.players[slot].resources;
 		g_RoundHistory[entryIndex].players[historicalIndex].scavenge = g_Round.players[slot].scavenge;
 		g_RoundHistory[entryIndex].players[historicalIndex].support = g_Round.players[slot].support;
+		g_RoundHistory[entryIndex].players[historicalIndex].infectedGrab = g_Round.players[slot].infectedGrab;
+		g_RoundHistory[entryIndex].players[historicalIndex].infectedSupport = g_Round.players[slot].infectedSupport;
+		g_RoundHistory[entryIndex].players[historicalIndex].skills = g_Round.players[slot].skills;
 		g_RoundHistory[entryIndex].players[historicalIndex].accuracy = g_Round.players[slot].accuracy;
 		g_RoundHistory[entryIndex].players[historicalIndex].accuracyDetails = g_Round.players[slot].accuracyDetails;
 		historicalIndex++;

@@ -9,6 +9,7 @@
 #include <left4dhooks>
 #include <l4d2util_stocks>
 #include <l4d2util_weapons>
+#include <l4d2_player_stats>
 
 #undef REQUIRE_PLUGIN
 #include <readyup>
@@ -29,8 +30,12 @@
 PlayerStatsRoundData g_Round;
 PlayerStatsRoundData g_RoundBackup;
 PlayerStatsHistoricalRoundData g_RoundHistory[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS];
+PlayerStatsSubstitutionSnapshotData g_SubstitutionSnapshots[L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS];
 PlayerStatsGameHistoryData g_GameHistory;
 PlayerStatsRuntimeState g_Runtime;
+int g_iSubstitutionSnapshotCount = 0;
+int g_iSubstitutionSnapshotNext = 0;
+int g_iSubstitutionSnapshotSerial = 0;
 
 ConVar	g_cvEnable = null;
 ConVar	g_cvDebug	= null;
@@ -39,6 +44,8 @@ ConVar	g_cvHistory = null;
 ConVar	g_cvAccuracy = null;
 ConVar	g_cvThrowables = null;
 ConVar	g_cvGamemode = null;
+ConVar	g_cvInfectedValidDamage = null;
+ConVar	g_cvTankValidDamage = null;
 ConVar	g_cvReadyCfgName = null;
 ConVar	g_cvSurvivorLimit = null;
 ConVar	g_cvMaxPlayerZombies = null;
@@ -86,13 +93,15 @@ public void OnPluginStart()
 	LoadPluginTranslations();
 	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), LOG_DIRECTORY);
 
-	g_cvDebug		= CreateConVar("l4d2_player_stats_debug", "31", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
-	g_cvEnable		= CreateConVar("l4d2_player_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
-	g_cvTracking	= CreateConVar("l4d2_player_stats_tracking", "3", "Bitmask for round stats tracking. 1=enable 2=announce 3=all.");
-	g_cvHistory		= CreateConVar("l4d2_player_stats_history", "1", "Enable mission or series history. 1=enable.");
-	g_cvAccuracy	= CreateConVar("l4d2_player_stats_accuracy", "1", "Enable accuracy tracking. 1=enable.");
-	g_cvThrowables	= CreateConVar("l4d2_player_stats_throwables", "3", "Bitmask for throwable utility tracking. 1=enable 2=announce 3=all.");
-	g_cvGamemode	= CreateConVar("l4d2_player_stats_gamemode", "15", "Enabled game modes. 1=coop 2=versus 4=scavenge 8=survival 15=all.");
+	g_cvDebug		= CreateConVar("sm_stats_debug", "31", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
+	g_cvEnable		= CreateConVar("sm_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
+	g_cvTracking	= CreateConVar("sm_stats_tracking", "3", "Bitmask for round stats tracking. 1=enable 2=announce 3=all.");
+	g_cvHistory		= CreateConVar("sm_stats_history", "1", "Enable mission or series history. 1=enable.");
+	g_cvAccuracy	= CreateConVar("sm_stats_accuracy", "1", "Enable accuracy tracking. 1=enable.");
+	g_cvThrowables	= CreateConVar("sm_stats_throwables", "3", "Bitmask for throwable utility tracking. 1=enable 2=announce 3=all.");
+	g_cvGamemode	= CreateConVar("sm_stats_gamemode", "15", "Enabled game modes. 1=coop 2=versus 4=scavenge 8=survival 15=all.");
+	g_cvInfectedValidDamage = CreateConVar("sm_stats_infected_valid_damage", "3", "Valid infected damage bitmask. 0=all 1=exclude incap 2=exclude ledge 3=exclude both.");
+	g_cvTankValidDamage = CreateConVar("sm_stats_tank_valid_damage", "3", "Valid tank damage bitmask. 0=all 1=exclude incap 2=exclude ledge 3=exclude both.");
 
 	g_cvSurvivorLimit		= FindConVar("survivor_limit");
 	g_cvMaxPlayerZombies	= FindConVar("z_max_player_zombies");
@@ -120,11 +129,13 @@ public void OnPluginStart()
 	HookEvent("gascan_pour_completed", Event_GascanPourCompleted, EventHookMode_PostNoCopy);
 	HookEvent("gascan_dropped", Event_GascanDropped, EventHookMode_PostNoCopy);
 	HookEvent("scavenge_gas_can_destroyed", Event_ScavengeGascanDestroyed, EventHookMode_PostNoCopy);
+	HookEvent("tank_spawn", Event_TankSpawn, EventHookMode_PostNoCopy);
 	HookEvent("player_bot_replace", Event_PlayerBotReplace, EventHookMode_PostNoCopy);
 	HookEvent("bot_player_replace", Event_BotPlayerReplace, EventHookMode_PostNoCopy);
 
 	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Post);
 	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
+	HookEvent("player_incapacitated_start", Event_PlayerIncapacitatedStart, EventHookMode_Post);
 	HookEvent("infected_death", Event_InfectedDeath, EventHookMode_Post);
 	HookEvent("infected_hurt", Event_InfectedHurt, EventHookMode_Post);
 	HookEvent("weapon_fire", Event_WeaponFire, EventHookMode_Post);
@@ -140,37 +151,55 @@ public void OnPluginStart()
 	HookEvent("vote_passed", Event_VotePassed, EventHookMode_PostNoCopy);
 
 	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
-	RegConsoleCmd("sm_mvp_rank", Command_MVPRank, "Print the client's current MVP ranks in chat and the global rank table in console.");
-	RegConsoleCmd("sm_mvp_stats", Command_MVPStats, "Print the aggregated mission history for the current map, a requested map, or all maps.");
-	RegConsoleCmd("sm_mvp_acc", Command_MVPAcc, "Print the current round accuracy table in console.");
-	RegConsoleCmd("sm_mvp_acc_details", Command_AccDetails, "Print detailed per-weapon accuracy for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_mvp_utils", Command_MVPUtils, "Print throwable utility stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_mvp_items", Command_MVPItems, "Print consumable usage stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_mvp_support", Command_MVPSupport, "Print support stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_mvp_scavenge", Command_MVPScavenge, "Print scavenge-specific stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_mvp_help", Command_MVPHelp, "Print MVP command help to console.");
+	RegConsoleCmd("sm_stats_mvp", Command_MVP, "Print the current survivor MVP summary.");
+	RegConsoleCmd("sm_stats_rank", Command_Rank, "Print the client's current MVP ranks in chat and the global rank table in console.");
+	RegConsoleCmd("sm_stats_history", Command_Stats, "Print the aggregated mission history for the current map, a requested map, or all maps.");
+	RegConsoleCmd("sm_stats_acc", Command_Acc, "Print the current round accuracy table in console.");
+	RegConsoleCmd("sm_stats_acc_details", Command_AccDetails, "Print detailed per-weapon accuracy for the current round or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_utils", Command_Utils, "Print throwable utility stats for the current round or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_items", Command_Items, "Print consumable usage stats for the current round or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_support", Command_Support, "Print support stats for the current round or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_scav", Command_Scavenge, "Print scavenge-specific stats for the current round or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_infect", Command_Infect, "Print infected grab/support stats for the current half or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_tank", Command_Tank, "Print tank session stats for the current half or the latest historical map snapshot.");
+	RegConsoleCmd("sm_stats_subs", Command_Substitutions, "Print substitution snapshots kept in the in-memory buffer.");
+	RegConsoleCmd("sm_stats_help", Command_Help, "Print stats command help to console.");
 
-	AutoExecConfig(false, "l4d2_player_stats");
+	AutoExecConfig(false, LIBRARY_L4D2PLAYERSTATS);
 	g_GameHistory.Reset();
+	g_iSubstitutionSnapshotCount = 0;
+	g_iSubstitutionSnapshotNext = 0;
+	g_iSubstitutionSnapshotSerial = 0;
 	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
 	{
 		g_RoundHistory[i].Reset();
 	}
+	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS; i++)
+	{
+		g_SubstitutionSnapshots[i].Reset();
+	}
 
 	L4D2Weapons_Init();
-	g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
-	g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
-	g_Runtime.hasConfogl			= LibraryExists(LIBRARY_CONFOGL);
-	g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
-	g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
-	Stats_RefreshReadyUpConVars();
-	Stats_RefreshConfoglConVars();
-
-	Stats_RefreshModeContext();
 
 	if (!g_Runtime.lateload)
 	{
-		return;
+		g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
+		g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
+		g_Runtime.hasConfogl			= LibraryExists(LIBRARY_CONFOGL);
+		g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
+		g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
+	}
+
+	Stats_RefreshReadyUpConVars();
+	Stats_RefreshConfoglConVars();
+	Stats_RefreshModeContext();
+
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (IsClientInGame(client))
+		{
+			OnClientPutInServer(client);
+		}
 	}
 }
 
@@ -294,10 +323,13 @@ public void OnPluginEnd()
 public void OnClientPutInServer(int client)
 {
 	Stats_OnClientPutInServer(client);
+	SDKHook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
 }
 
 public void OnClientDisconnect(int client)
 {
+	Detect_OnClientDisconnect(client);
+	SDKUnhook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
 	Stats_OnClientDisconnect(client);
 }
 
@@ -452,6 +484,11 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	Detect_EventPlayerDeath(event, name, dontBroadcast);
 }
 
+public void Event_PlayerIncapacitatedStart(Event event, const char[] name, bool dontBroadcast)
+{
+	Detect_EventPlayerIncapacitatedStart(event, name, dontBroadcast);
+}
+
 public void Event_InfectedDeath(Event event, const char[] name, bool dontBroadcast)
 {
 	Detect_EventInfectedDeath(event, name, dontBroadcast);
@@ -537,6 +574,11 @@ public void Event_ScavengeGascanDestroyed(Event event, const char[] name, bool d
 	Detect_EventScavengeGascanDestroyed(event, name, dontBroadcast);
 }
 
+public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+	Detect_EventTankSpawn(event, name, dontBroadcast);
+}
+
 Action Command_MVP(int client, int args)
 {
 	bool fromChat = Announce_WasCommandInvokedFromChat(client);
@@ -562,7 +604,7 @@ Action Command_MVP(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPRank(int client, int args)
+Action Command_Rank(int client, int args)
 {
 	if (!IsValidSurvivor(client))
 	{
@@ -578,7 +620,7 @@ Action Command_MVPRank(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPStats(int client, int args)
+Action Command_Stats(int client, int args)
 {
 	char mapFilter[64];
 	mapFilter[0] = '\0';
@@ -609,7 +651,7 @@ Action Command_MVPStats(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPAcc(int client, int args)
+Action Command_Acc(int client, int args)
 {
 	if (args > 0)
 	{
@@ -649,7 +691,7 @@ Action Command_AccDetails(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPUtils(int client, int args)
+Action Command_Utils(int client, int args)
 {
 	if (args > 0)
 	{
@@ -669,7 +711,7 @@ Action Command_MVPUtils(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPItems(int client, int args)
+Action Command_Items(int client, int args)
 {
 	if (args > 0)
 	{
@@ -689,7 +731,7 @@ Action Command_MVPItems(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPSupport(int client, int args)
+Action Command_Support(int client, int args)
 {
 	if (args > 0)
 	{
@@ -709,7 +751,7 @@ Action Command_MVPSupport(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPScavenge(int client, int args)
+Action Command_Scavenge(int client, int args)
 {
 	if (args > 0)
 	{
@@ -729,9 +771,58 @@ Action Command_MVPScavenge(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_MVPHelp(int client, int args)
+Action Command_Help(int client, int args)
 {
 	Announce_PrintHelpToConsole(client);
 	Announce_NotifyConsoleDelivery(client);
+	return Plugin_Handled;
+}
+
+Action Command_Substitutions(int client, int args)
+{
+	if (Announce_PrintSubstitutionSnapshotsToConsole(client))
+	{
+		Announce_NotifyConsoleDelivery(client);
+	}
+	return Plugin_Handled;
+}
+
+Action Command_Infect(int client, int args)
+{
+	if (args > 0)
+	{
+		char mapFilter[64];
+		GetCmdArg(1, mapFilter, sizeof(mapFilter));
+		if (Announce_RenderHistoricalInfectedPanels(client, mapFilter))
+		{
+			Announce_NotifyConsoleDelivery(client);
+		}
+		return Plugin_Handled;
+	}
+
+	if (Announce_RenderInfectedPanels(client))
+	{
+		Announce_NotifyConsoleDelivery(client);
+	}
+	return Plugin_Handled;
+}
+
+Action Command_Tank(int client, int args)
+{
+	if (args > 0)
+	{
+		char mapFilter[64];
+		GetCmdArg(1, mapFilter, sizeof(mapFilter));
+		if (Announce_RenderHistoricalTankPanels(client, mapFilter))
+		{
+			Announce_NotifyConsoleDelivery(client);
+		}
+		return Plugin_Handled;
+	}
+
+	if (Announce_RenderTankPanels(client))
+	{
+		Announce_NotifyConsoleDelivery(client);
+	}
 	return Plugin_Handled;
 }

@@ -184,6 +184,8 @@ Características importantes del lifecycle:
 - la fase pre-live es importante
 - la transición a live puede estar retrasada por sistemas externos como `readyup`
 - el halftime no es un restart
+- los jugadores se invierten de equipo entre mitades
+- al invertirse los equipos, la capa de tracking survivor debe empezar un registro nuevo para la mitad siguiente
 - los restarts administrativos deben tratarse por separado del progreso de juego
 - la persistencia entre mapas no debe entenderse como economía de recursos, sino como continuidad competitiva de la serie
 
@@ -246,6 +248,8 @@ Características importantes del lifecycle:
 
 - pueden existir eventos genéricos de ronda, pero los eventos propios de `Scavenge` son más autoritativos
 - el halftime es parte normal de la estructura del match
+- los jugadores se invierten de equipo entre mitades
+- al invertirse los equipos, la capa de tracking survivor debe empezar un registro nuevo para la mitad siguiente
 - el fin del match no es lo mismo que el fin de una mitad
 - el replay o restart es administrativo, no producto de fallo de capítulo
 - el tiempo es un recurso explícito del modo, no solo una métrica externa

@@ -4,10 +4,12 @@
 #define _l4d2_player_stats_api_included
 
 Handle g_hForwardRoundFinalized = INVALID_HANDLE;
+Handle g_hForwardPlayerSubstituted = INVALID_HANDLE;
 
 void API_CreateForwards()
 {
 	g_hForwardRoundFinalized = CreateGlobalForward("PlayerStats_OnRoundFinalized", ET_Ignore, Param_Cell);
+	g_hForwardPlayerSubstituted = CreateGlobalForward("PlayerStats_OnPlayerSubstituted", ET_Hook, Param_String, Param_Cell, Param_Cell, Param_Cell);
 }
 
 void API_CreateNatives()
@@ -18,6 +20,10 @@ void API_CreateNatives()
 	CreateNative("PlayerStats_GetRoundPlayerClient", Native_PlayerStats_GetRoundPlayerClient);
 	CreateNative("PlayerStats_FillRoundKeyValues", Native_PlayerStats_FillRoundKeyValues);
 	CreateNative("PlayerStats_FillRoundPlayerKeyValues", Native_PlayerStats_FillRoundPlayerKeyValues);
+	CreateNative("PlayerStats_GetSubstitutionCount", Native_PlayerStats_GetSubstitutionCount);
+	CreateNative("PlayerStats_GetSubstitutionId", Native_PlayerStats_GetSubstitutionId);
+	CreateNative("PlayerStats_FillSubstitutionSnapshotKeyValues", Native_PlayerStats_FillSubstitutionSnapshotKeyValues);
+	CreateNative("PlayerStats_ApplySubstitutionSnapshotToSlot", Native_PlayerStats_ApplySubstitutionSnapshotToSlot);
 	CreateNative("PlayerStats_BroadcastRoundStats", Native_PlayerStats_BroadcastRoundStats);
 	CreateNative("PlayerStats_BroadcastGameStats", Native_PlayerStats_BroadcastGameStats);
 	CreateNative("PlayerStats_MarkRestart", Native_PlayerStats_MarkRestart);
@@ -33,6 +39,23 @@ void API_FireRoundFinalized(int roundId)
 	Call_StartForward(g_hForwardRoundFinalized);
 	Call_PushCell(roundId);
 	Call_Finish();
+}
+
+Action API_FirePlayerSubstituted(const char[] substitutionId, int roundId, int slot, int incomingClient)
+{
+	if (g_hForwardPlayerSubstituted == INVALID_HANDLE)
+	{
+		return Plugin_Continue;
+	}
+
+	Action result = Plugin_Continue;
+	Call_StartForward(g_hForwardPlayerSubstituted);
+	Call_PushString(substitutionId);
+	Call_PushCell(roundId);
+	Call_PushCell(slot);
+	Call_PushCell(incomingClient);
+	Call_Finish(result);
+	return result;
 }
 
 bool API_IsRoundIdValid(int roundId)
@@ -176,6 +199,58 @@ void API_WriteSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvSetNum(kv, "heals_received", playerData.support.healsReceived);
 	KvSetNum(kv, "revives_given", playerData.support.revivesGiven);
 	KvSetNum(kv, "revives_received", playerData.support.revivesReceived);
+
+	KvGoBack(kv);
+}
+
+void API_WriteInfectedGrabBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "infected_grab", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "smoker_damage", playerData.infectedGrab.smokerDamage);
+	KvSetNum(kv, "hunter_damage", playerData.infectedGrab.hunterDamage);
+	KvSetNum(kv, "jockey_damage", playerData.infectedGrab.jockeyDamage);
+	KvSetNum(kv, "charger_damage", playerData.infectedGrab.chargerDamage);
+	KvSetNum(kv, "total_damage", playerData.infectedGrab.totalDamage);
+	KvSetNum(kv, "tongue_grabs", playerData.infectedGrab.tongueGrabs);
+	KvSetNum(kv, "hunter_pounces", playerData.infectedGrab.hunterPounces);
+	KvSetNum(kv, "jockey_rides", playerData.infectedGrab.jockeyRides);
+
+	KvGoBack(kv);
+}
+
+void API_WriteInfectedSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "infected_support", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "boomer_vomit_victims", playerData.infectedSupport.boomerVomitVictims);
+	KvSetNum(kv, "spitter_damage", playerData.infectedSupport.spitterDamage);
+
+	KvGoBack(kv);
+}
+
+void API_WriteSkillsBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "skills", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "skeets", playerData.skills.skeets);
+	KvSetNum(kv, "skeet_melees", playerData.skills.skeetMelees);
+	KvSetNum(kv, "deadstops", playerData.skills.deadstops);
+	KvSetNum(kv, "boomer_pops", playerData.skills.boomerPops);
+	KvSetNum(kv, "levels", playerData.skills.levels);
+	KvSetNum(kv, "crowns", playerData.skills.crowns);
+	KvSetNum(kv, "tongue_cuts", playerData.skills.tongueCuts);
+	KvSetNum(kv, "smoker_self_clears", playerData.skills.smokerSelfClears);
+	KvSetNum(kv, "insta_kills", playerData.skills.instaKills);
 
 	KvGoBack(kv);
 }
@@ -465,11 +540,83 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 	API_WriteCombatBlock(kv, g_Round.players[slot]);
 	API_WriteSurvivabilityBlock(kv, g_Round.players[slot]);
 	API_WriteSupportBlock(kv, g_Round.players[slot]);
+	API_WriteInfectedGrabBlock(kv, g_Round.players[slot]);
+	API_WriteInfectedSupportBlock(kv, g_Round.players[slot]);
+	API_WriteSkillsBlock(kv, g_Round.players[slot]);
 	API_WriteScavengeBlock(kv, g_Round.players[slot]);
 	API_WriteItemsBlock(kv, g_Round.players[slot]);
 	API_WriteUtilitiesBlock(kv, g_Round.players[slot]);
 	API_WriteAccuracyBlock(kv, g_Round.players[slot]);
 	API_WriteModeBlocks(kv, g_Round.players[slot]);
+}
+
+int API_GetSubstitutionBufferSlot(int index)
+{
+	if (index < 0 || index >= g_iSubstitutionSnapshotCount)
+	{
+		return -1;
+	}
+
+	int oldest = (g_iSubstitutionSnapshotNext - g_iSubstitutionSnapshotCount + L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
+	return (oldest + index) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
+}
+
+int API_FindSubstitutionSnapshotById(const char[] substitutionId)
+{
+	for (int i = 0; i < g_iSubstitutionSnapshotCount; i++)
+	{
+		int slot = API_GetSubstitutionBufferSlot(i);
+		if (slot == -1 || !g_SubstitutionSnapshots[slot].active)
+		{
+			continue;
+		}
+
+		if (StrEqual(g_SubstitutionSnapshots[slot].substitutionId, substitutionId, false))
+		{
+			return slot;
+		}
+	}
+
+	return -1;
+}
+
+void API_WriteSubstitutionIdentityBlock(Handle kv, PlayerStatsSubstitutionSnapshotData snapshot)
+{
+	if (!KvJumpToKey(kv, "player", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "accountid", snapshot.player.player.accountId);
+	KvSetString(kv, "name", snapshot.player.player.name);
+	KvSetString(kv, "auth", snapshot.player.player.auth);
+	KvSetNum(kv, "bot", snapshot.player.player.bot ? 1 : 0);
+	KvSetNum(kv, "team", snapshot.player.team);
+
+	KvGoBack(kv);
+}
+
+void API_WriteSubstitutionSnapshot(Handle kv, PlayerStatsSubstitutionSnapshotData snapshot)
+{
+	KvSetString(kv, "id", snapshot.substitutionId);
+	KvSetNum(kv, "account_id", snapshot.accountId);
+	KvSetNum(kv, "timestamp", snapshot.timestamp);
+	KvSetNum(kv, "round_id", snapshot.roundId);
+	KvSetNum(kv, "slot", snapshot.slot);
+	KvSetNum(kv, "base_mode", snapshot.baseMode);
+	KvSetNum(kv, "restored", snapshot.restored ? 1 : 0);
+	KvSetString(kv, "map", snapshot.map);
+	API_WriteSubstitutionIdentityBlock(kv, snapshot);
+	API_WriteCombatBlock(kv, snapshot.player);
+	API_WriteSurvivabilityBlock(kv, snapshot.player);
+	API_WriteSupportBlock(kv, snapshot.player);
+	API_WriteInfectedGrabBlock(kv, snapshot.player);
+	API_WriteInfectedSupportBlock(kv, snapshot.player);
+	API_WriteSkillsBlock(kv, snapshot.player);
+	API_WriteScavengeBlock(kv, snapshot.player);
+	API_WriteItemsBlock(kv, snapshot.player);
+	API_WriteUtilitiesBlock(kv, snapshot.player);
+	API_WriteAccuracyBlock(kv, snapshot.player);
 }
 
 public int Native_PlayerStats_IsRoundActive(Handle plugin, int numParams)
@@ -551,6 +698,65 @@ public int Native_PlayerStats_FillRoundPlayerKeyValues(Handle plugin, int numPar
 	KvGoBack(kv);
 	KvRewind(kv);
 	return true;
+}
+
+public int Native_PlayerStats_GetSubstitutionCount(Handle plugin, int numParams)
+{
+	return g_iSubstitutionSnapshotCount;
+}
+
+public int Native_PlayerStats_GetSubstitutionId(Handle plugin, int numParams)
+{
+	int index = GetNativeCell(1);
+	int maxlen = GetNativeCell(3);
+	int slot = API_GetSubstitutionBufferSlot(index);
+	if (slot == -1 || !g_SubstitutionSnapshots[slot].active)
+	{
+		return false;
+	}
+
+	SetNativeString(2, g_SubstitutionSnapshots[slot].substitutionId, maxlen, true);
+	return true;
+}
+
+public int Native_PlayerStats_FillSubstitutionSnapshotKeyValues(Handle plugin, int numParams)
+{
+	char substitutionId[64];
+	GetNativeString(1, substitutionId, sizeof(substitutionId));
+
+	int slot = API_FindSubstitutionSnapshotById(substitutionId);
+	Handle kv = GetNativeCell(2);
+	if (slot == -1 || kv == INVALID_HANDLE)
+	{
+		return false;
+	}
+
+	KvRewind(kv);
+	if (!KvJumpToKey(kv, "substitution", true))
+	{
+		return false;
+	}
+
+	API_WriteSubstitutionSnapshot(kv, g_SubstitutionSnapshots[slot]);
+	KvGoBack(kv);
+	KvRewind(kv);
+	return true;
+}
+
+public int Native_PlayerStats_ApplySubstitutionSnapshotToSlot(Handle plugin, int numParams)
+{
+	char substitutionId[64];
+	GetNativeString(1, substitutionId, sizeof(substitutionId));
+
+	int slot = GetNativeCell(2);
+	int client = GetNativeCell(3);
+	int snapshotIndex = API_FindSubstitutionSnapshotById(substitutionId);
+	if (snapshotIndex == -1)
+	{
+		return false;
+	}
+
+	return Stats_RestoreSubstitutionSnapshotToSlot(snapshotIndex, slot, client);
 }
 
 public int Native_PlayerStats_MarkRestart(Handle plugin, int numParams)
