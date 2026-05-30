@@ -1415,14 +1415,47 @@ void Detect_OnTankKilled(int victim)
 	Detect_EndTankSession(sessionIndex);
 }
 
-void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
+int Detect_GetPlayerSkillsEventActorClient(int eventId, bool bossEvent)
 {
-	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsEventValid(eventId))
+	Handle kv = CreateKeyValues("player_skills_event");
+	if (kv == INVALID_HANDLE)
+	{
+		return 0;
+	}
+
+	bool ok = bossEvent
+		? PlayerSkills_FillBossEventKeyValues(eventId, kv)
+		: PlayerSkills_FillSkillEventKeyValues(eventId, kv);
+
+	if (!ok)
+	{
+		delete kv;
+		return 0;
+	}
+
+	char rootKey[16];
+	strcopy(rootKey, sizeof(rootKey), bossEvent ? "boss_event" : "skill_event");
+
+	KvRewind(kv);
+	if (!KvJumpToKey(kv, rootKey, false))
+	{
+		delete kv;
+		return 0;
+	}
+
+	int userid = KvGetNum(kv, "actor_userid", 0);
+	delete kv;
+	return userid > 0 ? GetClientOfUserId(userid) : 0;
+}
+
+void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
+{
+	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsSkillEventValid(eventId))
 	{
 		return;
 	}
 
-	int actor = PlayerSkills_GetEventClient(eventId, L4D2SkillPlayer_Actor);
+	int actor = Detect_GetPlayerSkillsEventActorClient(eventId, false);
 	if (!IsValidSurvivor(actor))
 	{
 		return;
@@ -1436,54 +1469,74 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2SkillType type)
 
 	switch (type)
 	{
-		case L4D2Skill_HunterSkeet:
+		case L4D2ApiSkill_HunterSkeet:
 		{
 			g_Round.players[index].skills.skeets++;
 			g_Round.totals.survivorTotalSkeets++;
 		}
-		case L4D2Skill_HunterSkeetMelee:
+		case L4D2ApiSkill_HunterSkeetMelee:
 		{
 			g_Round.players[index].skills.skeetMelees++;
 			g_Round.totals.survivorTotalSkeetMelees++;
 		}
-		case L4D2Skill_HunterDeadstop:
+		case L4D2ApiSkill_HunterDeadstop:
 		{
 			g_Round.players[index].skills.deadstops++;
 			g_Round.totals.survivorTotalDeadstops++;
 		}
-		case L4D2Skill_BoomerPop:
+		case L4D2ApiSkill_BoomerPop:
 		{
 			g_Round.players[index].skills.boomerPops++;
 			g_Round.totals.survivorTotalBoomerPops++;
 		}
-		case L4D2Skill_ChargerLevel:
+		case L4D2ApiSkill_ChargerLevel:
 		{
 			g_Round.players[index].skills.levels++;
 			g_Round.totals.survivorTotalLevels++;
 		}
-		case L4D2Skill_WitchDead:
-		{
-			if (PlayerSkills_GetEventBool(eventId, L4D2SkillBool_Crown))
-			{
-				g_Round.players[index].skills.crowns++;
-				g_Round.totals.survivorTotalCrowns++;
-			}
-		}
-		case L4D2Skill_SmokerTongueCut:
+		case L4D2ApiSkill_SmokerTongueCut:
 		{
 			g_Round.players[index].skills.tongueCuts++;
 			g_Round.totals.survivorTotalTongueCuts++;
 		}
-		case L4D2Skill_SmokerSelfClear:
+		case L4D2ApiSkill_SmokerSelfClear:
 		{
 			g_Round.players[index].skills.smokerSelfClears++;
 			g_Round.totals.survivorTotalSmokerSelfClears++;
 		}
-		case L4D2Skill_ChargerInstaKill:
+		case L4D2ApiSkill_ChargerInstaKill:
 		{
 			g_Round.players[index].skills.instaKills++;
 			g_Round.totals.survivorTotalInstaKills++;
 		}
 	}
 
+}
+
+void Detect_OnPlayerBossEventDetected(int eventId, L4D2ApiBossEventType type)
+{
+	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsBossEventValid(eventId))
+	{
+		return;
+	}
+
+	if (type != L4D2ApiBossEvent_WitchCrown)
+	{
+		return;
+	}
+
+	int actor = Detect_GetPlayerSkillsEventActorClient(eventId, true);
+	if (!IsValidSurvivor(actor))
+	{
+		return;
+	}
+
+	int index = Stats_EnsurePlayerRoundSlot(actor);
+	if (index == -1)
+	{
+		return;
+	}
+
+	g_Round.players[index].skills.crowns++;
+	g_Round.totals.survivorTotalCrowns++;
 }

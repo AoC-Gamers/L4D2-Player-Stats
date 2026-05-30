@@ -3,71 +3,304 @@
 #endif
 #define _l4d2_player_skills_included
 
-enum L4D2SkillType
-{
-	L4D2Skill_None = 0,
-	L4D2Skill_HunterSkeet,
-	L4D2Skill_HunterSkeetMelee,
-	L4D2Skill_HunterDeadstop,
-	L4D2Skill_BoomerPop,
-	L4D2Skill_ChargerLevel,
-	L4D2Skill_TankDead,
-	L4D2Skill_WitchDead,
-	L4D2Skill_WitchIncap,
-	L4D2Skill_SmokerTongueCut,
-	L4D2Skill_SmokerSelfClear,
-	L4D2Skill_TankRockSkeet,
-	L4D2Skill_TankRockHit,
-	L4D2Skill_HunterHighPounce,
-	L4D2Skill_JockeyHighPounce,
-	L4D2Skill_ChargerInstaKill,
-	L4D2Skill_ChargerDeathSetup,
-	L4D2Skill_SpecialPinClear,
-	L4D2Skill_BoomerVomitLanded,
-	L4D2Skill_BunnyHopStreak,
-	L4D2Skill_CarAlarmTriggered,
+#define LIBRARY_L4D2_PLAYER_SKILLS "l4d2_player_skills"
 
-	L4D2Skill_Size
+/**
+ * Public skill event types emitted by the immediate `skills` pipeline.
+ * These represent semantic competitive plays and exclude default SI kills
+ * and boss-specific events.
+ */
+enum L4D2ApiSkillType
+{
+	L4D2ApiSkill_None = 0,
+	L4D2ApiSkill_HunterSkeet,
+	L4D2ApiSkill_HunterSkeetMelee,
+	L4D2ApiSkill_HunterDeadstop,
+	L4D2ApiSkill_BoomerPop,
+	L4D2ApiSkill_ChargerLevel,
+	L4D2ApiSkill_SmokerTongueCut,
+	L4D2ApiSkill_SmokerSelfClear,
+	L4D2ApiSkill_HunterHighPounce,
+	L4D2ApiSkill_JockeyHighPounce,
+	L4D2ApiSkill_SmokerLedgeHang,
+	L4D2ApiSkill_JockeyLedgeHang,
+	L4D2ApiSkill_ChargerInstaKill,
+	L4D2ApiSkill_ChargerDeathSetup,
+	L4D2ApiSkill_ChargerLedgeHang,
+	L4D2ApiSkill_ChargerBowl,
+	L4D2ApiSkill_SpecialPinClear,
+	L4D2ApiSkill_BoomerVomitLanded,
+	L4D2ApiSkill_BunnyHopStreak,
+	L4D2ApiSkill_CarAlarmTriggered,
+	L4D2ApiSkill_JockeyJumpStop,
+	L4D2ApiSkill_JockeySkeetMelee,
+	L4D2ApiSkill_JockeySkeet,
+
+	L4D2ApiSkill_Size
 }
 
-enum L4D2SkillPlayerSlot
+/**
+ * Public kill event types emitted by the immediate `kills` pipeline.
+ * These represent default Special Infected deaths that were not absorbed
+ * by a higher-priority skill.
+ */
+enum L4D2ApiKillType
 {
-	L4D2SkillPlayer_Actor = 0,
-	L4D2SkillPlayer_Victim,
-	L4D2SkillPlayer_Assister,
-	L4D2SkillPlayer_PinVictim
+	L4D2ApiKill_None = 0,
+	L4D2ApiKill_SmokerKill,
+	L4D2ApiKill_BoomerKill,
+	L4D2ApiKill_HunterKill,
+	L4D2ApiKill_SpitterKill,
+	L4D2ApiKill_JockeyKill,
+	L4D2ApiKill_ChargerKill,
+
+	L4D2ApiKill_Size
 }
 
-enum L4D2SkillBoolField
+/**
+ * Public boss event types emitted by the immediate `boss events` pipeline.
+ * These represent boss-related plays and default boss death outcomes.
+ */
+enum L4D2ApiBossEventType
 {
-	L4D2SkillBool_WithShove = 0,
-	L4D2SkillBool_Indirect,
-	L4D2SkillBool_Forced,
-	L4D2SkillBool_WasCarried,
-	L4D2SkillBool_ReportedHigh,
-	L4D2SkillBool_Incapped,
-	L4D2SkillBool_LedgeHang,
-	L4D2SkillBool_FatalFall,
-	L4D2SkillBool_DeadlySlam,
-	L4D2SkillBool_WouldQualifyAtBaseline,
-	L4D2SkillBool_Crown,
-	L4D2SkillBool_Startled,
-	L4D2SkillBool_Perfect,
-	L4D2SkillBool_Headshot,
-	L4D2SkillBool_Sniper,
-	L4D2SkillBool_GrenadeLauncher
+	L4D2ApiBossEvent_None = 0,
+	L4D2ApiBossEvent_TankDead,
+	L4D2ApiBossEvent_WitchDead,
+	L4D2ApiBossEvent_WitchIncap,
+	L4D2ApiBossEvent_TankRockSkeet,
+	L4D2ApiBossEvent_TankRockHit,
+	L4D2ApiBossEvent_TankLedgeHang,
+	L4D2ApiBossEvent_WitchCrown,
+
+	L4D2ApiBossEvent_Size
 }
 
-forward Action PlayerSkills_OnSkillDetected(int eventId, L4D2SkillType type);
+/**
+ * Boss session types tracked by the boss session API.
+ */
+enum L4D2BossType
+{
+	L4D2Boss_None = 0,
+	L4D2Boss_Tank,
+	L4D2Boss_Witch
+}
 
-native bool PlayerSkills_IsEventValid(int eventId);
-native int PlayerSkills_GetEventType(int eventId);
-native bool PlayerSkills_GetEventBool(int eventId, L4D2SkillBoolField field);
-native int PlayerSkills_GetEventClient(int eventId, L4D2SkillPlayerSlot slot);
+/**
+ * Terminal close reasons for a Tank boss session.
+ */
+enum L4D2TankSessionEndReason
+{
+	L4D2TankSessionEnd_None = 0,
+	L4D2TankSessionEnd_Dead,
+	L4D2TankSessionEnd_Escaped,
+	L4D2TankSessionEnd_Wipe
+}
+
+/**
+ * Called whenever a public `skills` event is detected.
+ *
+ * @param eventId        Runtime identifier for the detected skill event.
+ * @param type           Public skill event type.
+ * @return               Plugin_Continue to allow the builtin announce flow.
+ *                       Plugin_Handled or higher to suppress it.
+ */
+forward Action PlayerSkills_OnSkillDetected(int eventId, L4D2ApiSkillType type);
+
+/**
+ * Called after a public `skills` event has been announced.
+ *
+ * @param eventId        Runtime identifier for the announced skill event.
+ * @param type           Public skill event type.
+ */
+forward void PlayerSkills_OnSkillAnnounced(int eventId, L4D2ApiSkillType type);
+
+/**
+ * Called whenever a public `kills` event is detected.
+ *
+ * @param eventId        Runtime identifier for the detected kill event.
+ * @param type           Public kill event type.
+ * @return               Plugin_Continue to allow the builtin announce flow.
+ *                       Plugin_Handled or higher to suppress it.
+ */
+forward Action PlayerSkills_OnKillDetected(int eventId, L4D2ApiKillType type);
+
+/**
+ * Called after a public `kills` event has been announced.
+ *
+ * @param eventId        Runtime identifier for the announced kill event.
+ * @param type           Public kill event type.
+ */
+forward void PlayerSkills_OnKillAnnounced(int eventId, L4D2ApiKillType type);
+
+/**
+ * Called whenever a public `boss events` event is detected.
+ *
+ * @param eventId        Runtime identifier for the detected boss event.
+ * @param type           Public boss event type.
+ * @return               Plugin_Continue to allow the builtin announce flow.
+ *                       Plugin_Handled or higher to suppress it.
+ */
+forward Action PlayerSkills_OnBossEventDetected(int eventId, L4D2ApiBossEventType type);
+
+/**
+ * Called after a public `boss events` event has been announced.
+ *
+ * @param eventId        Runtime identifier for the announced boss event.
+ * @param type           Public boss event type.
+ */
+forward void PlayerSkills_OnBossEventAnnounced(int eventId, L4D2ApiBossEventType type);
+
+/**
+ * Called whenever a boss session is finalized before the builtin summary announce.
+ *
+ * @param sessionId      Runtime identifier for the finalized boss session.
+ * @param type           Boss session type.
+ * @return               Plugin_Continue to allow the builtin announce flow.
+ *                       Plugin_Handled or higher to suppress it.
+ */
+forward Action PlayerSkills_OnBossSessionFinalized(int sessionId, L4D2BossType type);
+
+/**
+ * Called after a boss session summary has been announced.
+ *
+ * @param sessionId      Runtime identifier for the announced boss session.
+ * @param type           Boss session type.
+ */
+forward void PlayerSkills_OnBossSessionAnnounced(int sessionId, L4D2BossType type);
+
+/**
+ * Called once when a Tank session reaches its terminal close reason.
+ *
+ * @param sessionId      Runtime identifier for the Tank session.
+ * @param reason         Terminal close reason.
+ */
+forward void PlayerSkills_OnTankSessionClosed(int sessionId, L4D2TankSessionEndReason reason);
+
+/**
+ * Called whenever a skill summary snapshot is finalized for the current round/half.
+ *
+ * @param summaryId      Runtime identifier for the finalized skill summary.
+ */
+forward void PlayerSkills_OnSkillSummaryFinalized(int summaryId);
+
+/**
+ * Called whenever a kill summary snapshot is finalized for the current round/half.
+ *
+ * @param summaryId      Runtime identifier for the finalized kill summary.
+ */
+forward void PlayerSkills_OnKillSummaryFinalized(int summaryId);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid `skills` event.
+ *
+ * @param eventId        Runtime `skills` event identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsSkillEventValid(int eventId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a `skills` event.
+ * The native rewinds the handle and writes a `skill_event` root.
+ *
+ * @param eventId        Runtime `skills` event identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillSkillEventKeyValues(int eventId, Handle kv);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid `kills` event.
+ *
+ * @param eventId        Runtime `kills` event identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsKillEventValid(int eventId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a `kills` event.
+ * The native rewinds the handle and writes a `kill_event` root.
+ *
+ * @param eventId        Runtime `kills` event identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillKillEventKeyValues(int eventId, Handle kv);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid `boss events` event.
+ *
+ * @param eventId        Runtime `boss events` event identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsBossEventValid(int eventId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a `boss events` event.
+ * The native rewinds the handle and writes a `boss_event` root.
+ *
+ * @param eventId        Runtime `boss events` event identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillBossEventKeyValues(int eventId, Handle kv);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid boss session.
+ *
+ * @param sessionId      Runtime boss session identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsBossSessionValid(int sessionId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a boss session.
+ * The native rewinds the handle and writes a `boss_session` root.
+ *
+ * @param sessionId      Runtime boss session identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillBossSessionKeyValues(int sessionId, Handle kv);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid `skills` summary.
+ *
+ * @param summaryId      Runtime `skills` summary identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsSkillSummaryValid(int summaryId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a `skills` summary.
+ * The native rewinds the handle and writes a `skill_summary` root.
+ *
+ * @param summaryId      Runtime `skills` summary identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillSkillSummaryKeyValues(int summaryId, Handle kv);
+
+/**
+ * Returns whether a runtime identifier resolves to a valid `kills` summary.
+ *
+ * @param summaryId      Runtime `kills` summary identifier.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_IsKillSummaryValid(int summaryId);
+
+/**
+ * Fills a KeyValues handle with the structured payload of a `kills` summary.
+ * The native rewinds the handle and writes a `kill_summary` root.
+ *
+ * @param summaryId      Runtime `kills` summary identifier.
+ * @param kv             KeyValues handle to populate.
+ * @return               True on success, false otherwise.
+ */
+native bool PlayerSkills_FillKillSummaryKeyValues(int summaryId, Handle kv);
 
 public SharedPlugin __pl_l4d2_player_skills =
 {
-	name = "l4d2_player_skills",
+	name = "LIBRARY_L4D2_PLAYER_SKILLS",
 	file = "l4d2_player_skills.smx",
 #if defined REQUIRE_PLUGIN
 	required = 1,
@@ -79,9 +312,17 @@ public SharedPlugin __pl_l4d2_player_skills =
 #if !defined REQUIRE_PLUGIN
 public void __pl_l4d2_player_skills_SetNTVOptional()
 {
-	MarkNativeAsOptional("PlayerSkills_IsEventValid");
-	MarkNativeAsOptional("PlayerSkills_GetEventType");
-	MarkNativeAsOptional("PlayerSkills_GetEventBool");
-	MarkNativeAsOptional("PlayerSkills_GetEventClient");
+	MarkNativeAsOptional("PlayerSkills_IsSkillEventValid");
+	MarkNativeAsOptional("PlayerSkills_FillSkillEventKeyValues");
+	MarkNativeAsOptional("PlayerSkills_IsKillEventValid");
+	MarkNativeAsOptional("PlayerSkills_FillKillEventKeyValues");
+	MarkNativeAsOptional("PlayerSkills_IsBossEventValid");
+	MarkNativeAsOptional("PlayerSkills_FillBossEventKeyValues");
+	MarkNativeAsOptional("PlayerSkills_IsBossSessionValid");
+	MarkNativeAsOptional("PlayerSkills_FillBossSessionKeyValues");
+	MarkNativeAsOptional("PlayerSkills_IsSkillSummaryValid");
+	MarkNativeAsOptional("PlayerSkills_FillSkillSummaryKeyValues");
+	MarkNativeAsOptional("PlayerSkills_IsKillSummaryValid");
+	MarkNativeAsOptional("PlayerSkills_FillKillSummaryKeyValues");
 }
 #endif

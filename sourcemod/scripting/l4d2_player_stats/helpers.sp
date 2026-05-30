@@ -668,27 +668,27 @@ stock void Stats_RefreshModeContext()
 	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base_mode=%d history_scope=%d versus_context=%d team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d", g_Runtime.baseMode, g_Runtime.historyScope, g_Runtime.versusContext, g_Runtime.versusTeamSize, g_Runtime.configuredSurvivorLimit, g_Runtime.configuredPlayerZombieLimit, g_Runtime.siPoolMask, g_Runtime.enabledSiClassCount);
 }
 
-stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2SkillType type)
+stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2ApiSkillType type)
 {
 	switch (type)
 	{
-		case L4D2Skill_HunterSkeet, L4D2Skill_HunterSkeetMelee, L4D2Skill_HunterDeadstop, L4D2Skill_HunterHighPounce:
+		case L4D2ApiSkill_HunterSkeet, L4D2ApiSkill_HunterSkeetMelee, L4D2ApiSkill_HunterDeadstop, L4D2ApiSkill_HunterHighPounce:
 		{
 			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Hunter) : true;
 		}
-		case L4D2Skill_BoomerPop, L4D2Skill_BoomerVomitLanded:
+		case L4D2ApiSkill_BoomerPop, L4D2ApiSkill_BoomerVomitLanded:
 		{
 			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Boomer) : true;
 		}
-		case L4D2Skill_ChargerLevel, L4D2Skill_ChargerInstaKill, L4D2Skill_ChargerDeathSetup:
+		case L4D2ApiSkill_ChargerLevel, L4D2ApiSkill_ChargerInstaKill, L4D2ApiSkill_ChargerDeathSetup:
 		{
 			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Charger) : true;
 		}
-		case L4D2Skill_SmokerTongueCut, L4D2Skill_SmokerSelfClear:
+		case L4D2ApiSkill_SmokerTongueCut, L4D2ApiSkill_SmokerSelfClear:
 		{
 			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Smoker) : true;
 		}
-		case L4D2Skill_JockeyHighPounce:
+		case L4D2ApiSkill_JockeyHighPounce:
 		{
 			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Jockey) : true;
 		}
@@ -745,27 +745,27 @@ stock bool Stats_IsZombieClassEnabledForRound(L4D2ZombieClassType zombieClass)
 	return Stats_IsZombieClassEnabledForSnapshot(zombieClass, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
 }
 
-stock bool Stats_IsSkillTypeEnabledForSnapshot(L4D2SkillType type, bool isVersusMode, int siPoolMask)
+stock bool Stats_IsSkillTypeEnabledForSnapshot(L4D2ApiSkillType type, bool isVersusMode, int siPoolMask)
 {
 	switch (type)
 	{
-		case L4D2Skill_HunterSkeet, L4D2Skill_HunterSkeetMelee, L4D2Skill_HunterDeadstop, L4D2Skill_HunterHighPounce:
+		case L4D2ApiSkill_HunterSkeet, L4D2ApiSkill_HunterSkeetMelee, L4D2ApiSkill_HunterDeadstop, L4D2ApiSkill_HunterHighPounce:
 		{
 			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Hunter, isVersusMode, siPoolMask);
 		}
-		case L4D2Skill_BoomerPop, L4D2Skill_BoomerVomitLanded:
+		case L4D2ApiSkill_BoomerPop, L4D2ApiSkill_BoomerVomitLanded:
 		{
 			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Boomer, isVersusMode, siPoolMask);
 		}
-		case L4D2Skill_ChargerLevel, L4D2Skill_ChargerInstaKill, L4D2Skill_ChargerDeathSetup:
+		case L4D2ApiSkill_ChargerLevel, L4D2ApiSkill_ChargerInstaKill, L4D2ApiSkill_ChargerDeathSetup:
 		{
 			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Charger, isVersusMode, siPoolMask);
 		}
-		case L4D2Skill_SmokerTongueCut, L4D2Skill_SmokerSelfClear:
+		case L4D2ApiSkill_SmokerTongueCut, L4D2ApiSkill_SmokerSelfClear:
 		{
 			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Smoker, isVersusMode, siPoolMask);
 		}
-		case L4D2Skill_JockeyHighPounce:
+		case L4D2ApiSkill_JockeyHighPounce:
 		{
 			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Jockey, isVersusMode, siPoolMask);
 		}
@@ -774,7 +774,7 @@ stock bool Stats_IsSkillTypeEnabledForSnapshot(L4D2SkillType type, bool isVersus
 	return true;
 }
 
-stock bool Stats_IsSkillTypeEnabledForRound(L4D2SkillType type)
+stock bool Stats_IsSkillTypeEnabledForRound(L4D2ApiSkillType type)
 {
 	return Stats_IsSkillTypeEnabledForSnapshot(type, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
 }

@@ -21,7 +21,6 @@
 
 #define LIBRARY_READYUP "readyup"
 #define LIBRARY_CONFOGL "confogl"
-#define LIBRARY_L4D2_PLAYER_SKILLS "l4d2_player_skills"
 #define LIBRARY_L4D2_BOSS_PERCENTS "l4d_boss_percent"
 #define LIBRARY_LEFT4DHOOKS "left4dhooks"
 #define LOG_DIRECTORY "logs/l4d2_player_stats.log"
@@ -365,9 +364,15 @@ public void L4D_OnVomitedUpon_Post(int victim, int attacker, bool boomerExplosio
 	Detect_OnVomitedUponPost(victim, attacker, boomerExplosion);
 }
 
-public Action PlayerSkills_OnSkillDetected(int eventId, L4D2SkillType type)
+public Action PlayerSkills_OnSkillDetected(int eventId, L4D2ApiSkillType type)
 {
 	Detect_OnPlayerSkillDetected(eventId, type);
+	return Plugin_Continue;
+}
+
+public Action PlayerSkills_OnBossEventDetected(int eventId, L4D2ApiBossEventType type)
+{
+	Detect_OnPlayerBossEventDetected(eventId, type);
 	return Plugin_Continue;
 }
 
