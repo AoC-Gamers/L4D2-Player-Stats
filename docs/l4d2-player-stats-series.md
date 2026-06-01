@@ -1,82 +1,89 @@
 # L4D2-Player-Stats-Series
 
-`L4D2-Player-Stats-Series` is a lightweight consumer of `L4D2-Player-Stats`.
+`L4D2-Player-Stats-Series` es un consumidor liviano de `L4D2-Player-Stats`.
 
-It listens to finalized round snapshots and groups them into short-lived in-memory series using mode-aware boundaries.
+Escucha snapshots finalizados de ronda y los agrupa en series cortas en memoria
+usando boundaries dependientes del modo.
 
-## Responsibility
+## Responsabilidad
 
-- consume finalized `PlayerStats` round snapshots
-- keep a small in-memory set of active/closed series
-- detect when a new series must begin based on base mode and lifecycle rules
+- consumir snapshots finalizados de `PlayerStats`
+- mantener un conjunto pequeño de series activas/cerradas en memoria
+- detectar cuándo debe comenzar una serie nueva según modo base y lifecycle
 
-This plugin does not try to replace `L4D2-Player-Stats`.
+Este plugin no intenta reemplazar `L4D2-Player-Stats`.
 
-`L4D2-Player-Stats` remains the source of truth for round snapshots. `L4D2-Player-Stats-Series` only aggregates those snapshots into a higher temporal unit.
+`L4D2-Player-Stats` sigue siendo la fuente de verdad del snapshot de ronda.
+`L4D2-Player-Stats-Series` solo agrega esos snapshots en una unidad temporal
+superior.
 
-This module is intentionally internal to the `PlayerStats` family. It does not publish its own SourceMod library or public native API.
+Este módulo es intencionalmente interno a la familia `PlayerStats`.
 
-It is also optional. It is not part of the main `PlayerStats` artifact/package.
+- no publica librería SourceMod propia
+- no publica natives públicos
+- no publica forwards públicos
+
+También es opcional. No forma parte del artefacto principal de `PlayerStats`.
 
 ## Boundary Rules
 
-Series detection follows the lifecycle rules described in:
+La detección de series sigue las reglas de lifecycle descritas en:
 
 - [l4d2-mode-lifecycle-business-rules.md](C:/GitHub/L4D2-Player-Stats/docs/l4d2-mode-lifecycle-business-rules.md)
 
-Current behavior:
+Comportamiento actual:
 
 - `Coop`
-  - series scope is `mission`
-  - a new series starts when the mission key changes
+  - el scope de serie es `mission`
+  - una serie nueva comienza cuando cambia la mission key
 - `Versus`
-  - series scope is `mission`
-  - a new series starts when the mission key changes
+  - el scope de serie es `mission`
+  - una serie nueva comienza cuando cambia la mission key
 - `Scavenge`
-  - series scope is `map`
-  - a new series starts when the map changes
+  - el scope de serie es `map`
+  - una serie nueva comienza cuando cambia el mapa
 - `Survival`
-  - series scope is `map`
-  - a new series starts when the map changes
+  - el scope de serie es `map`
+  - una serie nueva comienza cuando cambia el mapa
 
-The current mission key is derived from the map prefix before `m`, for example:
+La `mission key` actual se deriva del prefijo del mapa antes de `m`, por ejemplo:
 
 - `c2m3_coaster` -> `c2`
 - `l4d_hospital01_apartment` -> `l4d_hospital01_apartment`
 
 ## Lifecycle
 
-- snapshots are accepted only when `PlayerStats_OnRoundFinalized(roundId)` fires
-- the plugin keeps one active series
-- older series are kept in a short closed buffer
-- storage is memory-only
+- los snapshots solo se aceptan cuando `PlayerStats` finaliza una ronda
+- el plugin mantiene una sola serie activa
+- las series viejas quedan en un buffer corto de cerradas
+- el storage es solo en memoria
 
-No persistence, disk history, or long-term archive is implemented here.
+No hay persistencia, historial en disco ni archivo de largo plazo.
 
 ## Commands
 
 - `sm_stats_series`
-  - prints the current in-memory series buffer
+  - imprime el buffer actual de series en memoria
 - `sm_stats_series <id>`
-  - prints the aggregated totals for the requested series
-  - prints the aggregated player table for the requested series
-  - then prints the entry table for that same series
+  - imprime los totales agregados de la serie pedida
+  - imprime la tabla agregada por jugador de la serie pedida
+  - luego imprime la tabla de entries de esa misma serie
 
 ## Table Behavior
 
-`sm_stats_series <id>` prints the aggregated player table ordered by competitive contribution:
+`sm_stats_series <id>` imprime la tabla agregada por jugador ordenada por contribución competitiva:
 
-- total combat damage: `SI + Tank + Witch` descending
-- `Common Infected` descending
-- `Friendly Fire` ascending
-- `Rounds` descending
-- `Player` name ascending
+- daño total de combate: `SI + Tank + Witch` descendente
+- `Common Infected` descendente
+- `Friendly Fire` ascendente
+- `Rounds` descendente
+- nombre de `Player` ascendente
 
-This keeps the most relevant survivor rows near the top without requiring a separate MVP-style score.
+Eso mantiene las filas survivor más relevantes cerca del tope sin introducir un score MVP separado.
 
 ## Build
 
-Example compile command:
+Comando de compilación de ejemplo:
 
 ```powershell
 & 'C:\sourcemodAPI\addons\sourcemod\scripting\spcomp.exe' `

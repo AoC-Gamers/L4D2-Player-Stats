@@ -103,8 +103,8 @@ Notas de implementación:
 
 - buffer circular de `16`
 - clave `accountid:timestamp`
-- forward `PlayerStats_OnPlayerSubstituted(...)`
-- native `PlayerStats_ApplySubstitutionSnapshotToSlot(...)`
+- un hook público para interceptar la sustitución
+- una vía pública para reaplicar manualmente el snapshot al slot
 
 Si un consumidor bloquea la rehidratación automática:
 
