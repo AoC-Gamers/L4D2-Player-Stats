@@ -6,9 +6,7 @@
 #define L4D2_PLAYER_STATS_MAX_PLAYERS 33
 #define L4D2_PLAYER_STATS_MAX_SLOTS 65
 #define L4D2_PLAYER_STATS_MAX_TRACKED_BOSSES 16
-#define L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS 32
 #define L4D2_PLAYER_STATS_MAX_SURVIVORS 4
-#define L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS 8
 #define L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS 16
 #define L4D2_PLAYER_STATS_MAX_TANK_SESSIONS 4
 #define L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS 4
@@ -105,14 +103,14 @@ enum PlayerStatsVersusContextType
 	PlayerStatsVersusContext_CustomTeamVersus
 }
 
-enum PlayerStatsHistoryScopeType
+enum PlayerStatsSeriesScopeType
 {
-	PlayerStatsHistoryScope_None = 0,
-	PlayerStatsHistoryScope_CurrentMap,
-	PlayerStatsHistoryScope_CampaignRun,
-	PlayerStatsHistoryScope_CompetitiveSeries,
-	PlayerStatsHistoryScope_ScavengeMatch,
-	PlayerStatsHistoryScope_SurvivalRuns
+	PlayerStatsSeriesScope_None = 0,
+	PlayerStatsSeriesScope_CurrentMap,
+	PlayerStatsSeriesScope_CampaignRun,
+	PlayerStatsSeriesScope_CompetitiveSeries,
+	PlayerStatsSeriesScope_ScavengeMatch,
+	PlayerStatsSeriesScope_SurvivalRuns
 }
 
 enum PlayerStatsRoundStartSignalType
@@ -157,13 +155,6 @@ enum PlayerStatsRoundEndReasonType
 	PlayerStatsRoundEndReason_FinaleWin,
 	PlayerStatsRoundEndReason_MapEnd,
 	PlayerStatsRoundEndReason_PluginEnd
-}
-
-enum PlayerStatsRestartSourceType
-{
-	PlayerStatsRestartSource_None = 0,
-	PlayerStatsRestartSource_VotePassed,
-	PlayerStatsRestartSource_DirectScenarioRestart
 }
 
 enum PlayerStatsDebugCategory
@@ -341,7 +332,7 @@ enum struct PlayerStatsModeContextData
 enum struct PlayerStatsLifecyclePolicyData
 {
 	int baseMode;
-	PlayerStatsHistoryScopeType historyScope;
+	PlayerStatsSeriesScopeType seriesScope;
 	PlayerStatsRoundStartSignalType roundStartSignal;
 	PlayerStatsRoundEndSignalType roundEndSignal;
 	PlayerStatsRoundLiveSignalType roundLiveSignal;
@@ -350,7 +341,7 @@ enum struct PlayerStatsLifecyclePolicyData
 	void Reset()
 	{
 		this.baseMode = GAMEMODE_UNKNOWN;
-		this.historyScope = PlayerStatsHistoryScope_None;
+		this.seriesScope = PlayerStatsSeriesScope_None;
 		this.roundStartSignal = PlayerStatsRoundStartSignal_None;
 		this.roundEndSignal = PlayerStatsRoundEndSignal_None;
 		this.roundLiveSignal = PlayerStatsRoundLiveSignal_None;
@@ -375,9 +366,12 @@ enum struct PlayerStatsCombatData
 	int jockeyKills;
 	int chargerKills;
 	int tankKills;
+	int witchKills;
 	int ffGiven;
 	int tankDamage;
+	int tankHits;
 	int witchDamage;
+	int witchHits;
 
 	void Reset()
 	{
@@ -396,9 +390,64 @@ enum struct PlayerStatsCombatData
 		this.jockeyKills = 0;
 		this.chargerKills = 0;
 		this.tankKills = 0;
+		this.witchKills = 0;
 		this.ffGiven = 0;
 		this.tankDamage = 0;
+		this.tankHits = 0;
 		this.witchDamage = 0;
+		this.witchHits = 0;
+	}
+}
+
+enum struct PlayerStatsCombatAssistData
+{
+	int siKillAssists;
+	int siAssistDamage;
+	int smokerKillAssists;
+	int boomerKillAssists;
+	int hunterKillAssists;
+	int spitterKillAssists;
+	int jockeyKillAssists;
+	int chargerKillAssists;
+	int smokerAssistDamage;
+	int boomerAssistDamage;
+	int hunterAssistDamage;
+	int spitterAssistDamage;
+	int jockeyAssistDamage;
+	int chargerAssistDamage;
+
+	void Reset()
+	{
+		this.siKillAssists = 0;
+		this.siAssistDamage = 0;
+		this.smokerKillAssists = 0;
+		this.boomerKillAssists = 0;
+		this.hunterKillAssists = 0;
+		this.spitterKillAssists = 0;
+		this.jockeyKillAssists = 0;
+		this.chargerKillAssists = 0;
+		this.smokerAssistDamage = 0;
+		this.boomerAssistDamage = 0;
+		this.hunterAssistDamage = 0;
+		this.spitterAssistDamage = 0;
+		this.jockeyAssistDamage = 0;
+		this.chargerAssistDamage = 0;
+	}
+}
+
+enum struct PlayerStatsBossDetailData
+{
+	int tankDamage;
+	int tankShots;
+	int witchDamage;
+	int witchShots;
+
+	void Reset()
+	{
+		this.tankDamage = 0;
+		this.tankShots = 0;
+		this.witchDamage = 0;
+		this.witchShots = 0;
 	}
 }
 
@@ -495,32 +544,6 @@ enum struct PlayerStatsInfectedSupportData
 	{
 		this.boomerVomitVictims = 0;
 		this.spitterDamage = 0;
-	}
-}
-
-enum struct PlayerStatsSkillData
-{
-	int skeets;
-	int skeetMelees;
-	int deadstops;
-	int boomerPops;
-	int levels;
-	int crowns;
-	int tongueCuts;
-	int smokerSelfClears;
-	int instaKills;
-
-	void Reset()
-	{
-		this.skeets = 0;
-		this.skeetMelees = 0;
-		this.deadstops = 0;
-		this.boomerPops = 0;
-		this.levels = 0;
-		this.crowns = 0;
-		this.tongueCuts = 0;
-		this.smokerSelfClears = 0;
-		this.instaKills = 0;
 	}
 }
 
@@ -621,12 +644,13 @@ enum struct PlayerStatsPlayerRoundData
 	PlayerStatsPlayerRef player;
 	PlayerStatsTeam team;
 	PlayerStatsCombatData combat;
+	PlayerStatsCombatAssistData combatAssists;
+	PlayerStatsBossDetailData bossDetail;
 	PlayerStatsSurvivabilityData survivability;
 	PlayerStatsSupportData support;
 	PlayerStatsPressureData pressure;
 	PlayerStatsInfectedGrabData infectedGrab;
 	PlayerStatsInfectedSupportData infectedSupport;
-	PlayerStatsSkillData skills;
 	PlayerStatsResourceData resources;
 	PlayerStatsScavengeData scavenge;
 	PlayerStatsAccuracyData accuracy;
@@ -643,12 +667,13 @@ enum struct PlayerStatsPlayerRoundData
 		this.player.Reset();
 		this.team = PlayerStatsTeam_None;
 		this.combat.Reset();
+		this.combatAssists.Reset();
+		this.bossDetail.Reset();
 		this.survivability.Reset();
 		this.support.Reset();
 		this.pressure.Reset();
 		this.infectedGrab.Reset();
 		this.infectedSupport.Reset();
-		this.skills.Reset();
 		this.resources.Reset();
 		this.scavenge.Reset();
 		this.accuracy.Reset();
@@ -675,7 +700,7 @@ enum struct PlayerStatsRoundMetaData
 	int enabledSiClassCount;
 	int versusTeamSize;
 	PlayerStatsVersusContextType versusContext;
-	PlayerStatsHistoryScopeType historyScope;
+	PlayerStatsSeriesScopeType seriesScope;
 	PlayerStatsRoundStartSignalType roundStartSignal;
 	PlayerStatsRoundEndSignalType roundEndSignal;
 	PlayerStatsRoundLiveSignalType roundLiveSignal;
@@ -703,7 +728,7 @@ enum struct PlayerStatsRoundMetaData
 		this.enabledSiClassCount = 0;
 		this.versusTeamSize = 0;
 		this.versusContext = PlayerStatsVersusContext_None;
-		this.historyScope = PlayerStatsHistoryScope_None;
+		this.seriesScope = PlayerStatsSeriesScope_None;
 		this.roundStartSignal = PlayerStatsRoundStartSignal_None;
 		this.roundEndSignal = PlayerStatsRoundEndSignal_None;
 		this.roundLiveSignal = PlayerStatsRoundLiveSignal_None;
@@ -732,7 +757,22 @@ enum struct PlayerStatsRoundTotalsData
 	int survivorTotalSpitterKills;
 	int survivorTotalJockeyKills;
 	int survivorTotalChargerKills;
+	int survivorTotalSiKillAssists;
+	int survivorTotalSmokerKillAssists;
+	int survivorTotalBoomerKillAssists;
+	int survivorTotalHunterKillAssists;
+	int survivorTotalSpitterKillAssists;
+	int survivorTotalJockeyKillAssists;
+	int survivorTotalChargerKillAssists;
+	int survivorTotalSiAssistDamage;
+	int survivorTotalSmokerAssistDamage;
+	int survivorTotalBoomerAssistDamage;
+	int survivorTotalHunterAssistDamage;
+	int survivorTotalSpitterAssistDamage;
+	int survivorTotalJockeyAssistDamage;
+	int survivorTotalChargerAssistDamage;
 	int survivorTotalTankKills;
+	int survivorTotalWitchKills;
 	int survivorTotalFF;
 	int survivorTotalDeaths;
 	int survivorTotalIncaps;
@@ -749,15 +789,6 @@ enum struct PlayerStatsRoundTotalsData
 	int infectedTotalChargerDamage;
 	int infectedTotalGrabDamage;
 	int infectedTotalSpitterDamage;
-	int survivorTotalSkeets;
-	int survivorTotalSkeetMelees;
-	int survivorTotalDeadstops;
-	int survivorTotalBoomerPops;
-	int survivorTotalLevels;
-	int survivorTotalCrowns;
-	int survivorTotalTongueCuts;
-	int survivorTotalSmokerSelfClears;
-	int survivorTotalInstaKills;
 	int survivorTotalPillsUsed;
 	int survivorTotalAdrenalineUsed;
 	int survivorTotalMedkitsUsed;
@@ -790,7 +821,22 @@ enum struct PlayerStatsRoundTotalsData
 		this.survivorTotalSpitterKills = 0;
 		this.survivorTotalJockeyKills = 0;
 		this.survivorTotalChargerKills = 0;
+		this.survivorTotalSiKillAssists = 0;
+		this.survivorTotalSmokerKillAssists = 0;
+		this.survivorTotalBoomerKillAssists = 0;
+		this.survivorTotalHunterKillAssists = 0;
+		this.survivorTotalSpitterKillAssists = 0;
+		this.survivorTotalJockeyKillAssists = 0;
+		this.survivorTotalChargerKillAssists = 0;
+		this.survivorTotalSiAssistDamage = 0;
+		this.survivorTotalSmokerAssistDamage = 0;
+		this.survivorTotalBoomerAssistDamage = 0;
+		this.survivorTotalHunterAssistDamage = 0;
+		this.survivorTotalSpitterAssistDamage = 0;
+		this.survivorTotalJockeyAssistDamage = 0;
+		this.survivorTotalChargerAssistDamage = 0;
 		this.survivorTotalTankKills = 0;
+		this.survivorTotalWitchKills = 0;
 		this.survivorTotalFF = 0;
 		this.survivorTotalDeaths = 0;
 		this.survivorTotalIncaps = 0;
@@ -807,15 +853,6 @@ enum struct PlayerStatsRoundTotalsData
 		this.infectedTotalChargerDamage = 0;
 		this.infectedTotalGrabDamage = 0;
 		this.infectedTotalSpitterDamage = 0;
-		this.survivorTotalSkeets = 0;
-		this.survivorTotalSkeetMelees = 0;
-		this.survivorTotalDeadstops = 0;
-		this.survivorTotalBoomerPops = 0;
-		this.survivorTotalLevels = 0;
-		this.survivorTotalCrowns = 0;
-		this.survivorTotalTongueCuts = 0;
-		this.survivorTotalSmokerSelfClears = 0;
-		this.survivorTotalInstaKills = 0;
 		this.survivorTotalPillsUsed = 0;
 		this.survivorTotalAdrenalineUsed = 0;
 		this.survivorTotalMedkitsUsed = 0;
@@ -971,7 +1008,7 @@ enum struct PlayerStatsRuntimeState
 	int enabledSiClassCount;
 	int versusTeamSize;
 	PlayerStatsVersusContextType versusContext;
-	PlayerStatsHistoryScopeType historyScope;
+	PlayerStatsSeriesScopeType seriesScope;
 	PlayerStatsRoundStartSignalType roundStartSignal;
 	PlayerStatsRoundEndSignalType roundEndSignal;
 	PlayerStatsRoundLiveSignalType roundLiveSignal;
@@ -1001,7 +1038,7 @@ enum struct PlayerStatsRuntimeState
 		this.enabledSiClassCount = 0;
 		this.versusTeamSize = 0;
 		this.versusContext = PlayerStatsVersusContext_None;
-		this.historyScope = PlayerStatsHistoryScope_None;
+		this.seriesScope = PlayerStatsSeriesScope_None;
 		this.roundStartSignal = PlayerStatsRoundStartSignal_None;
 		this.roundEndSignal = PlayerStatsRoundEndSignal_None;
 		this.roundLiveSignal = PlayerStatsRoundLiveSignal_None;
@@ -1012,135 +1049,6 @@ enum struct PlayerStatsRuntimeState
 			this.playerSlotByClient[client] = -1;
 			this.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
 			this.lastWeaponDetailByClient[client] = PlayerStatsWeaponDetail_None;
-		}
-	}
-}
-
-enum struct PlayerStatsGameRoundEntry
-{
-	bool active;
-	int roundId;
-	int baseMode;
-	PlayerStatsHistoryScopeType historyScope;
-	char map[64];
-	int durationSeconds;
-	int siKills;
-	int commonKills;
-	int deaths;
-	int incaps;
-	int kitsUsed;
-	int pillsUsed;
-	int restarts;
-	PlayerStatsRestartSourceType restartSource;
-	PlayerStatsRoundEndReasonType endReason;
-
-	void Reset()
-	{
-		this.active = false;
-		this.roundId = 0;
-		this.baseMode = GAMEMODE_UNKNOWN;
-		this.historyScope = PlayerStatsHistoryScope_None;
-		this.map[0] = '\0';
-		this.durationSeconds = 0;
-		this.siKills = 0;
-		this.commonKills = 0;
-		this.deaths = 0;
-		this.incaps = 0;
-		this.kitsUsed = 0;
-		this.pillsUsed = 0;
-		this.restarts = 0;
-		this.restartSource = PlayerStatsRestartSource_None;
-		this.endReason = PlayerStatsRoundEndReason_None;
-	}
-}
-
-enum struct PlayerStatsHistoricalPlayerData
-{
-	bool active;
-	bool bot;
-	char name[MAX_NAME_LENGTH];
-	PlayerStatsTeam team;
-	PlayerStatsCombatData combat;
-	PlayerStatsResourceData resources;
-	PlayerStatsScavengeData scavenge;
-	PlayerStatsSupportData support;
-	PlayerStatsInfectedGrabData infectedGrab;
-	PlayerStatsInfectedSupportData infectedSupport;
-	PlayerStatsSkillData skills;
-	PlayerStatsAccuracyData accuracy;
-	PlayerStatsAccuracyDetailData accuracyDetails;
-
-	void Reset()
-	{
-		this.active = false;
-		this.bot = false;
-		this.name[0] = '\0';
-		this.team = PlayerStatsTeam_None;
-		this.combat.Reset();
-		this.resources.Reset();
-		this.scavenge.Reset();
-		this.support.Reset();
-		this.infectedGrab.Reset();
-		this.infectedSupport.Reset();
-		this.skills.Reset();
-		this.accuracy.Reset();
-		this.accuracyDetails.Reset();
-	}
-}
-
-enum struct PlayerStatsHistoricalRoundData
-{
-	bool active;
-	int roundId;
-	int baseMode;
-	bool isVersusMode;
-	int scavengeRoundNumber;
-	bool scavengeInSecondHalf;
-	int scavengeItemsGoal;
-	bool scavengeWentOvertime;
-	bool scavengeScoreTied;
-	int siPoolMask;
-	int durationSeconds;
-	int storedTankPercent;
-	int storedWitchPercent;
-	int tankCount;
-	int witchCount;
-	int tankSessionCount;
-	PlayerStatsTankSessionData tankSessions[L4D2_PLAYER_STATS_MAX_TANK_SESSIONS];
-	PlayerStatsRoundEndReasonType endReason;
-	PlayerStatsHistoryScopeType historyScope;
-	PlayerStatsRoundTotalsData totals;
-	PlayerStatsHistoricalPlayerData players[L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS];
-
-	void Reset()
-	{
-		this.active = false;
-		this.roundId = 0;
-		this.baseMode = GAMEMODE_UNKNOWN;
-		this.isVersusMode = false;
-		this.scavengeRoundNumber = 0;
-		this.scavengeInSecondHalf = false;
-		this.scavengeItemsGoal = 0;
-		this.scavengeWentOvertime = false;
-		this.scavengeScoreTied = false;
-		this.siPoolMask = PlayerStatsSiPool_None;
-		this.durationSeconds = 0;
-		this.storedTankPercent = -1;
-		this.storedWitchPercent = -1;
-		this.tankCount = 0;
-		this.witchCount = 0;
-		this.tankSessionCount = 0;
-		this.endReason = PlayerStatsRoundEndReason_None;
-		this.historyScope = PlayerStatsHistoryScope_None;
-		this.totals.Reset();
-
-		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS; i++)
-		{
-			this.players[i].Reset();
-		}
-		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; i++)
-		{
-			this.tankSessions[i].Reset();
 		}
 	}
 }
@@ -1170,35 +1078,5 @@ enum struct PlayerStatsSubstitutionSnapshotData
 		this.baseMode = GAMEMODE_UNKNOWN;
 		this.map[0] = '\0';
 		this.player.Reset();
-	}
-}
-
-enum struct PlayerStatsGameHistoryData
-{
-	bool active;
-	int seriesId;
-	int roundCount;
-	int lastCampaignScoreA;
-	int lastCampaignScoreB;
-	bool pendingScavengeMatchReset;
-	int restartCount;
-	PlayerStatsRestartSourceType restartSource;
-	PlayerStatsGameRoundEntry rounds[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS];
-
-	void Reset()
-	{
-		this.active = false;
-		this.seriesId = 0;
-		this.roundCount = 0;
-		this.lastCampaignScoreA = 0;
-		this.lastCampaignScoreB = 0;
-		this.pendingScavengeMatchReset = false;
-		this.restartCount = 0;
-		this.restartSource = PlayerStatsRestartSource_None;
-
-		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
-		{
-			this.rounds[i].Reset();
-		}
 	}
 }

@@ -54,9 +54,9 @@ La regla es única:
 - antes de live, no contar
 - después de live, contar
 
-## Historical Unit By Mode
+## Lifecycle Scope By Mode
 
-La unidad histórica natural depende del modo:
+El scope de serie natural depende del modo:
 
 - `Coop` -> ronda o intento del capítulo
 - `Survival` -> run
@@ -97,22 +97,18 @@ La política actual es:
 
 - si vuelve el mismo jugador persistente, el flujo continúa
 - si entra otro jugador distinto, se snapshottea al saliente y el slot live se limpia
+- el snapshot del saliente queda disponible de forma transitoria para rehidratación
 
-## Substitution Snapshots
-
-La capa de sustitución existe para no mezclar automáticamente a dos humanos distintos en el mismo bloque live.
-
-Características:
+Notas de implementación:
 
 - buffer circular de `16`
 - clave `accountid:timestamp`
-- soporte de restauración
-- forward hookable
-- native para apply manual
+- forward `PlayerStats_OnPlayerSubstituted(...)`
+- native `PlayerStats_ApplySubstitutionSnapshotToSlot(...)`
 
-Si el consumidor bloquea la rehidratación automática:
+Si un consumidor bloquea la rehidratación automática:
 
-- el slot queda limpio
+- el slot queda limpio hasta que otro plugin decida reaplicarlo
 
 ## Tracking Sources
 

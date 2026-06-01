@@ -33,6 +33,13 @@ native bool PlayerStats_FillRoundKeyValues(int roundId, Handle kv);
 native bool PlayerStats_FillRoundPlayerKeyValues(int roundId, int slot, Handle kv);
 ```
 
+Para el flujo de sustituciones, la superficie pública intencionalmente es más chica:
+
+```sourcepawn
+forward Action PlayerStats_OnPlayerSubstituted(const char[] substitutionId, int roundId, int slot, int incomingClient);
+native bool PlayerStats_ApplySubstitutionSnapshotToSlot(const char[] substitutionId, int slot, int client);
+```
+
 ## Current Availability
 
 Estos natives ya están implementados en el core actual.
@@ -45,6 +52,13 @@ La validación recomendada para consumidores externos es:
 4. validar cada `slot` con `PlayerStats_IsRoundPlayerSlotValid(roundId, slot)` si hace falta
 5. pedir detalle con `PlayerStats_FillRoundPlayerKeyValues(roundId, slot, kv)`
 
+Para debugging del contrato real existe también un probe opcional en:
+
+- [l4d2_player_stats_api.sp](C:/GitHub/L4D2-Player-Stats/sourcemod/scripting/l4d2_player_stats_api.sp)
+
+Ese plugin no forma parte del artefacto principal. Solo consume la API pública y
+exporta snapshots finalizados a logs.
+
 ## Current Rule
 
 La API debe exponer estadísticas agregadas de `PlayerStats`.
@@ -54,6 +68,13 @@ No debe mezclar en este payload:
 - sesiones completas de bosses de `PlayerSkills`
 - eventos crudos de `PlayerSkills`
 - tablas gigantes de debug
+
+Tampoco debe exponer el buffer interno completo de substitution snapshots como
+API de consulta genérica. Para consumidores externos, el flujo soportado es:
+
+1. interceptar `PlayerStats_OnPlayerSubstituted(...)`
+2. decidir si bloquear la rehidratación automática
+3. si corresponde, reaplicar el snapshot con `PlayerStats_ApplySubstitutionSnapshotToSlot(...)`
 
 ## First KV Scope
 
@@ -68,6 +89,12 @@ La primera versión del `KeyValues` de ronda incluye solo:
 La metadata mínima de ronda es:
 
 - `id`
+
+Dentro del bloque `context`, el snapshot también expone metadata de lifecycle
+útil para consumidores del stack, incluyendo:
+
+- `base_mode`
+- `series_scope`
 
 ## Minimal Totals
 
@@ -101,6 +128,8 @@ La primera forma recomendada es:
 
 - `identity`
 - `combat`
+- `combat_assists`
+- `boss_detail`
 - `survivability`
 - `support`
 - `items`
@@ -140,7 +169,9 @@ Este bloque incluye solo:
 - `jockey_damage`
 - `charger_damage`
 - `tank_damage`
+- `tank_hits`
 - `witch_damage`
+- `witch_hits`
 - `common_kills`
 - `smoker_kills`
 - `boomer_kills`
@@ -149,7 +180,17 @@ Este bloque incluye solo:
 - `jockey_kills`
 - `charger_kills`
 - `tank_kills`
+- `witch_kills`
 - `ff_given`
+
+Notas:
+
+- `tank_hits` y `witch_hits`
+  - representan el fallback local de `stats` sin `PlayerSkills`
+  - sirven para la vista compacta `dmg/hit`
+- cuando `PlayerSkills` está disponible
+  - el detalle enriquecido de bosses no vive en `combat`
+  - vive en `boss_detail`
 
 ## `survivability`
 
@@ -199,6 +240,79 @@ Por eso esta primera versión incluye:
 - `incap_by_survivor`
 - `incap_by_infected_player`
 - `incap_by_infected_ai`
+
+## `combat_assists`
+
+La API actual expone el detalle de asistencias survivor a kills SI no-boss
+dentro de un bloque separado.
+
+La idea es no mezclar:
+
+- daño continuo de ronda
+- último golpe acreditado
+- daño acreditado como asistencia de kill
+
+Este bloque incluye:
+
+- `si_kill_assists`
+- `si_assist_damage`
+- `smoker_kill_assists`
+- `boomer_kill_assists`
+- `hunter_kill_assists`
+- `spitter_kill_assists`
+- `jockey_kill_assists`
+- `charger_kill_assists`
+- `smoker_assist_damage`
+- `boomer_assist_damage`
+- `hunter_assist_damage`
+- `spitter_assist_damage`
+- `jockey_assist_damage`
+- `charger_assist_damage`
+
+Regla:
+
+- `*_kill_assists`
+  - cuenta cuántas kills SI no-boss tuvo el jugador como contributor válido
+    sin ser el killer principal
+- `*_assist_damage`
+  - usa el daño visible acreditado por:
+    - `PlayerSkills kill_event.assists`
+    - `PlayerSkills skill_event.assists` cuando la skill principal implica una
+      muerte SI semántica
+- no intenta recomputar daño local alternativo
+
+Regla de autoridad:
+
+- `PlayerStats` no decide localmente qué `skill_event` letal equivale a kill
+- esa consecuencia viene marcada por `PlayerSkills skill_event.properties` con:
+  - `implies_si_death`
+  - `suppressed_kill_type_id`
+  - `suppressed_kill_type`
+
+## `boss_detail`
+
+La API actual expone un bloque separado para el detalle enriquecido de daño a
+bosses proveniente de `PlayerSkills boss_session.damage_entries`.
+
+Este bloque incluye:
+
+- `tank_damage`
+- `tank_shots`
+- `witch_damage`
+- `witch_shots`
+
+Reglas:
+
+- `boss_detail`
+  - no reemplaza `combat`
+  - complementa el fallback local de `stats`
+- `combat.tank_damage` / `combat.witch_damage`
+  - siguen siendo útiles como snapshot base y para compatibilidad
+- `boss_detail.*_shots`
+  - solo existen para el camino enriquecido cuando `PlayerSkills` está cargado
+- la UI actual usa:
+  - sin `PlayerSkills`: `Tank/Witch = dmg/hit`
+  - con `PlayerSkills`: `Tank/Witch = dmg/shots`
 
 ## `accuracy`
 
@@ -284,13 +398,19 @@ Cada arma específica expone:
 
 ## Excluded For Now
 
-Estas categorías siguen fuera del KV base:
+Estas categorías siguen fuera del KV detallado y del KV base:
 
-- contadores de skills consumidos desde `PlayerSkills`
+- contadores espejo de skills semánticas de `PlayerSkills`
 - pressure de infected
 - snapshots de boss session
 - debug state
 - histórico por mapa en la API pública
+
+Nota:
+
+- `combat_assists` sí existe en el detalle por jugador;
+- sigue fuera del snapshot mínimo general de ronda;
+- no se incluye en `totals` del KV base.
 
 ## Mode Sections
 
@@ -343,19 +463,21 @@ No se puebla en la primera versión actual.
 
 ## Why Skills Stay Out
 
-Aunque `PlayerStats` ya consume una primera tanda de skills desde `PlayerSkills`, no hace falta meterlas todavía en el KV base.
+`PlayerStats` ya no republica un bloque `skills`.
 
 Las razones son simples:
 
-- agrandan mucho el payload
-- no forman parte del resumen survivor original
-- siguen siendo una capa derivada, no el núcleo del snapshot
+- sería un espejo redundante de `L4D2-Player-Skills`
+- agranda el payload sin mejorar el snapshot survivor base
+- la autoridad semántica de skills debe vivir en `PlayerSkills`
 
-Si luego hace falta, pueden agregarse en:
+Regla:
 
-- una subsección opcional
-- otro native
-- o una segunda versión del contrato
+- `PlayerStats`
+  - consume `PlayerSkills` para enriquecer `combat`, `combat_assists` y `boss_detail`
+  - no vuelve a emitir el mismo resumen semántico de skills
+- si un consumidor necesita skills:
+  - debe leerlas desde `L4D2-Player-Skills`
 
 ## Draft Example
 
@@ -432,6 +554,24 @@ player
         "charger_kills"         "1"
         "tank_kills"            "0"
         "ff_given"              "10"
+    }
+
+    "combat_assists"
+    {
+        "si_kill_assists"           "3"
+        "si_assist_damage"          "180"
+        "smoker_kill_assists"       "1"
+        "boomer_kill_assists"       "0"
+        "hunter_kill_assists"       "1"
+        "spitter_kill_assists"      "0"
+        "jockey_kill_assists"       "0"
+        "charger_kill_assists"      "1"
+        "smoker_assist_damage"      "40"
+        "boomer_assist_damage"      "0"
+        "hunter_assist_damage"      "65"
+        "spitter_assist_damage"     "0"
+        "jockey_assist_damage"      "0"
+        "charger_assist_damage"     "75"
     }
 
     "survivability"

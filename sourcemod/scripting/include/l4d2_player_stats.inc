@@ -61,7 +61,7 @@ native bool PlayerStats_IsRoundPlayerSlotValid(int roundId, int slot);
  * Returns the current client index bound to a round slot.
  *
  * This native is only meaningful for the currently active round snapshot.
- * Historical snapshots do not guarantee a live client binding.
+ * Finalized round snapshots do not guarantee a live client binding.
  *
  * @param roundId		Round identifier to resolve against.
  * @param slot			Round slot index.
@@ -95,41 +95,6 @@ native bool PlayerStats_FillRoundKeyValues(int roundId, Handle kv);
 native bool PlayerStats_FillRoundPlayerKeyValues(int roundId, int slot, Handle kv);
 
 /**
- * Returns the number of substitution snapshots currently kept in memory.
- *
- * The plugin stores a fixed-size circular buffer and overwrites the oldest
- * snapshots when it becomes full.
- *
- * @return				Current substitution snapshot count.
- */
-native int PlayerStats_GetSubstitutionCount();
-
-/**
- * Returns the stable identifier for a substitution snapshot.
- *
- * Snapshots are enumerated from oldest to newest.
- *
- * @param index			Zero-based substitution snapshot index.
- * @param buffer		Output buffer for the snapshot identifier.
- * @param maxlen		Maximum length of the output buffer.
- * @return				True on success, otherwise false.
- */
-native bool PlayerStats_GetSubstitutionId(int index, char[] buffer, int maxlen);
-
-/**
- * Writes a substitution snapshot into a KeyValues handle.
- *
- * The target handle is populated with a `substitution` root block that
- * includes snapshot metadata and tracked stat domains for the replaced
- * player.
- *
- * @param substitutionId	Stable substitution snapshot identifier.
- * @param kv				KeyValues handle to populate.
- * @return					True on success, otherwise false.
- */
-native bool PlayerStats_FillSubstitutionSnapshotKeyValues(const char[] substitutionId, Handle kv);
-
-/**
  * Applies a stored substitution snapshot to a live round slot.
  *
  * This native is intended for plugins that intercept substitution flow and
@@ -151,14 +116,6 @@ native bool PlayerStats_ApplySubstitutionSnapshotToSlot(const char[] substitutio
  */
 native void PlayerStats_BroadcastRoundStats();
 
-/**
- * Broadcasts the current game or mission history table using the plugin's
- * configured announce/output policy.
- *
- * @noreturn
- */
-native void PlayerStats_BroadcastGameStats();
-
 public SharedPlugin __pl_l4d2_player_stats =
 {
 	name = LIBRARY_L4D2PLAYERSTATS,
@@ -179,11 +136,7 @@ public void __pl_l4d2_player_stats_SetNTVOptional()
 	MarkNativeAsOptional("PlayerStats_GetRoundPlayerClient");
 	MarkNativeAsOptional("PlayerStats_FillRoundKeyValues");
 	MarkNativeAsOptional("PlayerStats_FillRoundPlayerKeyValues");
-	MarkNativeAsOptional("PlayerStats_GetSubstitutionCount");
-	MarkNativeAsOptional("PlayerStats_GetSubstitutionId");
-	MarkNativeAsOptional("PlayerStats_FillSubstitutionSnapshotKeyValues");
 	MarkNativeAsOptional("PlayerStats_ApplySubstitutionSnapshotToSlot");
 	MarkNativeAsOptional("PlayerStats_BroadcastRoundStats");
-	MarkNativeAsOptional("PlayerStats_BroadcastGameStats");
 }
 #endif

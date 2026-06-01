@@ -105,12 +105,6 @@ stock bool Stats_IsTrackingAnnounceEnabled()
 	return Stats_IsModeEnabledForBaseMode(baseMode) && Stats_HasFeatureFlag(g_cvTracking, PlayerStatsFeature_Announce);
 }
 
-stock bool Stats_IsHistoryEnabled()
-{
-	int baseMode = g_Round.meta.baseMode != GAMEMODE_UNKNOWN ? g_Round.meta.baseMode : g_Runtime.baseMode;
-	return Stats_IsModeEnabledForBaseMode(baseMode) && Stats_HasFeatureFlag(g_cvHistory, PlayerStatsFeature_Enable);
-}
-
 stock bool Stats_IsAccuracyEnabled()
 {
 	int baseMode = g_Round.meta.baseMode != GAMEMODE_UNKNOWN ? g_Round.meta.baseMode : g_Runtime.baseMode;
@@ -520,7 +514,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 	{
 		case GAMEMODE_COOP:
 		{
-			policy.historyScope = PlayerStatsHistoryScope_CampaignRun;
+			policy.seriesScope = PlayerStatsSeriesScope_CampaignRun;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
 			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_SafeArea;
@@ -528,7 +522,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 		}
 		case GAMEMODE_VERSUS:
 		{
-			policy.historyScope = PlayerStatsHistoryScope_CompetitiveSeries;
+			policy.seriesScope = PlayerStatsSeriesScope_CompetitiveSeries;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
 			policy.roundLiveSignal = context.hasReadyUp
@@ -538,7 +532,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 		}
 		case GAMEMODE_SCAVENGE:
 		{
-			policy.historyScope = PlayerStatsHistoryScope_ScavengeMatch;
+			policy.seriesScope = PlayerStatsSeriesScope_ScavengeMatch;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_ScavengeRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_ScavengeRoundFinished;
 			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
@@ -546,7 +540,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 		}
 		case GAMEMODE_SURVIVAL:
 		{
-			policy.historyScope = PlayerStatsHistoryScope_SurvivalRuns;
+			policy.seriesScope = PlayerStatsSeriesScope_SurvivalRuns;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
 			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
@@ -554,7 +548,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 		}
 		default:
 		{
-			policy.historyScope = PlayerStatsHistoryScope_CurrentMap;
+			policy.seriesScope = PlayerStatsSeriesScope_CurrentMap;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
 			policy.roundLiveSignal = PlayerStatsRoundLiveSignal_Immediate;
@@ -572,7 +566,7 @@ stock void Stats_ApplyModeContextToRuntime(PlayerStatsModeContextData context, P
 	g_Runtime.enabledSiClassCount = context.enabledSiClassCount;
 	g_Runtime.versusTeamSize = context.versusTeamSize;
 	g_Runtime.versusContext = context.versusContext;
-	g_Runtime.historyScope = policy.historyScope;
+	g_Runtime.seriesScope = policy.seriesScope;
 	g_Runtime.roundStartSignal = policy.roundStartSignal;
 	g_Runtime.roundEndSignal = policy.roundEndSignal;
 	g_Runtime.roundLiveSignal = policy.roundLiveSignal;
@@ -589,7 +583,7 @@ stock void Stats_ApplyModeContextToRoundMeta(PlayerStatsRoundMetaData meta, Play
 	meta.enabledSiClassCount = context.enabledSiClassCount;
 	meta.versusTeamSize = context.versusTeamSize;
 	meta.versusContext = context.versusContext;
-	meta.historyScope = policy.historyScope;
+	meta.seriesScope = policy.seriesScope;
 	meta.roundStartSignal = policy.roundStartSignal;
 	meta.roundEndSignal = policy.roundEndSignal;
 	meta.roundLiveSignal = policy.roundLiveSignal;
@@ -665,7 +659,7 @@ stock void Stats_RefreshModeContext()
 	Stats_GetLifecyclePolicyForContext(context, policy);
 	Stats_ApplyModeContextToRuntime(context, policy);
 
-	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base_mode=%d history_scope=%d versus_context=%d team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d", g_Runtime.baseMode, g_Runtime.historyScope, g_Runtime.versusContext, g_Runtime.versusTeamSize, g_Runtime.configuredSurvivorLimit, g_Runtime.configuredPlayerZombieLimit, g_Runtime.siPoolMask, g_Runtime.enabledSiClassCount);
+	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base_mode=%d series_scope=%d versus_context=%d team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d", g_Runtime.baseMode, g_Runtime.seriesScope, g_Runtime.versusContext, g_Runtime.versusTeamSize, g_Runtime.configuredSurvivorLimit, g_Runtime.configuredPlayerZombieLimit, g_Runtime.siPoolMask, g_Runtime.enabledSiClassCount);
 }
 
 stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2ApiSkillType type)
@@ -743,40 +737,6 @@ stock bool Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClassType zombieClass
 stock bool Stats_IsZombieClassEnabledForRound(L4D2ZombieClassType zombieClass)
 {
 	return Stats_IsZombieClassEnabledForSnapshot(zombieClass, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
-}
-
-stock bool Stats_IsSkillTypeEnabledForSnapshot(L4D2ApiSkillType type, bool isVersusMode, int siPoolMask)
-{
-	switch (type)
-	{
-		case L4D2ApiSkill_HunterSkeet, L4D2ApiSkill_HunterSkeetMelee, L4D2ApiSkill_HunterDeadstop, L4D2ApiSkill_HunterHighPounce:
-		{
-			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Hunter, isVersusMode, siPoolMask);
-		}
-		case L4D2ApiSkill_BoomerPop, L4D2ApiSkill_BoomerVomitLanded:
-		{
-			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Boomer, isVersusMode, siPoolMask);
-		}
-		case L4D2ApiSkill_ChargerLevel, L4D2ApiSkill_ChargerInstaKill, L4D2ApiSkill_ChargerDeathSetup:
-		{
-			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Charger, isVersusMode, siPoolMask);
-		}
-		case L4D2ApiSkill_SmokerTongueCut, L4D2ApiSkill_SmokerSelfClear:
-		{
-			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Smoker, isVersusMode, siPoolMask);
-		}
-		case L4D2ApiSkill_JockeyHighPounce:
-		{
-			return Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClass_Jockey, isVersusMode, siPoolMask);
-		}
-	}
-
-	return true;
-}
-
-stock bool Stats_IsSkillTypeEnabledForRound(L4D2ApiSkillType type)
-{
-	return Stats_IsSkillTypeEnabledForSnapshot(type, g_Round.meta.isVersusMode, g_Round.meta.siPoolMask);
 }
 
 /**
@@ -988,6 +948,17 @@ stock void Stats_AddSpecialKillByClass(int index, L4D2ZombieClassType zombieClas
 	}
 }
 
+stock void Stats_AddWitchKill(int index)
+{
+	if (!Stats_IsValidRoundSlot(index))
+	{
+		return;
+	}
+
+	g_Round.players[index].combat.witchKills++;
+	g_Round.totals.survivorTotalWitchKills++;
+}
+
 /**
  * @brief Resets the runtime client-to-slot mapping table.
  *
@@ -1000,6 +971,96 @@ stock void Stats_ResetRuntimeMappings()
 		g_Runtime.playerSlotByClient[client] = -1;
 		g_Runtime.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
 		g_Runtime.lastWeaponDetailByClient[client] = PlayerStatsWeaponDetail_None;
+	}
+}
+
+stock void Stats_AddSpecialKillAssistByClass(int index, L4D2ZombieClassType zombieClass)
+{
+	if (!Stats_IsValidRoundSlot(index))
+	{
+		return;
+	}
+
+	g_Round.players[index].combatAssists.siKillAssists++;
+	g_Round.totals.survivorTotalSiKillAssists++;
+
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			g_Round.players[index].combatAssists.smokerKillAssists++;
+			g_Round.totals.survivorTotalSmokerKillAssists++;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			g_Round.players[index].combatAssists.boomerKillAssists++;
+			g_Round.totals.survivorTotalBoomerKillAssists++;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			g_Round.players[index].combatAssists.hunterKillAssists++;
+			g_Round.totals.survivorTotalHunterKillAssists++;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			g_Round.players[index].combatAssists.spitterKillAssists++;
+			g_Round.totals.survivorTotalSpitterKillAssists++;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			g_Round.players[index].combatAssists.jockeyKillAssists++;
+			g_Round.totals.survivorTotalJockeyKillAssists++;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			g_Round.players[index].combatAssists.chargerKillAssists++;
+			g_Round.totals.survivorTotalChargerKillAssists++;
+		}
+	}
+}
+
+stock void Stats_AddSpecialAssistDamageByClass(int index, L4D2ZombieClassType zombieClass, int damage)
+{
+	if (!Stats_IsValidRoundSlot(index) || damage <= 0)
+	{
+		return;
+	}
+
+	g_Round.players[index].combatAssists.siAssistDamage += damage;
+	g_Round.totals.survivorTotalSiAssistDamage += damage;
+
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			g_Round.players[index].combatAssists.smokerAssistDamage += damage;
+			g_Round.totals.survivorTotalSmokerAssistDamage += damage;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			g_Round.players[index].combatAssists.boomerAssistDamage += damage;
+			g_Round.totals.survivorTotalBoomerAssistDamage += damage;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			g_Round.players[index].combatAssists.hunterAssistDamage += damage;
+			g_Round.totals.survivorTotalHunterAssistDamage += damage;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			g_Round.players[index].combatAssists.spitterAssistDamage += damage;
+			g_Round.totals.survivorTotalSpitterAssistDamage += damage;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			g_Round.players[index].combatAssists.jockeyAssistDamage += damage;
+			g_Round.totals.survivorTotalJockeyAssistDamage += damage;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			g_Round.players[index].combatAssists.chargerAssistDamage += damage;
+			g_Round.totals.survivorTotalChargerAssistDamage += damage;
+		}
 	}
 }
 
@@ -1303,28 +1364,36 @@ stock void Stats_RecordAccuracyDetailHit(int index, PlayerStatsWeaponDetailType 
 
 stock void Stats_GetWeaponDetailName(PlayerStatsWeaponDetailType detail, char[] buffer, int maxlen)
 {
-	switch (detail)
+	static const char g_PlayerStatsWeaponDetailNames[PlayerStatsWeaponDetail_Count][] =
 	{
-		case PlayerStatsWeaponDetail_PumpShotgun: strcopy(buffer, maxlen, "Pump");
-		case PlayerStatsWeaponDetail_Autoshotgun: strcopy(buffer, maxlen, "Auto");
-		case PlayerStatsWeaponDetail_ChromeShotgun: strcopy(buffer, maxlen, "Chrome");
-		case PlayerStatsWeaponDetail_SpasShotgun: strcopy(buffer, maxlen, "SPAS");
-		case PlayerStatsWeaponDetail_Smg: strcopy(buffer, maxlen, "SMG");
-		case PlayerStatsWeaponDetail_SmgSilenced: strcopy(buffer, maxlen, "Silenced SMG");
-		case PlayerStatsWeaponDetail_SmgMp5: strcopy(buffer, maxlen, "MP5");
-		case PlayerStatsWeaponDetail_Rifle: strcopy(buffer, maxlen, "Rifle");
-		case PlayerStatsWeaponDetail_RifleAk47: strcopy(buffer, maxlen, "AK47");
-		case PlayerStatsWeaponDetail_RifleDesert: strcopy(buffer, maxlen, "Rifle Desert");
-		case PlayerStatsWeaponDetail_RifleSg552: strcopy(buffer, maxlen, "SG552");
-		case PlayerStatsWeaponDetail_RifleM60: strcopy(buffer, maxlen, "M60");
-		case PlayerStatsWeaponDetail_HuntingRifle: strcopy(buffer, maxlen, "Hunting");
-		case PlayerStatsWeaponDetail_SniperMilitary: strcopy(buffer, maxlen, "Military");
-		case PlayerStatsWeaponDetail_SniperAwp: strcopy(buffer, maxlen, "AWP");
-		case PlayerStatsWeaponDetail_SniperScout: strcopy(buffer, maxlen, "Scout");
-		case PlayerStatsWeaponDetail_Pistol: strcopy(buffer, maxlen, "Pistol");
-		case PlayerStatsWeaponDetail_Magnum: strcopy(buffer, maxlen, "Magnum");
-		default: strcopy(buffer, maxlen, "Unknown");
+		"Unknown",
+		"Pump",
+		"Auto Shotgun",
+		"Chrome",
+		"SPAS Shotgun",
+		"Uzi",
+		"Silenced SMG",
+		"MP5",
+		"M-16",
+		"AK-47",
+		"Desert Rifle",
+		"SG552",
+		"M60",
+		"Hunting Rifle",
+		"Military Sniper",
+		"AWP",
+		"Scout",
+		"Pistol",
+		"Magnum"
+	};
+
+	if (detail >= PlayerStatsWeaponDetail_None && detail < PlayerStatsWeaponDetail_Count)
+	{
+		strcopy(buffer, maxlen, g_PlayerStatsWeaponDetailNames[detail]);
+		return;
 	}
+
+	strcopy(buffer, maxlen, "Unknown");
 }
 
 /**
@@ -1394,7 +1463,22 @@ stock void Stats_SubtractPlayerRoundDataFromTotals(PlayerStatsPlayerRoundData pl
 	g_Round.totals.survivorTotalSpitterKills -= playerData.combat.spitterKills;
 	g_Round.totals.survivorTotalJockeyKills -= playerData.combat.jockeyKills;
 	g_Round.totals.survivorTotalChargerKills -= playerData.combat.chargerKills;
+	g_Round.totals.survivorTotalSiKillAssists -= playerData.combatAssists.siKillAssists;
+	g_Round.totals.survivorTotalSmokerKillAssists -= playerData.combatAssists.smokerKillAssists;
+	g_Round.totals.survivorTotalBoomerKillAssists -= playerData.combatAssists.boomerKillAssists;
+	g_Round.totals.survivorTotalHunterKillAssists -= playerData.combatAssists.hunterKillAssists;
+	g_Round.totals.survivorTotalSpitterKillAssists -= playerData.combatAssists.spitterKillAssists;
+	g_Round.totals.survivorTotalJockeyKillAssists -= playerData.combatAssists.jockeyKillAssists;
+	g_Round.totals.survivorTotalChargerKillAssists -= playerData.combatAssists.chargerKillAssists;
+	g_Round.totals.survivorTotalSiAssistDamage -= playerData.combatAssists.siAssistDamage;
+	g_Round.totals.survivorTotalSmokerAssistDamage -= playerData.combatAssists.smokerAssistDamage;
+	g_Round.totals.survivorTotalBoomerAssistDamage -= playerData.combatAssists.boomerAssistDamage;
+	g_Round.totals.survivorTotalHunterAssistDamage -= playerData.combatAssists.hunterAssistDamage;
+	g_Round.totals.survivorTotalSpitterAssistDamage -= playerData.combatAssists.spitterAssistDamage;
+	g_Round.totals.survivorTotalJockeyAssistDamage -= playerData.combatAssists.jockeyAssistDamage;
+	g_Round.totals.survivorTotalChargerAssistDamage -= playerData.combatAssists.chargerAssistDamage;
 	g_Round.totals.survivorTotalTankKills -= playerData.combat.tankKills;
+	g_Round.totals.survivorTotalWitchKills -= playerData.combat.witchKills;
 	g_Round.totals.survivorTotalFF -= playerData.combat.ffGiven;
 	g_Round.totals.survivorTotalDeaths -= playerData.survivability.deaths;
 	g_Round.totals.survivorTotalIncaps -= playerData.survivability.incaps;
@@ -1411,15 +1495,6 @@ stock void Stats_SubtractPlayerRoundDataFromTotals(PlayerStatsPlayerRoundData pl
 	g_Round.totals.infectedTotalChargerDamage -= playerData.infectedGrab.chargerDamage;
 	g_Round.totals.infectedTotalGrabDamage -= playerData.infectedGrab.totalDamage;
 	g_Round.totals.infectedTotalSpitterDamage -= playerData.infectedSupport.spitterDamage;
-	g_Round.totals.survivorTotalSkeets -= playerData.skills.skeets;
-	g_Round.totals.survivorTotalSkeetMelees -= playerData.skills.skeetMelees;
-	g_Round.totals.survivorTotalDeadstops -= playerData.skills.deadstops;
-	g_Round.totals.survivorTotalBoomerPops -= playerData.skills.boomerPops;
-	g_Round.totals.survivorTotalLevels -= playerData.skills.levels;
-	g_Round.totals.survivorTotalCrowns -= playerData.skills.crowns;
-	g_Round.totals.survivorTotalTongueCuts -= playerData.skills.tongueCuts;
-	g_Round.totals.survivorTotalSmokerSelfClears -= playerData.skills.smokerSelfClears;
-	g_Round.totals.survivorTotalInstaKills -= playerData.skills.instaKills;
 	g_Round.totals.survivorTotalPillsUsed -= playerData.resources.pillsUsed;
 	g_Round.totals.survivorTotalAdrenalineUsed -= playerData.resources.adrenalineUsed;
 	g_Round.totals.survivorTotalMedkitsUsed -= playerData.resources.medkitsUsed;
@@ -1453,7 +1528,22 @@ stock void Stats_AddPlayerRoundDataToTotals(PlayerStatsPlayerRoundData playerDat
 	g_Round.totals.survivorTotalSpitterKills += playerData.combat.spitterKills;
 	g_Round.totals.survivorTotalJockeyKills += playerData.combat.jockeyKills;
 	g_Round.totals.survivorTotalChargerKills += playerData.combat.chargerKills;
+	g_Round.totals.survivorTotalSiKillAssists += playerData.combatAssists.siKillAssists;
+	g_Round.totals.survivorTotalSmokerKillAssists += playerData.combatAssists.smokerKillAssists;
+	g_Round.totals.survivorTotalBoomerKillAssists += playerData.combatAssists.boomerKillAssists;
+	g_Round.totals.survivorTotalHunterKillAssists += playerData.combatAssists.hunterKillAssists;
+	g_Round.totals.survivorTotalSpitterKillAssists += playerData.combatAssists.spitterKillAssists;
+	g_Round.totals.survivorTotalJockeyKillAssists += playerData.combatAssists.jockeyKillAssists;
+	g_Round.totals.survivorTotalChargerKillAssists += playerData.combatAssists.chargerKillAssists;
+	g_Round.totals.survivorTotalSiAssistDamage += playerData.combatAssists.siAssistDamage;
+	g_Round.totals.survivorTotalSmokerAssistDamage += playerData.combatAssists.smokerAssistDamage;
+	g_Round.totals.survivorTotalBoomerAssistDamage += playerData.combatAssists.boomerAssistDamage;
+	g_Round.totals.survivorTotalHunterAssistDamage += playerData.combatAssists.hunterAssistDamage;
+	g_Round.totals.survivorTotalSpitterAssistDamage += playerData.combatAssists.spitterAssistDamage;
+	g_Round.totals.survivorTotalJockeyAssistDamage += playerData.combatAssists.jockeyAssistDamage;
+	g_Round.totals.survivorTotalChargerAssistDamage += playerData.combatAssists.chargerAssistDamage;
 	g_Round.totals.survivorTotalTankKills += playerData.combat.tankKills;
+	g_Round.totals.survivorTotalWitchKills += playerData.combat.witchKills;
 	g_Round.totals.survivorTotalFF += playerData.combat.ffGiven;
 	g_Round.totals.survivorTotalDeaths += playerData.survivability.deaths;
 	g_Round.totals.survivorTotalIncaps += playerData.survivability.incaps;
@@ -1470,15 +1560,6 @@ stock void Stats_AddPlayerRoundDataToTotals(PlayerStatsPlayerRoundData playerDat
 	g_Round.totals.infectedTotalChargerDamage += playerData.infectedGrab.chargerDamage;
 	g_Round.totals.infectedTotalGrabDamage += playerData.infectedGrab.totalDamage;
 	g_Round.totals.infectedTotalSpitterDamage += playerData.infectedSupport.spitterDamage;
-	g_Round.totals.survivorTotalSkeets += playerData.skills.skeets;
-	g_Round.totals.survivorTotalSkeetMelees += playerData.skills.skeetMelees;
-	g_Round.totals.survivorTotalDeadstops += playerData.skills.deadstops;
-	g_Round.totals.survivorTotalBoomerPops += playerData.skills.boomerPops;
-	g_Round.totals.survivorTotalLevels += playerData.skills.levels;
-	g_Round.totals.survivorTotalCrowns += playerData.skills.crowns;
-	g_Round.totals.survivorTotalTongueCuts += playerData.skills.tongueCuts;
-	g_Round.totals.survivorTotalSmokerSelfClears += playerData.skills.smokerSelfClears;
-	g_Round.totals.survivorTotalInstaKills += playerData.skills.instaKills;
 	g_Round.totals.survivorTotalPillsUsed += playerData.resources.pillsUsed;
 	g_Round.totals.survivorTotalAdrenalineUsed += playerData.resources.adrenalineUsed;
 	g_Round.totals.survivorTotalMedkitsUsed += playerData.resources.medkitsUsed;

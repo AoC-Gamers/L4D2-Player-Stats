@@ -20,13 +20,8 @@ void API_CreateNatives()
 	CreateNative("PlayerStats_GetRoundPlayerClient", Native_PlayerStats_GetRoundPlayerClient);
 	CreateNative("PlayerStats_FillRoundKeyValues", Native_PlayerStats_FillRoundKeyValues);
 	CreateNative("PlayerStats_FillRoundPlayerKeyValues", Native_PlayerStats_FillRoundPlayerKeyValues);
-	CreateNative("PlayerStats_GetSubstitutionCount", Native_PlayerStats_GetSubstitutionCount);
-	CreateNative("PlayerStats_GetSubstitutionId", Native_PlayerStats_GetSubstitutionId);
-	CreateNative("PlayerStats_FillSubstitutionSnapshotKeyValues", Native_PlayerStats_FillSubstitutionSnapshotKeyValues);
 	CreateNative("PlayerStats_ApplySubstitutionSnapshotToSlot", Native_PlayerStats_ApplySubstitutionSnapshotToSlot);
 	CreateNative("PlayerStats_BroadcastRoundStats", Native_PlayerStats_BroadcastRoundStats);
-	CreateNative("PlayerStats_BroadcastGameStats", Native_PlayerStats_BroadcastGameStats);
-	CreateNative("PlayerStats_MarkRestart", Native_PlayerStats_MarkRestart);
 }
 
 void API_FireRoundFinalized(int roundId)
@@ -82,7 +77,7 @@ void API_WriteRoundContextBlock(Handle kv)
 	KvSetNum(kv, "scavenge_items_goal", g_Round.meta.scavengeItemsGoal);
 	KvSetNum(kv, "scavenge_overtime", g_Round.meta.scavengeWentOvertime ? 1 : 0);
 	KvSetNum(kv, "scavenge_score_tied", g_Round.meta.scavengeScoreTied ? 1 : 0);
-	KvSetNum(kv, "history_scope", g_Round.meta.historyScope);
+	KvSetNum(kv, "series_scope", g_Round.meta.seriesScope);
 	KvSetNum(kv, "survivor_limit", g_Round.meta.configuredSurvivorLimit);
 	KvSetNum(kv, "infected_limit", g_Round.meta.configuredPlayerZombieLimit);
 	KvSetNum(kv, "si_pool_mask", g_Round.meta.siPoolMask);
@@ -155,7 +150,9 @@ void API_WriteCombatBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvSetNum(kv, "jockey_damage", playerData.combat.jockeyDamage);
 	KvSetNum(kv, "charger_damage", playerData.combat.chargerDamage);
 	KvSetNum(kv, "tank_damage", playerData.combat.tankDamage);
+	KvSetNum(kv, "tank_hits", playerData.combat.tankHits);
 	KvSetNum(kv, "witch_damage", playerData.combat.witchDamage);
+	KvSetNum(kv, "witch_hits", playerData.combat.witchHits);
 	KvSetNum(kv, "common_kills", playerData.combat.commonKills);
 	KvSetNum(kv, "smoker_kills", playerData.combat.smokerKills);
 	KvSetNum(kv, "boomer_kills", playerData.combat.boomerKills);
@@ -164,6 +161,7 @@ void API_WriteCombatBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvSetNum(kv, "jockey_kills", playerData.combat.jockeyKills);
 	KvSetNum(kv, "charger_kills", playerData.combat.chargerKills);
 	KvSetNum(kv, "tank_kills", playerData.combat.tankKills);
+	KvSetNum(kv, "witch_kills", playerData.combat.witchKills);
 	KvSetNum(kv, "ff_given", playerData.combat.ffGiven);
 
 	KvGoBack(kv);
@@ -203,6 +201,46 @@ void API_WriteSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 	KvGoBack(kv);
 }
 
+void API_WriteCombatAssistsBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "combat_assists", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "si_kill_assists", playerData.combatAssists.siKillAssists);
+	KvSetNum(kv, "si_assist_damage", playerData.combatAssists.siAssistDamage);
+	KvSetNum(kv, "smoker_kill_assists", playerData.combatAssists.smokerKillAssists);
+	KvSetNum(kv, "boomer_kill_assists", playerData.combatAssists.boomerKillAssists);
+	KvSetNum(kv, "hunter_kill_assists", playerData.combatAssists.hunterKillAssists);
+	KvSetNum(kv, "spitter_kill_assists", playerData.combatAssists.spitterKillAssists);
+	KvSetNum(kv, "jockey_kill_assists", playerData.combatAssists.jockeyKillAssists);
+	KvSetNum(kv, "charger_kill_assists", playerData.combatAssists.chargerKillAssists);
+	KvSetNum(kv, "smoker_assist_damage", playerData.combatAssists.smokerAssistDamage);
+	KvSetNum(kv, "boomer_assist_damage", playerData.combatAssists.boomerAssistDamage);
+	KvSetNum(kv, "hunter_assist_damage", playerData.combatAssists.hunterAssistDamage);
+	KvSetNum(kv, "spitter_assist_damage", playerData.combatAssists.spitterAssistDamage);
+	KvSetNum(kv, "jockey_assist_damage", playerData.combatAssists.jockeyAssistDamage);
+	KvSetNum(kv, "charger_assist_damage", playerData.combatAssists.chargerAssistDamage);
+
+	KvGoBack(kv);
+}
+
+void API_WriteBossDetailBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
+{
+	if (!KvJumpToKey(kv, "boss_detail", true))
+	{
+		return;
+	}
+
+	KvSetNum(kv, "tank_damage", playerData.bossDetail.tankDamage);
+	KvSetNum(kv, "tank_shots", playerData.bossDetail.tankShots);
+	KvSetNum(kv, "witch_damage", playerData.bossDetail.witchDamage);
+	KvSetNum(kv, "witch_shots", playerData.bossDetail.witchShots);
+
+	KvGoBack(kv);
+}
+
 void API_WriteInfectedGrabBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
 {
 	if (!KvJumpToKey(kv, "infected_grab", true))
@@ -231,26 +269,6 @@ void API_WriteInfectedSupportBlock(Handle kv, PlayerStatsPlayerRoundData playerD
 
 	KvSetNum(kv, "boomer_vomit_victims", playerData.infectedSupport.boomerVomitVictims);
 	KvSetNum(kv, "spitter_damage", playerData.infectedSupport.spitterDamage);
-
-	KvGoBack(kv);
-}
-
-void API_WriteSkillsBlock(Handle kv, PlayerStatsPlayerRoundData playerData)
-{
-	if (!KvJumpToKey(kv, "skills", true))
-	{
-		return;
-	}
-
-	KvSetNum(kv, "skeets", playerData.skills.skeets);
-	KvSetNum(kv, "skeet_melees", playerData.skills.skeetMelees);
-	KvSetNum(kv, "deadstops", playerData.skills.deadstops);
-	KvSetNum(kv, "boomer_pops", playerData.skills.boomerPops);
-	KvSetNum(kv, "levels", playerData.skills.levels);
-	KvSetNum(kv, "crowns", playerData.skills.crowns);
-	KvSetNum(kv, "tongue_cuts", playerData.skills.tongueCuts);
-	KvSetNum(kv, "smoker_self_clears", playerData.skills.smokerSelfClears);
-	KvSetNum(kv, "insta_kills", playerData.skills.instaKills);
 
 	KvGoBack(kv);
 }
@@ -538,11 +556,12 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 	KvSetNum(kv, "slot", slot);
 	API_WriteIdentityBlock(kv, g_Round.players[slot]);
 	API_WriteCombatBlock(kv, g_Round.players[slot]);
+	API_WriteCombatAssistsBlock(kv, g_Round.players[slot]);
+	API_WriteBossDetailBlock(kv, g_Round.players[slot]);
 	API_WriteSurvivabilityBlock(kv, g_Round.players[slot]);
 	API_WriteSupportBlock(kv, g_Round.players[slot]);
 	API_WriteInfectedGrabBlock(kv, g_Round.players[slot]);
 	API_WriteInfectedSupportBlock(kv, g_Round.players[slot]);
-	API_WriteSkillsBlock(kv, g_Round.players[slot]);
 	API_WriteScavengeBlock(kv, g_Round.players[slot]);
 	API_WriteItemsBlock(kv, g_Round.players[slot]);
 	API_WriteUtilitiesBlock(kv, g_Round.players[slot]);
@@ -550,22 +569,11 @@ void API_WriteRoundPlayerDetail(Handle kv, int slot)
 	API_WriteModeBlocks(kv, g_Round.players[slot]);
 }
 
-int API_GetSubstitutionBufferSlot(int index)
-{
-	if (index < 0 || index >= g_iSubstitutionSnapshotCount)
-	{
-		return -1;
-	}
-
-	int oldest = (g_iSubstitutionSnapshotNext - g_iSubstitutionSnapshotCount + L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
-	return (oldest + index) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
-}
-
 int API_FindSubstitutionSnapshotById(const char[] substitutionId)
 {
-	for (int i = 0; i < g_iSubstitutionSnapshotCount; i++)
+	for (int offset = 1; offset <= g_iSubstitutionSnapshotCount; offset++)
 	{
-		int slot = API_GetSubstitutionBufferSlot(i);
+		int slot = (g_iSubstitutionSnapshotNext - offset + L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS) % L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS;
 		if (slot == -1 || !g_SubstitutionSnapshots[slot].active)
 		{
 			continue;
@@ -578,45 +586,6 @@ int API_FindSubstitutionSnapshotById(const char[] substitutionId)
 	}
 
 	return -1;
-}
-
-void API_WriteSubstitutionIdentityBlock(Handle kv, PlayerStatsSubstitutionSnapshotData snapshot)
-{
-	if (!KvJumpToKey(kv, "player", true))
-	{
-		return;
-	}
-
-	KvSetNum(kv, "accountid", snapshot.player.player.accountId);
-	KvSetString(kv, "name", snapshot.player.player.name);
-	KvSetString(kv, "auth", snapshot.player.player.auth);
-	KvSetNum(kv, "bot", snapshot.player.player.bot ? 1 : 0);
-	KvSetNum(kv, "team", snapshot.player.team);
-
-	KvGoBack(kv);
-}
-
-void API_WriteSubstitutionSnapshot(Handle kv, PlayerStatsSubstitutionSnapshotData snapshot)
-{
-	KvSetString(kv, "id", snapshot.substitutionId);
-	KvSetNum(kv, "account_id", snapshot.accountId);
-	KvSetNum(kv, "timestamp", snapshot.timestamp);
-	KvSetNum(kv, "round_id", snapshot.roundId);
-	KvSetNum(kv, "slot", snapshot.slot);
-	KvSetNum(kv, "base_mode", snapshot.baseMode);
-	KvSetNum(kv, "restored", snapshot.restored ? 1 : 0);
-	KvSetString(kv, "map", snapshot.map);
-	API_WriteSubstitutionIdentityBlock(kv, snapshot);
-	API_WriteCombatBlock(kv, snapshot.player);
-	API_WriteSurvivabilityBlock(kv, snapshot.player);
-	API_WriteSupportBlock(kv, snapshot.player);
-	API_WriteInfectedGrabBlock(kv, snapshot.player);
-	API_WriteInfectedSupportBlock(kv, snapshot.player);
-	API_WriteSkillsBlock(kv, snapshot.player);
-	API_WriteScavengeBlock(kv, snapshot.player);
-	API_WriteItemsBlock(kv, snapshot.player);
-	API_WriteUtilitiesBlock(kv, snapshot.player);
-	API_WriteAccuracyBlock(kv, snapshot.player);
 }
 
 public int Native_PlayerStats_IsRoundActive(Handle plugin, int numParams)
@@ -700,49 +669,6 @@ public int Native_PlayerStats_FillRoundPlayerKeyValues(Handle plugin, int numPar
 	return true;
 }
 
-public int Native_PlayerStats_GetSubstitutionCount(Handle plugin, int numParams)
-{
-	return g_iSubstitutionSnapshotCount;
-}
-
-public int Native_PlayerStats_GetSubstitutionId(Handle plugin, int numParams)
-{
-	int index = GetNativeCell(1);
-	int maxlen = GetNativeCell(3);
-	int slot = API_GetSubstitutionBufferSlot(index);
-	if (slot == -1 || !g_SubstitutionSnapshots[slot].active)
-	{
-		return false;
-	}
-
-	SetNativeString(2, g_SubstitutionSnapshots[slot].substitutionId, maxlen, true);
-	return true;
-}
-
-public int Native_PlayerStats_FillSubstitutionSnapshotKeyValues(Handle plugin, int numParams)
-{
-	char substitutionId[64];
-	GetNativeString(1, substitutionId, sizeof(substitutionId));
-
-	int slot = API_FindSubstitutionSnapshotById(substitutionId);
-	Handle kv = GetNativeCell(2);
-	if (slot == -1 || kv == INVALID_HANDLE)
-	{
-		return false;
-	}
-
-	KvRewind(kv);
-	if (!KvJumpToKey(kv, "substitution", true))
-	{
-		return false;
-	}
-
-	API_WriteSubstitutionSnapshot(kv, g_SubstitutionSnapshots[slot]);
-	KvGoBack(kv);
-	KvRewind(kv);
-	return true;
-}
-
 public int Native_PlayerStats_ApplySubstitutionSnapshotToSlot(Handle plugin, int numParams)
 {
 	char substitutionId[64];
@@ -759,21 +685,8 @@ public int Native_PlayerStats_ApplySubstitutionSnapshotToSlot(Handle plugin, int
 	return Stats_RestoreSubstitutionSnapshotToSlot(snapshotIndex, slot, client);
 }
 
-public int Native_PlayerStats_MarkRestart(Handle plugin, int numParams)
-{
-	PlayerStatsRestartSourceType source = view_as<PlayerStatsRestartSourceType>(GetNativeCell(1));
-	Series_MarkPendingRestart(source, "native_mark_restart");
-	return true;
-}
-
 public int Native_PlayerStats_BroadcastRoundStats(Handle plugin, int numParams)
 {
 	Announce_BroadcastRoundSummary();
-	return 1;
-}
-
-public int Native_PlayerStats_BroadcastGameStats(Handle plugin, int numParams)
-{
-	Announce_RenderGameHistoryPanel(0);
 	return 1;
 }

@@ -12,18 +12,6 @@
 		"es"		"No hay estadisticas de ronda disponibles todavia."
 	}
 
-	"HistoryUnavailableCurrentMode"
-	{
-		"en"		"No history is available for the current mode."
-		"es"		"No hay historial disponible para el modo actual."
-	}
-
-	"HistoryUnavailableFilter"
-	{
-		"en"		"No history is available for that filter."
-		"es"		"No hay historial disponible para ese filtro."
-	}
-
 	"CompetitiveCommandOnly"
 	{
 		"en"		"This command is only available in Versus or Scavenge."
@@ -54,95 +42,58 @@
 		"es"		"sm_stats_mvp - Imprime el resumen MVP de la ronda actual."
 	}
 
-	"HelpCommandMVPMap"
-	{
-		"en"		"sm_stats_mvp <map> - Print the MVP summary for the latest historical snapshot of that map."
-		"es"		"sm_stats_mvp <map> - Imprime el resumen MVP de la ultima ocurrencia historica de ese mapa."
-	}
-
 	"HelpCommandMVPRank"
 	{
 		"en"		"sm_stats_rank - Print your current ranks and the global rank table."
 		"es"		"sm_stats_rank - Imprime tus ranks actuales y la tabla global de ranks."
 	}
 
-	"HelpCommandMVPStats"
-	{
-		"en"		"sm_stats_history [map|all] - Print the aggregated mission history for the current map, a requested map, or all maps."
-		"es"		"sm_stats_history [map|all] - Imprime el historial agregado de la campaña para el mapa actual, un mapa solicitado o todos los mapas."
-	}
-
 	"HelpCommandMVPAcc"
 	{
-		"en"		"sm_stats_acc [map] - Print summarized accuracy for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_acc [map] - Imprime la precision resumida de la ronda actual o de la ultima ocurrencia historica del mapa."
-	}
-
-	"HelpCommandMVPAccDetails"
-	{
-		"en"		"sm_stats_acc_details [map] - Print detailed per-weapon accuracy for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_acc_details [map] - Imprime la precision detallada por arma de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_acc - Print summarized accuracy for the current round."
+		"es"		"sm_stats_acc - Imprime la precision resumida de la ronda actual."
 	}
 
 	"HelpCommandMVPUtils"
 	{
-		"en"		"sm_stats_utils [map] - Print throwable utility tables for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_utils [map] - Imprime las tablas de utilidades lanzables de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_utils - Print throwable utility tables for the current round."
+		"es"		"sm_stats_utils - Imprime las tablas de utilidades lanzables de la ronda actual."
 	}
 
 	"HelpCommandMVPItems"
 	{
-		"en"		"sm_stats_items [map] - Print consumable usage for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_items [map] - Imprime la tabla de consumibles de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_items - Print consumable usage for the current round."
+		"es"		"sm_stats_items - Imprime la tabla de consumibles de la ronda actual."
 	}
 
 	"HelpCommandMVPSupport"
 	{
-		"en"		"sm_stats_support [map] - Print support stats for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_support [map] - Imprime la tabla de soporte de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_support - Print support stats for the current round."
+		"es"		"sm_stats_support - Imprime la tabla de soporte de la ronda actual."
 	}
 
 	"HelpCommandMVPScavenge"
 	{
-		"en"		"sm_stats_scavenge [map] - Print scavenge-specific stats for the current round or the latest historical map snapshot."
-		"es"		"sm_stats_scavenge [map] - Imprime la tabla especifica de scavenge de la ronda actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_scavenge - Print scavenge-specific stats for the current round."
+		"es"		"sm_stats_scavenge - Imprime la tabla especifica de scavenge de la ronda actual."
 	}
 
 	"HelpCommandMVPInfect"
 	{
-		"en"		"sm_stats_infect [map] - Print infected grab and support stats for the current half or the latest historical map snapshot."
-		"es"		"sm_stats_infect [map] - Imprime las tablas de infectados de agarre y soporte de la mitad actual o de la ultima ocurrencia historica del mapa."
+		"en"		"sm_stats_infect - Print infected grab and support stats for the current half."
+		"es"		"sm_stats_infect - Imprime las tablas de infectados de agarre y soporte de la mitad actual."
 	}
 
 	"HelpCommandMVPTank"
 	{
-		"en"		"sm_stats_tank [map] - Print tank session stats for the current half or the latest historical map snapshot."
-		"es"		"sm_stats_tank [map] - Imprime las tablas de sesiones de tank de la mitad actual o de la ultima ocurrencia historica del mapa."
-	}
-
-	"HelpCommandMVPSubs"
-	{
-		"en"		"sm_stats_subs - Print substitution snapshots currently kept in memory."
-		"es"		"sm_stats_subs - Imprime los snapshots de sustitucion actualmente guardados en memoria."
+		"en"		"sm_stats_tank - Print tank session stats for the current half."
+		"es"		"sm_stats_tank - Imprime las tablas de sesiones de tank de la mitad actual."
 	}
 
 	"HelpCommandMVPHelp"
 	{
 		"en"		"sm_stats_help - Print this help in console."
 		"es"		"sm_stats_help - Imprime esta ayuda en consola."
-	}
-
-	"SubstitutionSnapshotsUnavailable"
-	{
-		"en"		"No substitution snapshots are available."
-		"es"		"No hay snapshots de sustitucion disponibles."
-	}
-
-	"SubstitutionSnapshotsHeader"
-	{
-		"#format"	"{1:d}"
-		"en"		"==== Substitution Snapshots ({1}) ===="
-		"es"		"==== Snapshots de sustitucion ({1}) ===="
 	}
 
 	"ModeNameUnknown"
@@ -196,6 +147,13 @@
 		"es"		"{green}{1} {blue}Tank [{green}x{2}{blue}]"
 	}
 
+	"RoundMVPDamageTankShots"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Tank [{green}{2} shots{blue}]"
+		"es"		"{green}{1} {blue}Tank [{green}{2} tiros{blue}]"
+	}
+
 	"RoundMVPDamageWitchPercent"
 	{
 		"#format"	"{1:d},{2:d}"
@@ -208,6 +166,13 @@
 		"#format"	"{1:d},{2:d}"
 		"en"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
 		"es"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
+	}
+
+	"RoundMVPDamageWitchShots"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{green}{1} {blue}Witch [{green}{2} shots{blue}]"
+		"es"		"{green}{1} {blue}Witch [{green}{2} tiros{blue}]"
 	}
 
 	"RoundMVPCommon"
@@ -384,11 +349,10 @@
 		"es"		"{1} - Estadisticas de precision -- Round {2}"
 	}
 
-	"PanelTitleAccuracyDetails"
+	"PanelLegendAccuracyHitsShotsPercent"
 	{
-		"#format"	"{1:s},{2:d}"
-		"en"		"{1} - Accuracy Details -- Round {2}"
-		"es"		"{1} - Detalle de precision -- Round {2}"
+		"en"		"Legend: hits/shots percent"
+		"es"		"Leyenda: impactos/disparos porcentaje"
 	}
 
 	"PanelTitleMolotovStats"
@@ -431,6 +395,20 @@
 		"#format"	"{1:s},{2:d}"
 		"en"		"{1} - Infected Support -- Round {2}"
 		"es"		"{1} - Infected Support -- Round {2}"
+	}
+
+	"PanelTitleSiKillAssistBreakdown"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - SI Kill/Assist Breakdown -- Round {2}"
+		"es"		"{1} - Desglose SI Kill/Assist -- Ronda {2}"
+	}
+
+	"PanelTitleBossDamageDetail"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"{1} - Boss Damage Detail -- Round {2}"
+		"es"		"{1} - Detalle de Daño a Bosses -- Ronda {2}"
 	}
 
 	"PanelTotalsInfectedSupport"
@@ -675,6 +653,13 @@
 		"es"		"{1} Tank [x{2}]"
 	}
 
+	"PanelMVPDamageTankShots"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Tank [{2} shots]"
+		"es"		"{1} Tank [{2} tiros]"
+	}
+
 	"PanelMVPDamageWitchPercent"
 	{
 		"#format"	"{1:d},{2:d}"
@@ -687,6 +672,13 @@
 		"#format"	"{1:d},{2:d}"
 		"en"		"{1} Witch [x{2}]"
 		"es"		"{1} Witch [x{2}]"
+	}
+
+	"PanelMVPDamageWitchShots"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"{1} Witch [{2} shots]"
+		"es"		"{1} Witch [{2} tiros]"
 	}
 
 	"ColumnRound"
@@ -723,6 +715,54 @@
 	{
 		"en"		"Common"
 		"es"		"Common"
+	}
+
+	"ColumnSpecialInfected"
+	{
+		"en"		"Special Infected"
+		"es"		"Infectados Especiales"
+	}
+
+	"ColumnCommonInfected"
+	{
+		"en"		"Common Infected"
+		"es"		"Infectados Comunes"
+	}
+
+	"ColumnFriendlyFire"
+	{
+		"en"		"Friendly Fire"
+		"es"		"Fuego Amigo"
+	}
+
+	"PanelLegendDamageKill"
+	{
+		"en"		"Legend: dmg/kill"
+		"es"		"Leyenda: dmg/kill"
+	}
+
+	"PanelLegendSiDamageKillBossDamageShots"
+	{
+		"en"		"Legend: SI=dmg/kill, Tank/Witch=dmg/shots"
+		"es"		"Leyenda: SI=dmg/kill, Tank/Witch=dmg/shots"
+	}
+
+	"PanelLegendBossDamageHit"
+	{
+		"en"		"Legend: Tank/Witch=dmg/hit"
+		"es"		"Leyenda: Tank/Witch=dmg/hit"
+	}
+
+	"PanelLegendDamageShots"
+	{
+		"en"		"Legend: dmg/shots"
+		"es"		"Leyenda: dmg/shots"
+	}
+
+	"PanelLegendDamageKillAssistDamage"
+	{
+		"en"		"Legend: dmg/kill/assist_dmg"
+		"es"		"Leyenda: dmg/kill/assist_dmg"
 	}
 
 	"ColumnDeaths"
@@ -875,6 +915,18 @@
 		"es"		"SMG/Rf"
 	}
 
+	"ColumnSmgGroup"
+	{
+		"en"		"SMGs"
+		"es"		"SMGs"
+	}
+
+	"ColumnRifleGroup"
+	{
+		"en"		"Rifles"
+		"es"		"Rifles"
+	}
+
 	"ColumnSniper"
 	{
 		"en"		"Sniper"
@@ -887,34 +939,34 @@
 		"es"		"Pistola"
 	}
 
-	"ColumnWeapon"
+	"ColumnShotgunTotal"
 	{
-		"en"		"Weapon"
-		"es"		"Arma"
+		"en"		"Shotgun Total"
+		"es"		"Total Escopeta"
 	}
 
-	"ColumnHits"
+	"ColumnSmgTotal"
 	{
-		"en"		"Hits"
-		"es"		"Golpes"
+		"en"		"SMG Total"
+		"es"		"Total SMG"
 	}
 
-	"ColumnShots"
+	"ColumnRifleTotal"
 	{
-		"en"		"Shots"
-		"es"		"Tiros"
+		"en"		"Rifle Total"
+		"es"		"Total Rifle"
 	}
 
-	"ColumnAcc"
+	"ColumnSniperTotal"
 	{
-		"en"		"Acc"
-		"es"		"Prec"
+		"en"		"Sniper Total"
+		"es"		"Total Sniper"
 	}
 
-	"ColumnHeadshots"
+	"ColumnPistolTotal"
 	{
-		"en"		"HS"
-		"es"		"HS"
+		"en"		"Pistol Total"
+		"es"		"Total Pistola"
 	}
 
 	"ColumnMolo"

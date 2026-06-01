@@ -26,10 +26,10 @@ void Round_StartNewSnapshot(PlayerStatsModeContextData context, PlayerStatsLifec
 		Round_MarkLive("immediate");
 	}
 
-	Stats_Debug(PlayerStatsDebug_Core, "Round started. round=%d base_mode=%d history_scope=%d versus_context=%d team_size=%d si_pool_mask=%d scav_round=%d second_half=%d",
+	Stats_Debug(PlayerStatsDebug_Core, "Round started. round=%d base_mode=%d series_scope=%d versus_context=%d team_size=%d si_pool_mask=%d scav_round=%d second_half=%d",
 		g_Round.meta.id,
 		g_Round.meta.baseMode,
-		g_Round.meta.historyScope,
+		g_Round.meta.seriesScope,
 		g_Round.meta.versusContext,
 		g_Round.meta.versusTeamSize,
 		g_Round.meta.siPoolMask,
@@ -118,11 +118,6 @@ void Round_EventRoundStart(Event event, const char[] name, bool dontBroadcast)
 	{
 		Stats_Debug(PlayerStatsDebug_Core, "Ignoring round start in disabled mode. event=%s base_mode=%d", name, context.baseMode);
 		return;
-	}
-
-	if (context.baseMode == GAMEMODE_SCAVENGE)
-	{
-		Series_OnScavengeRoundStartBoundary();
 	}
 
 	if (g_Round.meta.active)
@@ -350,11 +345,6 @@ void Round_FinalizeActiveSnapshot(const char[] reason, PlayerStatsRoundEndReason
 		Announce_GetTotalSurvivorSiDamage(),
 		g_Round.totals.survivorTotalCommonKills,
 		g_Round.totals.survivorTotalFF);
-
-	if (Stats_IsHistoryEnabled())
-	{
-		Series_RecordRound();
-	}
 
 	API_FireRoundFinalized(g_Round.meta.id);
 

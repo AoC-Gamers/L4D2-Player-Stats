@@ -43,15 +43,9 @@ void Announce_PrintHelpToConsole(int client)
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPCurrent", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
-	Format(line, sizeof(line), "%T", "HelpCommandMVPMap", phraseTarget);
-	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPRank", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
-	Format(line, sizeof(line), "%T", "HelpCommandMVPStats", phraseTarget);
-	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPAcc", phraseTarget);
-	Announce_PrintConsoleLine(client, line);
-	Format(line, sizeof(line), "%T", "HelpCommandMVPAccDetails", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPUtils", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
@@ -65,52 +59,8 @@ void Announce_PrintHelpToConsole(int client)
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPTank", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
-	Format(line, sizeof(line), "%T", "HelpCommandMVPSubs", phraseTarget);
-	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPHelp", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
-}
-
-bool Announce_PrintSubstitutionSnapshotsToConsole(int client)
-{
-	if (g_iSubstitutionSnapshotCount <= 0)
-	{
-		Announce_ReplyCommandPhrase(client, "SubstitutionSnapshotsUnavailable");
-		return false;
-	}
-
-	char line[256];
-	int phraseTarget = client > 0 ? client : LANG_SERVER;
-	Format(line, sizeof(line), "%T", "SubstitutionSnapshotsHeader", phraseTarget, g_iSubstitutionSnapshotCount);
-	Announce_PrintConsoleLine(client, line);
-
-	for (int i = 0; i < g_iSubstitutionSnapshotCount; i++)
-	{
-		int bufferSlot = API_GetSubstitutionBufferSlot(i);
-		if (bufferSlot == -1 || !g_SubstitutionSnapshots[bufferSlot].active)
-		{
-			continue;
-		}
-
-		PlayerStatsSubstitutionSnapshotData snapshot;
-		snapshot = g_SubstitutionSnapshots[bufferSlot];
-		Format(line, sizeof(line), "#%d id=%s round=%d slot=%d mode=%d restored=%d map=%s", i, snapshot.substitutionId, snapshot.roundId, snapshot.slot, snapshot.baseMode, snapshot.restored ? 1 : 0, snapshot.map);
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  player=%s accountid=%d team=%d bot=%d timestamp=%d", snapshot.player.player.name, snapshot.accountId, snapshot.player.team, snapshot.player.player.bot ? 1 : 0, snapshot.timestamp);
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  combat: si_dmg=%d ci=%d ff=%d tank=%d witch=%d si_kills=%d", snapshot.player.combat.siDamage, snapshot.player.combat.commonKills, snapshot.player.combat.ffGiven, snapshot.player.combat.tankDamage, snapshot.player.combat.witchDamage, Announce_GetSiKillTotalForPlayer(snapshot.player));
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  survivability/support: deaths=%d incaps=%d heals=%d revives=%d rescues=%d", snapshot.player.survivability.deaths, snapshot.player.survivability.incaps, snapshot.player.support.healsGiven, snapshot.player.support.revivesGiven, snapshot.player.support.rescuesGiven);
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  items/utils: pills=%d adr=%d kits=%d defib=%d molo=%d pipe=%d bile=%d ign=%d biled=%d tank_biled=%d", snapshot.player.resources.pillsUsed, snapshot.player.resources.adrenalineUsed, snapshot.player.resources.medkitsUsed, snapshot.player.resources.defibsUsed, snapshot.player.resources.molotovsThrown, snapshot.player.resources.pipebombsThrown, snapshot.player.resources.vomitjarsThrown, snapshot.player.resources.zombiesIgnited, snapshot.player.resources.playersBiled, snapshot.player.resources.tanksBiled);
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  infect/scav: grab_dmg=%d tongues=%d pounces=%d rides=%d booms=%d spit_dmg=%d poured=%d dropped=%d destroyed=%d", snapshot.player.infectedGrab.totalDamage, snapshot.player.infectedGrab.tongueGrabs, snapshot.player.infectedGrab.hunterPounces, snapshot.player.infectedGrab.jockeyRides, snapshot.player.infectedSupport.boomerVomitVictims, snapshot.player.infectedSupport.spitterDamage, snapshot.player.scavenge.gascansPoured, snapshot.player.scavenge.gascansDropped, snapshot.player.scavenge.gascansDestroyed);
-		Announce_PrintConsoleLine(client, line);
-		Format(line, sizeof(line), "  accuracy: shotgun=%d/%d smg=%d/%d sniper=%d/%d pistol=%d/%d", snapshot.player.accuracy.shotgunHits, snapshot.player.accuracy.shotgunShots, snapshot.player.accuracy.smgRifleHits, snapshot.player.accuracy.smgRifleShots, snapshot.player.accuracy.sniperHits, snapshot.player.accuracy.sniperShots, snapshot.player.accuracy.pistolHits, snapshot.player.accuracy.pistolShots);
-		Announce_PrintConsoleLine(client, line);
-	}
-
-	return true;
 }
 
 void Announce_GetColumnLabel(char[] buffer, int maxlen, const char[] phrase, int client = LANG_SERVER)
@@ -127,128 +77,6 @@ void Announce_FormatMetricUnitLabel(char[] buffer, int maxlen, const char[] base
 	}
 
 	Format(buffer, maxlen, "%s %s", baseLabel, suffix);
-}
-
-int Announce_FindLatestHistoryRoundIndex(const char[] mapFilter)
-{
-	if (mapFilter[0] == '\0')
-	{
-		return -1;
-	}
-
-	for (int i = g_GameHistory.roundCount - 1; i >= 0; i--)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (!StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		if (!g_RoundHistory[i].active || g_RoundHistory[i].roundId <= 0)
-		{
-			continue;
-		}
-
-		return i;
-	}
-
-	return -1;
-}
-
-bool Announce_LoadHistoricalRoundByMap(const char[] mapFilter)
-{
-	int index = Announce_FindLatestHistoryRoundIndex(mapFilter);
-	if (index < 0)
-	{
-		return false;
-	}
-
-	g_RoundBackup = g_Round;
-	g_Round.Reset();
-	g_Round.meta.id = g_RoundHistory[index].roundId;
-	g_Round.meta.baseMode = g_RoundHistory[index].baseMode;
-	g_Round.meta.isVersusMode = g_RoundHistory[index].isVersusMode;
-	g_Round.meta.scavengeRoundNumber = g_RoundHistory[index].scavengeRoundNumber;
-	g_Round.meta.scavengeInSecondHalf = g_RoundHistory[index].scavengeInSecondHalf;
-	g_Round.meta.scavengeItemsGoal = g_RoundHistory[index].scavengeItemsGoal;
-	g_Round.meta.scavengeWentOvertime = g_RoundHistory[index].scavengeWentOvertime;
-	g_Round.meta.scavengeScoreTied = g_RoundHistory[index].scavengeScoreTied;
-	g_Round.meta.siPoolMask = g_RoundHistory[index].siPoolMask;
-	g_Round.meta.startedAt = 1.0;
-	g_Round.meta.endedAt = 1.0 + float(g_RoundHistory[index].durationSeconds);
-	g_Round.meta.storedTankPercent = g_RoundHistory[index].storedTankPercent;
-	g_Round.meta.storedWitchPercent = g_RoundHistory[index].storedWitchPercent;
-	g_Round.meta.endReason = g_RoundHistory[index].endReason;
-	g_Round.meta.historyScope = g_RoundHistory[index].historyScope;
-	g_Round.totals = g_RoundHistory[index].totals;
-	g_Round.tankVictimCount = g_RoundHistory[index].tankCount;
-	g_Round.witchEntityCount = g_RoundHistory[index].witchCount;
-	g_Round.tankSessionCount = g_RoundHistory[index].tankSessionCount;
-
-	for (int tankIndex = 0; tankIndex < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; tankIndex++)
-	{
-		g_Round.tankSessions[tankIndex] = g_RoundHistory[index].tankSessions[tankIndex];
-	}
-
-	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORICAL_PLAYERS; i++)
-	{
-		if (!g_RoundHistory[index].players[i].active)
-		{
-			continue;
-		}
-
-		g_Round.players[i].Reset();
-		g_Round.players[i].active = true;
-		g_Round.players[i].player.bot = g_RoundHistory[index].players[i].bot;
-		g_Round.players[i].team = g_RoundHistory[index].players[i].team;
-		strcopy(g_Round.players[i].player.name, sizeof(g_Round.players[i].player.name), g_RoundHistory[index].players[i].name);
-		g_Round.players[i].combat = g_RoundHistory[index].players[i].combat;
-		g_Round.players[i].resources = g_RoundHistory[index].players[i].resources;
-		g_Round.players[i].scavenge = g_RoundHistory[index].players[i].scavenge;
-		g_Round.players[i].support = g_RoundHistory[index].players[i].support;
-		g_Round.players[i].infectedGrab = g_RoundHistory[index].players[i].infectedGrab;
-		g_Round.players[i].infectedSupport = g_RoundHistory[index].players[i].infectedSupport;
-		g_Round.players[i].skills = g_RoundHistory[index].players[i].skills;
-		g_Round.players[i].accuracy = g_RoundHistory[index].players[i].accuracy;
-		g_Round.players[i].accuracyDetails = g_RoundHistory[index].players[i].accuracyDetails;
-	}
-
-	return true;
-}
-
-void Announce_RestoreHistoricalRound()
-{
-	g_Round = g_RoundBackup;
-}
-
-bool Announce_RenderHistoricalInfectedPanels(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderInfectedPanels(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalTankPanels(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderTankPanels(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
 }
 
 void Announce_GetTitleName(char[] buffer, int maxlen, int baseMode = GAMEMODE_UNKNOWN, int client = LANG_SERVER)
@@ -366,463 +194,6 @@ bool Announce_BroadcastRoundSummary(int client = 0)
 	return true;
 }
 
-bool Announce_RenderHistoricalRoundSummary(int client, const char[] mapFilter, bool withSummary = true)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	if (withSummary && !Announce_BroadcastRoundSummary(client))
-	{
-		Announce_RestoreHistoricalRound();
-		return false;
-	}
-
-	if (client > 0 && IsValidClient(client))
-	{
-		if (!Announce_RenderRoundConsolePanel(client))
-		{
-			Announce_RestoreHistoricalRound();
-			return false;
-		}
-	}
-
-	Announce_RestoreHistoricalRound();
-	return true;
-}
-
-bool Announce_RenderHistoricalAccuracyPanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderAccuracyPanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalAccuracyDetailsPanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderAccuracyDetailsPanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalUtilitiesPanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderUtilitiesPanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalConsumablesPanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderConsumablesPanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalSupportPanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderSupportPanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-bool Announce_RenderHistoricalScavengePanel(int client, const char[] mapFilter)
-{
-	if (!Announce_LoadHistoricalRoundByMap(mapFilter))
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	bool rendered = Announce_RenderScavengePanel(client);
-	Announce_RestoreHistoricalRound();
-	return rendered;
-}
-
-PlayerStatsHistoryScopeType Announce_GetHistoryScopeForFilter(const char[] mapFilter = "")
-{
-	for (int i = g_GameHistory.roundCount - 1; i >= 0; i--)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		return g_GameHistory.rounds[i].historyScope;
-	}
-
-	return g_Runtime.historyScope;
-}
-
-int Announce_GetHistoryBaseModeForFilter(const char[] mapFilter = "")
-{
-	for (int i = g_GameHistory.roundCount - 1; i >= 0; i--)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		return g_GameHistory.rounds[i].baseMode;
-	}
-
-	return g_Runtime.baseMode;
-}
-
-void Announce_GetHistoryPanelTitle(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "", int client = LANG_SERVER)
-{
-	char titleName[64];
-	Announce_GetTitleName(titleName, sizeof(titleName), Announce_GetHistoryBaseModeForFilter(mapFilter), client);
-
-	switch (historyScope)
-	{
-		case PlayerStatsHistoryScope_CampaignRun:
-		{
-			if (mapFilter[0] != '\0')
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleCampaignMap", client, titleName, g_GameHistory.seriesId, mapFilter);
-			}
-			else
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleCampaignAll", client, titleName, g_GameHistory.seriesId);
-			}
-		}
-		case PlayerStatsHistoryScope_CompetitiveSeries:
-		{
-			if (mapFilter[0] != '\0')
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSeriesMap", client, titleName, g_GameHistory.seriesId, mapFilter);
-			}
-			else
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSeriesAll", client, titleName, g_GameHistory.seriesId);
-			}
-		}
-		case PlayerStatsHistoryScope_ScavengeMatch:
-		{
-			if (mapFilter[0] != '\0')
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleScavengeMap", client, titleName, g_GameHistory.seriesId, mapFilter);
-			}
-			else
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleScavengeAll", client, titleName, g_GameHistory.seriesId);
-			}
-		}
-		case PlayerStatsHistoryScope_SurvivalRuns:
-		{
-			if (mapFilter[0] != '\0')
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSurvivalMap", client, titleName, g_GameHistory.seriesId, mapFilter);
-			}
-			else
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSurvivalAll", client, titleName, g_GameHistory.seriesId);
-			}
-		}
-		default:
-		{
-			if (mapFilter[0] != '\0')
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSessionMap", client, titleName, g_GameHistory.seriesId, mapFilter);
-			}
-			else
-			{
-				Format(buffer, maxlen, "%T", "HistoryTitleSessionAll", client, titleName, g_GameHistory.seriesId);
-			}
-		}
-	}
-}
-
-bool Announce_ShouldShowHistoryMapColumn(PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "")
-{
-	if (mapFilter[0] == '\0')
-	{
-		return true;
-	}
-
-	return historyScope != PlayerStatsHistoryScope_ScavengeMatch
-		&& historyScope != PlayerStatsHistoryScope_SurvivalRuns;
-}
-
-bool Announce_ShouldShowHistoryRestartsColumn(PlayerStatsHistoryScopeType historyScope)
-{
-	switch (historyScope)
-	{
-		case PlayerStatsHistoryScope_CampaignRun, PlayerStatsHistoryScope_CompetitiveSeries, PlayerStatsHistoryScope_ScavengeMatch:
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void Announce_GetHistoryRoundColumnLabel(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope)
-{
-	switch (historyScope)
-	{
-		case PlayerStatsHistoryScope_SurvivalRuns:
-		{
-			Announce_GetColumnLabel(buffer, maxlen, "ColumnRun", LANG_SERVER);
-		}
-		default:
-		{
-			Announce_GetColumnLabel(buffer, maxlen, "ColumnRound", LANG_SERVER);
-		}
-	}
-}
-
-int Announce_CountHistoryRowsForFilter(const char[] mapFilter = "")
-{
-	int count = 0;
-
-	for (int i = 0; i < g_GameHistory.roundCount; i++)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		count++;
-	}
-
-	return count;
-}
-
-int Announce_GetBestHistoryDurationForFilter(const char[] mapFilter = "")
-{
-	int best = 0;
-
-	for (int i = 0; i < g_GameHistory.roundCount; i++)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		if (g_GameHistory.rounds[i].durationSeconds > best)
-		{
-			best = g_GameHistory.rounds[i].durationSeconds;
-		}
-	}
-
-	return best;
-}
-
-void Announce_FormatDurationCompact(int durationSeconds, char[] buffer, int maxlen)
-{
-	int minutes = durationSeconds / 60;
-	int seconds = durationSeconds % 60;
-	Format(buffer, maxlen, "%dm %02ds", minutes, seconds);
-}
-
-void Announce_GetHistorySummaryLine(char[] buffer, int maxlen, PlayerStatsHistoryScopeType historyScope, const char[] mapFilter = "")
-{
-	int entryCount = Announce_CountHistoryRowsForFilter(mapFilter);
-
-	switch (historyScope)
-	{
-		case PlayerStatsHistoryScope_CampaignRun:
-		{
-			Format(buffer, maxlen, "%T", "HistorySummaryCampaign", LANG_SERVER, entryCount);
-		}
-		case PlayerStatsHistoryScope_CompetitiveSeries:
-		{
-			Format(buffer, maxlen, "%T", "HistorySummarySeries", LANG_SERVER, entryCount);
-		}
-		case PlayerStatsHistoryScope_ScavengeMatch:
-		{
-			Format(buffer, maxlen, "%T", "HistorySummaryScavenge", LANG_SERVER, entryCount);
-		}
-		case PlayerStatsHistoryScope_SurvivalRuns:
-		{
-			int bestDuration = Announce_GetBestHistoryDurationForFilter(mapFilter);
-			char bestTime[16];
-			Announce_FormatDurationCompact(bestDuration, bestTime, sizeof(bestTime));
-			Format(buffer, maxlen, "%T", "HistorySummarySurvival", LANG_SERVER, entryCount, bestTime);
-		}
-		default:
-		{
-			Format(buffer, maxlen, "%T", "HistorySummaryGeneric", LANG_SERVER, entryCount);
-		}
-	}
-}
-
-bool Announce_RenderGameHistoryPanel(int client = 0, const char[] mapFilter = "")
-{
-	if (!g_GameHistory.active || g_GameHistory.roundCount <= 0)
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableCurrentMode");
-		return false;
-	}
-
-	ConsolePanel panel;
-	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
-	ConsolePanel_EnableSafeAscii(panel, false);
-
-	PlayerStatsHistoryScopeType historyScope = Announce_GetHistoryScopeForFilter(mapFilter);
-	int baseMode = Announce_GetHistoryBaseModeForFilter(mapFilter);
-	char line[160];
-	Announce_GetHistoryPanelTitle(line, sizeof(line), historyScope, mapFilter, Announce_GetPhraseTarget(client));
-	ConsolePanel_AddHeaderLine(panel, line);
-	Announce_GetHistorySummaryLine(line, sizeof(line), historyScope, mapFilter);
-	ConsolePanel_AddHeaderLine(panel, line);
-
-	if (baseMode == GAMEMODE_VERSUS || baseMode == GAMEMODE_SCAVENGE)
-	{
-		Format(line, sizeof(line), "%T", "HistoryCampaignScore", LANG_SERVER,
-			g_GameHistory.lastCampaignScoreA,
-			g_GameHistory.lastCampaignScoreB);
-		ConsolePanel_AddHeaderLine(panel, line);
-	}
-
-	bool showMapColumn = Announce_ShouldShowHistoryMapColumn(historyScope, mapFilter);
-	bool showRestartsColumn = Announce_ShouldShowHistoryRestartsColumn(historyScope);
-	char roundLabel[12];
-	char mapLabel[12];
-	char timeLabel[12];
-	char siKillsLabel[12];
-	char commonLabel[12];
-	char deathsLabel[12];
-	char incapsLabel[12];
-	char kitsLabel[12];
-	char pillsLabel[12];
-	char restartsLabel[16];
-	Announce_GetHistoryRoundColumnLabel(roundLabel, sizeof(roundLabel), historyScope);
-	Announce_GetColumnLabel(mapLabel, sizeof(mapLabel), "ColumnMap", LANG_SERVER);
-	Announce_GetColumnLabel(timeLabel, sizeof(timeLabel), "ColumnTime", LANG_SERVER);
-	Announce_GetColumnLabel(siKillsLabel, sizeof(siKillsLabel), "ColumnSIKills", LANG_SERVER);
-	Announce_GetColumnLabel(commonLabel, sizeof(commonLabel), "ColumnCommon", LANG_SERVER);
-	Announce_GetColumnLabel(deathsLabel, sizeof(deathsLabel), "ColumnDeaths", LANG_SERVER);
-	Announce_GetColumnLabel(incapsLabel, sizeof(incapsLabel), "ColumnIncaps", LANG_SERVER);
-	Announce_GetColumnLabel(kitsLabel, sizeof(kitsLabel), "ColumnKits", LANG_SERVER);
-	Announce_GetColumnLabel(pillsLabel, sizeof(pillsLabel), "ColumnPills", LANG_SERVER);
-	Announce_GetColumnLabel(restartsLabel, sizeof(restartsLabel), "ColumnRestarts", LANG_SERVER);
-
-	ConsoleTable_AddColumn(panel.table, roundLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	if (showMapColumn)
-	{
-		ConsoleTable_AddColumn(panel.table, mapLabel, 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
-	}
-	ConsoleTable_AddColumn(panel.table, timeLabel, 8, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
-	ConsoleTable_AddColumn(panel.table, siKillsLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, commonLabel, 7, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, deathsLabel, 6, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, incapsLabel, 6, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, kitsLabel, 4, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, pillsLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	if (showRestartsColumn)
-	{
-		ConsoleTable_AddColumn(panel.table, restartsLabel, 8, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	}
-
-	int displayedRows = 0;
-	for (int i = 0; i < g_GameHistory.roundCount; i++)
-	{
-		if (!g_GameHistory.rounds[i].active)
-		{
-			continue;
-		}
-
-		if (mapFilter[0] != '\0' && !StrEqual(g_GameHistory.rounds[i].map, mapFilter, false))
-		{
-			continue;
-		}
-
-		if (!ConsoleTable_BeginRow(panel.table))
-		{
-			break;
-		}
-
-		char duration[16];
-		int minutes = g_GameHistory.rounds[i].durationSeconds / 60;
-		int seconds = g_GameHistory.rounds[i].durationSeconds % 60;
-		Format(duration, sizeof(duration), "%dm %02ds", minutes, seconds);
-
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].roundId);
-		if (showMapColumn)
-		{
-			ConsoleTable_AddStringCell(panel.table, g_GameHistory.rounds[i].map);
-		}
-		ConsoleTable_AddStringCell(panel.table, duration);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].siKills);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].commonKills);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].deaths);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].incaps);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].kitsUsed);
-		ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].pillsUsed);
-		if (showRestartsColumn)
-		{
-			ConsoleTable_AddIntCell(panel.table, g_GameHistory.rounds[i].restarts);
-		}
-		ConsoleTable_EndRow(panel.table);
-		displayedRows++;
-	}
-
-	if (displayedRows <= 0)
-	{
-		Announce_ReplyCommandPhrase(client, "HistoryUnavailableFilter");
-		return false;
-	}
-
-	ConsolePanel_RenderToClient(panel, client);
-	return true;
-}
-
 bool Announce_RenderAccuracyPanel(int client = 0)
 {
 	if (!Stats_HasRoundSnapshot())
@@ -852,191 +223,176 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 
 	char line[160];
 	char titleName[64];
-	char shotgunLabel[16];
-	char smgRifleLabel[16];
-	char sniperLabel[16];
-	char pistolLabel[16];
 	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(shotgunLabel, sizeof(shotgunLabel), "ColumnShotgun", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(smgRifleLabel, sizeof(smgRifleLabel), "ColumnSmgRifle", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(sniperLabel, sizeof(sniperLabel), "ColumnSniper", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(pistolLabel, sizeof(pistolLabel), "ColumnPistol", client > 0 ? client : LANG_SERVER);
-	Announce_FormatMetricUnitLabel(shotgunLabel, sizeof(shotgunLabel), shotgunLabel, "%");
-	Announce_FormatMetricUnitLabel(smgRifleLabel, sizeof(smgRifleLabel), smgRifleLabel, "%");
-	Announce_FormatMetricUnitLabel(sniperLabel, sizeof(sniperLabel), sniperLabel, "%");
-	Announce_FormatMetricUnitLabel(pistolLabel, sizeof(pistolLabel), pistolLabel, "%");
 	Format(line, sizeof(line), "%T", "PanelTitleAccuracyStats", client > 0 ? client : LANG_SERVER, titleName, g_Round.meta.id);
+	ConsolePanel_AddHeaderLine(panel, line);
+	Format(line, sizeof(line), "%T", "PanelLegendAccuracyHitsShotsPercent", client > 0 ? client : LANG_SERVER);
 	ConsolePanel_AddHeaderLine(panel, line);
 
 	Announce_AddMetricPlayerStringColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
 
-	char shotgunValues[L4D2_PLAYER_STATS_MAX_SURVIVORS][32];
-	char smgRifleValues[L4D2_PLAYER_STATS_MAX_SURVIVORS][32];
-	char sniperValues[L4D2_PLAYER_STATS_MAX_SURVIVORS][32];
-	char pistolValues[L4D2_PLAYER_STATS_MAX_SURVIVORS][32];
-
-	for (int i = 0; i < survivorCount; i++)
+	PlayerStatsWeaponDetailType groupedDetails[][5] =
 	{
-		int slot = survivorSlots[i];
-		Announce_FormatAccuracyCell(shotgunValues[i], sizeof(shotgunValues[]), g_Round.players[slot].accuracy.shotgunHits, g_Round.players[slot].accuracy.shotgunShots, true);
-		Announce_FormatAccuracyCell(smgRifleValues[i], sizeof(smgRifleValues[]), g_Round.players[slot].accuracy.smgRifleHits, g_Round.players[slot].accuracy.smgRifleShots);
-		Announce_FormatAccuracyCell(sniperValues[i], sizeof(sniperValues[]), g_Round.players[slot].accuracy.sniperHits, g_Round.players[slot].accuracy.sniperShots);
-		Announce_FormatAccuracyCell(pistolValues[i], sizeof(pistolValues[]), g_Round.players[slot].accuracy.pistolHits, g_Round.players[slot].accuracy.pistolShots);
-	}
-
-	Announce_AddMetricStringRow(panel, shotgunLabel, survivorCount,
-		shotgunValues[0],
-		survivorCount > 1 ? shotgunValues[1] : "",
-		survivorCount > 2 ? shotgunValues[2] : "",
-		survivorCount > 3 ? shotgunValues[3] : "");
-	Announce_AddMetricStringRow(panel, smgRifleLabel, survivorCount,
-		smgRifleValues[0],
-		survivorCount > 1 ? smgRifleValues[1] : "",
-		survivorCount > 2 ? smgRifleValues[2] : "",
-		survivorCount > 3 ? smgRifleValues[3] : "");
-	Announce_AddMetricStringRow(panel, sniperLabel, survivorCount,
-		sniperValues[0],
-		survivorCount > 1 ? sniperValues[1] : "",
-		survivorCount > 2 ? sniperValues[2] : "",
-		survivorCount > 3 ? sniperValues[3] : "");
-	Announce_AddMetricStringRow(panel, pistolLabel, survivorCount,
-		pistolValues[0],
-		survivorCount > 1 ? pistolValues[1] : "",
-		survivorCount > 2 ? pistolValues[2] : "",
-		survivorCount > 3 ? pistolValues[3] : "");
-
-	ConsolePanel_RenderToClient(panel, client);
-	return true;
-}
-
-bool Announce_RenderAccuracyDetailsPanel(int client = 0)
-{
-	if (!Stats_HasRoundSnapshot())
+		{ PlayerStatsWeaponDetail_PumpShotgun, PlayerStatsWeaponDetail_Autoshotgun, PlayerStatsWeaponDetail_ChromeShotgun, PlayerStatsWeaponDetail_SpasShotgun, PlayerStatsWeaponDetail_None },
+		{ PlayerStatsWeaponDetail_Smg, PlayerStatsWeaponDetail_SmgSilenced, PlayerStatsWeaponDetail_SmgMp5, PlayerStatsWeaponDetail_None, PlayerStatsWeaponDetail_None },
+		{ PlayerStatsWeaponDetail_Rifle, PlayerStatsWeaponDetail_RifleAk47, PlayerStatsWeaponDetail_RifleDesert, PlayerStatsWeaponDetail_RifleSg552, PlayerStatsWeaponDetail_RifleM60 },
+		{ PlayerStatsWeaponDetail_HuntingRifle, PlayerStatsWeaponDetail_SniperMilitary, PlayerStatsWeaponDetail_SniperAwp, PlayerStatsWeaponDetail_SniperScout, PlayerStatsWeaponDetail_None },
+		{ PlayerStatsWeaponDetail_Pistol, PlayerStatsWeaponDetail_Magnum, PlayerStatsWeaponDetail_None, PlayerStatsWeaponDetail_None, PlayerStatsWeaponDetail_None }
+	};
+	static const char groupPhraseKeys[][] =
 	{
-		Announce_ReplyCommandPhrase(client, "RoundSnapshotUnavailable");
-		return false;
-	}
-
-	ConsolePanel panel;
-	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
-	ConsolePanel_EnableSafeAscii(panel, false);
-
-	char line[160];
-	char titleName[64];
-	char playerLabel[16];
-	char weaponLabel[16];
-	char hitsLabel[12];
-	char shotsLabel[12];
-	char accLabel[12];
-	char hsLabel[8];
-	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(playerLabel, sizeof(playerLabel), "ColumnPlayer", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(weaponLabel, sizeof(weaponLabel), "ColumnWeapon", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(hitsLabel, sizeof(hitsLabel), "ColumnHits", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(shotsLabel, sizeof(shotsLabel), "ColumnShots", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(accLabel, sizeof(accLabel), "ColumnAcc", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(hsLabel, sizeof(hsLabel), "ColumnHeadshots", client > 0 ? client : LANG_SERVER);
-	Format(line, sizeof(line), "%T", "PanelTitleAccuracyDetails", client > 0 ? client : LANG_SERVER, titleName, g_Round.meta.id);
-	ConsolePanel_AddHeaderLine(panel, line);
-
-	ConsoleTable_AddColumn(panel.table, playerLabel, 16, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
-	ConsoleTable_AddColumn(panel.table, weaponLabel, 14, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
-	ConsoleTable_AddColumn(panel.table, hitsLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, shotsLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-	ConsoleTable_AddColumn(panel.table, accLabel, 5, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
-	ConsoleTable_AddColumn(panel.table, hsLabel, 4, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
-
-	int survivorSlots[8];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
-	bool hasDetails = false;
-	if (survivorCount <= 0)
+		"ColumnShotgun",
+		"ColumnSmgGroup",
+		"ColumnRifleGroup",
+		"ColumnSniper",
+		"ColumnPistol"
+	};
+	static const char groupTotalPhraseKeys[][] =
 	{
-		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
-		return false;
-	}
+		"ColumnShotgunTotal",
+		"ColumnSmgTotal",
+		"ColumnRifleTotal",
+		"ColumnSniperTotal",
+		"ColumnPistolTotal"
+	};
 
-	for (int i = 0; i < survivorCount; i++)
+	bool hasRows = false;
+	for (int groupIndex = 0; groupIndex < sizeof(groupedDetails); groupIndex++)
 	{
-		int slot = survivorSlots[i];
-		int detailOrder[PlayerStatsWeaponDetail_Count];
-		int detailCount = 0;
-
-		for (int detail = view_as<int>(PlayerStatsWeaponDetail_None) + 1; detail < view_as<int>(PlayerStatsWeaponDetail_Count); detail++)
+		bool showGroup = false;
+		for (int i = 0; i < survivorCount && !showGroup; i++)
 		{
-			int shots = g_Round.players[slot].accuracyDetails.shots[detail];
-			if (shots <= 0)
+			int slot = survivorSlots[i];
+			for (int detailIndex = 0; detailIndex < sizeof(groupedDetails[]); detailIndex++)
+			{
+				PlayerStatsWeaponDetailType detail = groupedDetails[groupIndex][detailIndex];
+				if (detail == PlayerStatsWeaponDetail_None)
+				{
+					continue;
+				}
+
+				if (g_Round.players[slot].accuracyDetails.shots[detail] > 0)
+				{
+					showGroup = true;
+					break;
+				}
+			}
+		}
+
+		if (!showGroup)
+		{
+			continue;
+		}
+
+		char groupLabel[24];
+		Announce_GetColumnLabel(groupLabel, sizeof(groupLabel), groupPhraseKeys[groupIndex], client > 0 ? client : LANG_SERVER);
+		Format(line, sizeof(line), "[%s]", groupLabel);
+		ConsolePanel_AddHeaderLine(panel, line);
+
+		for (int detailIndex = 0; detailIndex < sizeof(groupedDetails[]); detailIndex++)
+		{
+			PlayerStatsWeaponDetailType detail = groupedDetails[groupIndex][detailIndex];
+			if (detail == PlayerStatsWeaponDetail_None)
 			{
 				continue;
 			}
 
-			detailOrder[detailCount++] = detail;
-		}
-
-		for (int a = 1; a < detailCount; a++)
-		{
-			int key = detailOrder[a];
-			int keyShots = g_Round.players[slot].accuracyDetails.shots[key];
-			int keyHits = g_Round.players[slot].accuracyDetails.hits[key];
-			int b = a - 1;
-
-			while (b >= 0)
+			bool showDetail = false;
+			for (int i = 0; i < survivorCount; i++)
 			{
-				int current = detailOrder[b];
-				int currentShots = g_Round.players[slot].accuracyDetails.shots[current];
-				int currentHits = g_Round.players[slot].accuracyDetails.hits[current];
-				if (currentShots > keyShots)
+				int slot = survivorSlots[i];
+				if (g_Round.players[slot].accuracyDetails.shots[detail] > 0)
 				{
+					showDetail = true;
 					break;
 				}
-
-				if (currentShots == keyShots && currentHits >= keyHits)
-				{
-					break;
-				}
-
-				detailOrder[b + 1] = current;
-				b--;
 			}
 
-			detailOrder[b + 1] = key;
-		}
-
-		for (int j = 0; j < detailCount; j++)
-		{
-			if (!ConsoleTable_BeginRow(panel.table))
+			if (!showDetail)
 			{
-				break;
+				continue;
 			}
 
-			int detail = detailOrder[j];
-			int shots = g_Round.players[slot].accuracyDetails.shots[detail];
-			int hits = g_Round.players[slot].accuracyDetails.hits[detail];
-			int headshots = g_Round.players[slot].accuracyDetails.headshots[detail];
-			bool clampToShots = Stats_GetWeaponFamilyFromDetail(view_as<PlayerStatsWeaponDetailType>(detail)) == PlayerStatsWeaponFamily_Shotgun;
-			char weaponName[32];
-			char accuracy[16];
-			Stats_GetWeaponDetailName(view_as<PlayerStatsWeaponDetailType>(detail), weaponName, sizeof(weaponName));
-			Format(accuracy, sizeof(accuracy), "%d%%", Announce_GetDisplayAccuracyPercent(hits, shots, clampToShots));
+			char detailLabel[24];
+			char valueA[32], valueB[32], valueC[32], valueD[32];
+			bool clampToShots = Stats_GetWeaponFamilyFromDetail(detail) == PlayerStatsWeaponFamily_Shotgun;
+			Stats_GetWeaponDetailName(detail, detailLabel, sizeof(detailLabel));
+			Announce_FormatAccuracyCell(valueA, sizeof(valueA),
+				g_Round.players[survivorSlots[0]].accuracyDetails.hits[detail],
+				g_Round.players[survivorSlots[0]].accuracyDetails.shots[detail],
+				clampToShots);
+			if (survivorCount > 1)
+			{
+				Announce_FormatAccuracyCell(valueB, sizeof(valueB),
+					g_Round.players[survivorSlots[1]].accuracyDetails.hits[detail],
+					g_Round.players[survivorSlots[1]].accuracyDetails.shots[detail],
+					clampToShots);
+			}
+			if (survivorCount > 2)
+			{
+				Announce_FormatAccuracyCell(valueC, sizeof(valueC),
+					g_Round.players[survivorSlots[2]].accuracyDetails.hits[detail],
+					g_Round.players[survivorSlots[2]].accuracyDetails.shots[detail],
+					clampToShots);
+			}
+			if (survivorCount > 3)
+			{
+				Announce_FormatAccuracyCell(valueD, sizeof(valueD),
+					g_Round.players[survivorSlots[3]].accuracyDetails.hits[detail],
+					g_Round.players[survivorSlots[3]].accuracyDetails.shots[detail],
+					clampToShots);
+			}
 
-			ConsoleTable_AddStringCell(panel.table, j == 0 ? g_Round.players[slot].player.name : "");
-			ConsoleTable_AddStringCell(panel.table, weaponName);
-			ConsoleTable_AddIntCell(panel.table, Announce_GetDisplayAccuracyHits(hits, shots, clampToShots));
-			ConsoleTable_AddIntCell(panel.table, shots);
-			ConsoleTable_AddStringCell(panel.table, accuracy);
-			ConsoleTable_AddIntCell(panel.table, headshots);
-			ConsoleTable_EndRow(panel.table);
-			hasDetails = true;
+			Announce_AddMetricStringRow(panel, detailLabel, survivorCount, valueA, valueB, valueC, valueD);
+			hasRows = true;
 		}
+
+		char totalLabel[24];
+		char totalA[32], totalB[32], totalC[32], totalD[32];
+		Announce_GetColumnLabel(totalLabel, sizeof(totalLabel), groupTotalPhraseKeys[groupIndex], client > 0 ? client : LANG_SERVER);
+		Announce_FormatAccuracyCell(totalA, sizeof(totalA),
+			Announce_GetPlayerAccuracyGroupHits(survivorSlots[0], groupIndex),
+			Announce_GetPlayerAccuracyGroupShots(survivorSlots[0], groupIndex),
+			groupIndex == 0);
+		if (survivorCount > 1)
+		{
+			Announce_FormatAccuracyCell(totalB, sizeof(totalB),
+				Announce_GetPlayerAccuracyGroupHits(survivorSlots[1], groupIndex),
+				Announce_GetPlayerAccuracyGroupShots(survivorSlots[1], groupIndex),
+				groupIndex == 0);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatAccuracyCell(totalC, sizeof(totalC),
+				Announce_GetPlayerAccuracyGroupHits(survivorSlots[2], groupIndex),
+				Announce_GetPlayerAccuracyGroupShots(survivorSlots[2], groupIndex),
+				groupIndex == 0);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatAccuracyCell(totalD, sizeof(totalD),
+				Announce_GetPlayerAccuracyGroupHits(survivorSlots[3], groupIndex),
+				Announce_GetPlayerAccuracyGroupShots(survivorSlots[3], groupIndex),
+				groupIndex == 0);
+		}
+
+		Announce_AddMetricStringRow(panel, totalLabel, survivorCount, totalA, totalB, totalC, totalD);
 	}
 
-	if (!hasDetails)
+	if (!hasRows)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
 		return false;
 	}
 
-	ConsolePanel_RenderToClient(panel, client);
+	if (client > 0)
+	{
+		ConsolePanel_RenderToClient(panel, client);
+	}
+	else
+	{
+		ConsolePanel_RenderToAudience(panel);
+	}
 	return true;
 }
 
@@ -1779,83 +1135,146 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	ConsolePanel_EnableSafeAscii(panel, false);
 
 	char line[128];
-	char damageLabel[12];
-	char siLabel[12];
-	char siKillsLabel[12];
-	char tankLabel[12];
-	char witchLabel[12];
-	char ciLabel[12];
-	char ffLabel[12];
+	char siLabel[24];
+	char tankLabel[24];
+	char witchLabel[24];
+	char ciLabel[24];
+	char ffLabel[24];
 	Announce_FormatPanelTitle(line, sizeof(line), client > 0 ? client : LANG_SERVER);
 	ConsolePanel_AddHeaderLine(panel, line);
-	Announce_GetColumnLabel(damageLabel, sizeof(damageLabel), "ColumnDamage", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(siLabel, sizeof(siLabel), "ColumnSI", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(siKillsLabel, sizeof(siKillsLabel), "ColumnSIKills", client > 0 ? client : LANG_SERVER);
+	Announce_GetColumnLabel(siLabel, sizeof(siLabel), "ColumnSpecialInfected", client > 0 ? client : LANG_SERVER);
 	Announce_GetColumnLabel(tankLabel, sizeof(tankLabel), "ColumnTank", client > 0 ? client : LANG_SERVER);
 	Announce_GetColumnLabel(witchLabel, sizeof(witchLabel), "ColumnWitch", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(ciLabel, sizeof(ciLabel), "ColumnCI", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(ffLabel, sizeof(ffLabel), "ColumnFF", client > 0 ? client : LANG_SERVER);
-	Announce_GetColumnLabel(damageLabel, sizeof(damageLabel), "ColumnDamageShort", client > 0 ? client : LANG_SERVER);
-	Announce_FormatMetricUnitLabel(siLabel, sizeof(siLabel), siLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(siKillsLabel, sizeof(siKillsLabel), siKillsLabel, "#");
-	Announce_FormatMetricUnitLabel(tankLabel, sizeof(tankLabel), tankLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(witchLabel, sizeof(witchLabel), witchLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(ciLabel, sizeof(ciLabel), ciLabel, "#");
-	Announce_FormatMetricUnitLabel(ffLabel, sizeof(ffLabel), ffLabel, "dmg", false);
-
-	int totalDamage = Announce_GetTotalSurvivorDamage();
-	Format(line, sizeof(line), "%T", "PanelTotalsCombat", client > 0 ? client : LANG_SERVER,
-		totalDamage,
-		Announce_GetTotalSurvivorSpecialKills(),
-		g_Round.totals.survivorTotalCommonKills,
-		g_Round.totals.survivorTotalFF);
-	ConsolePanel_AddHeaderLine(panel, line);
+	Announce_GetColumnLabel(ciLabel, sizeof(ciLabel), "ColumnCommonInfected", client > 0 ? client : LANG_SERVER);
+	Announce_GetColumnLabel(ffLabel, sizeof(ffLabel), "ColumnFriendlyFire", client > 0 ? client : LANG_SERVER);
 
 	bool showTank = Announce_ShouldShowTankDamage();
 	bool showWitch = Announce_ShouldShowWitchDamage();
+	bool hasDetailedKills = g_Runtime.hasPlayerSkills;
+	if (hasDetailedKills)
+	{
+		int totalDamage = Announce_GetTotalSurvivorDamage();
+		Format(line, sizeof(line), "%T", "PanelTotalsCombat", client > 0 ? client : LANG_SERVER,
+			totalDamage,
+			Announce_GetTotalSurvivorSpecialKills(),
+			g_Round.totals.survivorTotalCommonKills,
+			g_Round.totals.survivorTotalFF);
+		ConsolePanel_AddHeaderLine(panel, line);
+		Format(line, sizeof(line), "%T", "PanelLegendSiDamageKillBossDamageShots", client > 0 ? client : LANG_SERVER);
+		ConsolePanel_AddHeaderLine(panel, line);
+	}
+	else if (showTank || showWitch)
+	{
+		Format(line, sizeof(line), "%T", "PanelLegendBossDamageHit", client > 0 ? client : LANG_SERVER);
+		ConsolePanel_AddHeaderLine(panel, line);
+	}
 
-	Announce_AddMetricPlayerColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
-	Announce_AddMetricRow(panel, damageLabel, survivorCount,
-		Announce_GetPlayerDamageScore(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerDamageScore(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerDamageScore(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerDamageScore(survivorSlots[3]) : 0);
-	Announce_AddMetricRow(panel, siLabel, survivorCount,
-		Announce_GetPlayerSiDamage(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerSiDamage(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerSiDamage(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerSiDamage(survivorSlots[3]) : 0);
-	Announce_AddMetricRow(panel, siKillsLabel, survivorCount,
-		Announce_GetPlayerSpecialKills(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerSpecialKills(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerSpecialKills(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerSpecialKills(survivorSlots[3]) : 0);
-	if (showTank)
+	if (hasDetailedKills)
 	{
-		Announce_AddMetricRow(panel, tankLabel, survivorCount,
-			g_Round.players[survivorSlots[0]].combat.tankDamage,
-			survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.tankDamage : 0,
-			survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.tankDamage : 0,
-			survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.tankDamage : 0);
+		Announce_AddMetricPlayerStringColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
+
+		char siA[32], siB[32], siC[32], siD[32];
+		char tankA[32], tankB[32], tankC[32], tankD[32];
+		char witchA[32], witchB[32], witchC[32], witchD[32];
+		char ciA[16], ciB[16], ciC[16], ciD[16];
+		char ffA[16], ffB[16], ffC[16], ffD[16];
+
+		Announce_FormatDamageKillCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]), Announce_GetPlayerSpecialKills(survivorSlots[0]));
+		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
+		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
+		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
+		Announce_FormatIntCell(ffA, sizeof(ffA), g_Round.players[survivorSlots[0]].combat.ffGiven);
+
+		if (survivorCount > 1)
+		{
+			Announce_FormatDamageKillCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]), Announce_GetPlayerSpecialKills(survivorSlots[1]));
+			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
+			Announce_FormatIntCell(ffB, sizeof(ffB), g_Round.players[survivorSlots[1]].combat.ffGiven);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatDamageKillCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]), Announce_GetPlayerSpecialKills(survivorSlots[2]));
+			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
+			Announce_FormatIntCell(ffC, sizeof(ffC), g_Round.players[survivorSlots[2]].combat.ffGiven);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatDamageKillCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]), Announce_GetPlayerSpecialKills(survivorSlots[3]));
+			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
+			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
+		}
+
+		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
+		if (showTank)
+		{
+			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+		}
+		if (showWitch)
+		{
+			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+		}
+		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
+		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
-	if (showWitch)
+	else
 	{
-		Announce_AddMetricRow(panel, witchLabel, survivorCount,
-			g_Round.players[survivorSlots[0]].combat.witchDamage,
-			survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.witchDamage : 0,
-			survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.witchDamage : 0,
-			survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.witchDamage : 0);
+		Announce_AddMetricPlayerStringColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
+
+		char siA[16], siB[16], siC[16], siD[16];
+		char tankA[32], tankB[32], tankC[32], tankD[32];
+		char witchA[32], witchB[32], witchC[32], witchD[32];
+		char ciA[16], ciB[16], ciC[16], ciD[16];
+		char ffA[16], ffB[16], ffC[16], ffD[16];
+
+		Announce_FormatIntCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]));
+		Announce_FormatDamageHitCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].combat.tankDamage, g_Round.players[survivorSlots[0]].combat.tankHits);
+		Announce_FormatDamageHitCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].combat.witchDamage, g_Round.players[survivorSlots[0]].combat.witchHits);
+		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
+		Announce_FormatIntCell(ffA, sizeof(ffA), g_Round.players[survivorSlots[0]].combat.ffGiven);
+
+		if (survivorCount > 1)
+		{
+			Announce_FormatIntCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]));
+			Announce_FormatDamageHitCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].combat.tankDamage, g_Round.players[survivorSlots[1]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].combat.witchDamage, g_Round.players[survivorSlots[1]].combat.witchHits);
+			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
+			Announce_FormatIntCell(ffB, sizeof(ffB), g_Round.players[survivorSlots[1]].combat.ffGiven);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatIntCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]));
+			Announce_FormatDamageHitCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].combat.tankDamage, g_Round.players[survivorSlots[2]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].combat.witchDamage, g_Round.players[survivorSlots[2]].combat.witchHits);
+			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
+			Announce_FormatIntCell(ffC, sizeof(ffC), g_Round.players[survivorSlots[2]].combat.ffGiven);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatIntCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]));
+			Announce_FormatDamageHitCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].combat.tankDamage, g_Round.players[survivorSlots[3]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].combat.witchDamage, g_Round.players[survivorSlots[3]].combat.witchHits);
+			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
+			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
+		}
+
+		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
+		if (showTank)
+		{
+			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+		}
+		if (showWitch)
+		{
+			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+		}
+		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
+		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
-	Announce_AddMetricRow(panel, ciLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].combat.commonKills,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.commonKills : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.commonKills : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.commonKills : 0);
-	Announce_AddMetricRow(panel, ffLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].combat.ffGiven,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.ffGiven : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.ffGiven : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.ffGiven : 0);
 
 	int siMvp = Announce_FindTopDamageSlot();
 	int ciMvp = Announce_FindTopCommonSlot();
@@ -1907,6 +1326,201 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	return true;
 }
 
+bool Announce_RenderSiKillAssistBreakdownPanel(int client = 0)
+{
+	if (!g_Runtime.hasPlayerSkills || !Stats_HasRoundSnapshot() || !Announce_HasCombatStats())
+	{
+		return false;
+	}
+
+	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	if (survivorCount <= 0)
+	{
+		return false;
+	}
+
+	ConsolePanel panel;
+	ConsolePanel_Reset(panel);
+	ConsolePanel_SetWidth(panel, 100);
+	ConsolePanel_EnableSafeAscii(panel, false);
+
+	int phraseTarget = client > 0 ? client : LANG_SERVER;
+	char line[160];
+	char titleName[64];
+	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, phraseTarget);
+	Format(line, sizeof(line), "%T", "PanelTitleSiKillAssistBreakdown", phraseTarget, titleName, g_Round.meta.id);
+	ConsolePanel_AddHeaderLine(panel, line);
+	Format(line, sizeof(line), "%T", "PanelLegendDamageKillAssistDamage", phraseTarget);
+	ConsolePanel_AddHeaderLine(panel, line);
+
+	Announce_AddMetricPlayerStringColumns(panel, phraseTarget, survivorSlots, survivorCount);
+
+	L4D2ZombieClassType classes[6] =
+	{
+		L4D2ZombieClass_Smoker,
+		L4D2ZombieClass_Boomer,
+		L4D2ZombieClass_Hunter,
+		L4D2ZombieClass_Spitter,
+		L4D2ZombieClass_Jockey,
+		L4D2ZombieClass_Charger
+	};
+	static const char labels[][] =
+	{
+		"Smoker",
+		"Boomer",
+		"Hunter",
+		"Spitter",
+		"Jockey",
+		"Charger"
+	};
+
+	for (int classIndex = 0; classIndex < sizeof(classes); classIndex++)
+	{
+		if (!Stats_IsZombieClassEnabledForRound(classes[classIndex]))
+		{
+			continue;
+		}
+
+		char cellA[32], cellB[32], cellC[32], cellD[32];
+		Announce_FormatDamageKillAssistCell(cellA, sizeof(cellA),
+			Announce_GetPlayerSpecialDamageByClass(survivorSlots[0], classes[classIndex]),
+			Announce_GetPlayerSpecialKillsByClass(survivorSlots[0], classes[classIndex]),
+			Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[0], classes[classIndex]));
+
+		if (survivorCount > 1)
+		{
+			Announce_FormatDamageKillAssistCell(cellB, sizeof(cellB),
+				Announce_GetPlayerSpecialDamageByClass(survivorSlots[1], classes[classIndex]),
+				Announce_GetPlayerSpecialKillsByClass(survivorSlots[1], classes[classIndex]),
+				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[1], classes[classIndex]));
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatDamageKillAssistCell(cellC, sizeof(cellC),
+				Announce_GetPlayerSpecialDamageByClass(survivorSlots[2], classes[classIndex]),
+				Announce_GetPlayerSpecialKillsByClass(survivorSlots[2], classes[classIndex]),
+				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[2], classes[classIndex]));
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatDamageKillAssistCell(cellD, sizeof(cellD),
+				Announce_GetPlayerSpecialDamageByClass(survivorSlots[3], classes[classIndex]),
+				Announce_GetPlayerSpecialKillsByClass(survivorSlots[3], classes[classIndex]),
+				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[3], classes[classIndex]));
+		}
+
+		Announce_AddMetricStringRow(panel, labels[classIndex], survivorCount, cellA, cellB, cellC, cellD);
+	}
+
+	ConsolePanel_RenderToClient(panel, client);
+	return true;
+}
+
+bool Announce_RenderBossDamageDetailPanel(int client = 0)
+{
+	if (!g_Runtime.hasPlayerSkills || !Stats_HasRoundSnapshot() || !Announce_HasCombatStats())
+	{
+		return false;
+	}
+
+	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	if (survivorCount <= 0)
+	{
+		return false;
+	}
+
+	bool showTank = false;
+	bool showWitch = false;
+	for (int i = 0; i < survivorCount; i++)
+	{
+		int slot = survivorSlots[i];
+		if (g_Round.players[slot].bossDetail.tankDamage > 0 || g_Round.players[slot].bossDetail.tankShots > 0)
+		{
+			showTank = true;
+		}
+		if (g_Round.players[slot].bossDetail.witchDamage > 0 || g_Round.players[slot].bossDetail.witchShots > 0)
+		{
+			showWitch = true;
+		}
+	}
+
+	if (!showTank && !showWitch)
+	{
+		return false;
+	}
+
+	ConsolePanel panel;
+	ConsolePanel_Reset(panel);
+	ConsolePanel_SetWidth(panel, 100);
+	ConsolePanel_EnableSafeAscii(panel, false);
+
+	int phraseTarget = client > 0 ? client : LANG_SERVER;
+	char line[160];
+	char titleName[64];
+	char tankLabel[24];
+	char witchLabel[24];
+	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, phraseTarget);
+	Announce_GetColumnLabel(tankLabel, sizeof(tankLabel), "ColumnTank", phraseTarget);
+	Announce_GetColumnLabel(witchLabel, sizeof(witchLabel), "ColumnWitch", phraseTarget);
+	Format(line, sizeof(line), "%T", "PanelTitleBossDamageDetail", phraseTarget, titleName, g_Round.meta.id);
+	ConsolePanel_AddHeaderLine(panel, line);
+	Format(line, sizeof(line), "%T", "PanelLegendDamageShots", phraseTarget);
+	ConsolePanel_AddHeaderLine(panel, line);
+
+	Announce_AddMetricPlayerStringColumns(panel, phraseTarget, survivorSlots, survivorCount);
+
+	char tankA[32], tankB[32], tankC[32], tankD[32];
+	char witchA[32], witchB[32], witchC[32], witchD[32];
+
+	if (showTank)
+	{
+		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
+		if (survivorCount > 1)
+		{
+			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
+		}
+		Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+	}
+
+	if (showWitch)
+	{
+		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
+		if (survivorCount > 1)
+		{
+			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
+		}
+		Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+	}
+
+	if (client > 0)
+	{
+		ConsolePanel_RenderToClient(panel, client);
+	}
+	else
+	{
+		ConsolePanel_RenderToAudience(panel);
+	}
+	return true;
+}
+
 void Announce_BroadcastRoundConsolePanel()
 {
 	if (!Stats_HasRoundSnapshot())
@@ -1934,81 +1548,144 @@ void Announce_BroadcastRoundConsolePanel()
 	char line[128];
 	Announce_FormatPanelTitle(line, sizeof(line), LANG_SERVER);
 	ConsolePanel_AddHeaderLine(panel, line);
-	char damageLabel[12];
-	char siLabel[12];
-	char siKillsLabel[12];
-	char tankLabel[12];
-	char witchLabel[12];
-	char ciLabel[12];
-	char ffLabel[12];
-	Announce_GetColumnLabel(damageLabel, sizeof(damageLabel), "ColumnDamage", LANG_SERVER);
-	Announce_GetColumnLabel(siLabel, sizeof(siLabel), "ColumnSI", LANG_SERVER);
-	Announce_GetColumnLabel(siKillsLabel, sizeof(siKillsLabel), "ColumnSIKills", LANG_SERVER);
+	char siLabel[24];
+	char tankLabel[24];
+	char witchLabel[24];
+	char ciLabel[24];
+	char ffLabel[24];
+	Announce_GetColumnLabel(siLabel, sizeof(siLabel), "ColumnSpecialInfected", LANG_SERVER);
 	Announce_GetColumnLabel(tankLabel, sizeof(tankLabel), "ColumnTank", LANG_SERVER);
 	Announce_GetColumnLabel(witchLabel, sizeof(witchLabel), "ColumnWitch", LANG_SERVER);
-	Announce_GetColumnLabel(ciLabel, sizeof(ciLabel), "ColumnCI", LANG_SERVER);
-	Announce_GetColumnLabel(ffLabel, sizeof(ffLabel), "ColumnFF", LANG_SERVER);
-	Announce_GetColumnLabel(damageLabel, sizeof(damageLabel), "ColumnDamageShort", LANG_SERVER);
-	Announce_FormatMetricUnitLabel(siLabel, sizeof(siLabel), siLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(siKillsLabel, sizeof(siKillsLabel), siKillsLabel, "#");
-	Announce_FormatMetricUnitLabel(tankLabel, sizeof(tankLabel), tankLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(witchLabel, sizeof(witchLabel), witchLabel, "dmg", false);
-	Announce_FormatMetricUnitLabel(ciLabel, sizeof(ciLabel), ciLabel, "#");
-	Announce_FormatMetricUnitLabel(ffLabel, sizeof(ffLabel), ffLabel, "dmg", false);
-
-	int totalDamage = Announce_GetTotalSurvivorDamage();
-	Format(line, sizeof(line), "%T", "PanelTotalsCombat", LANG_SERVER,
-		totalDamage,
-		Announce_GetTotalSurvivorSpecialKills(),
-		g_Round.totals.survivorTotalCommonKills,
-		g_Round.totals.survivorTotalFF);
-	ConsolePanel_AddHeaderLine(panel, line);
+	Announce_GetColumnLabel(ciLabel, sizeof(ciLabel), "ColumnCommonInfected", LANG_SERVER);
+	Announce_GetColumnLabel(ffLabel, sizeof(ffLabel), "ColumnFriendlyFire", LANG_SERVER);
 
 	bool showTank = Announce_ShouldShowTankDamage();
 	bool showWitch = Announce_ShouldShowWitchDamage();
+	bool hasDetailedKills = g_Runtime.hasPlayerSkills;
+	if (hasDetailedKills)
+	{
+		int totalDamage = Announce_GetTotalSurvivorDamage();
+		Format(line, sizeof(line), "%T", "PanelTotalsCombat", LANG_SERVER,
+			totalDamage,
+			Announce_GetTotalSurvivorSpecialKills(),
+			g_Round.totals.survivorTotalCommonKills,
+			g_Round.totals.survivorTotalFF);
+		ConsolePanel_AddHeaderLine(panel, line);
+		Format(line, sizeof(line), "%T", "PanelLegendSiDamageKillBossDamageShots", LANG_SERVER);
+		ConsolePanel_AddHeaderLine(panel, line);
+	}
+	else if (showTank || showWitch)
+	{
+		Format(line, sizeof(line), "%T", "PanelLegendBossDamageHit", LANG_SERVER);
+		ConsolePanel_AddHeaderLine(panel, line);
+	}
 
-	Announce_AddMetricPlayerColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
-	Announce_AddMetricRow(panel, damageLabel, survivorCount,
-		Announce_GetPlayerDamageScore(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerDamageScore(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerDamageScore(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerDamageScore(survivorSlots[3]) : 0);
-	Announce_AddMetricRow(panel, siLabel, survivorCount,
-		Announce_GetPlayerSiDamage(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerSiDamage(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerSiDamage(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerSiDamage(survivorSlots[3]) : 0);
-	Announce_AddMetricRow(panel, siKillsLabel, survivorCount,
-		Announce_GetPlayerSpecialKills(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerSpecialKills(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerSpecialKills(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerSpecialKills(survivorSlots[3]) : 0);
-	if (showTank)
+	if (hasDetailedKills)
 	{
-		Announce_AddMetricRow(panel, tankLabel, survivorCount,
-			g_Round.players[survivorSlots[0]].combat.tankDamage,
-			survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.tankDamage : 0,
-			survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.tankDamage : 0,
-			survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.tankDamage : 0);
+		Announce_AddMetricPlayerStringColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
+
+		char siA[32], siB[32], siC[32], siD[32];
+		char tankA[32], tankB[32], tankC[32], tankD[32];
+		char witchA[32], witchB[32], witchC[32], witchD[32];
+		char ciA[16], ciB[16], ciC[16], ciD[16];
+		char ffA[16], ffB[16], ffC[16], ffD[16];
+
+		Announce_FormatDamageKillCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]), Announce_GetPlayerSpecialKills(survivorSlots[0]));
+		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
+		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
+		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
+		Announce_FormatIntCell(ffA, sizeof(ffA), g_Round.players[survivorSlots[0]].combat.ffGiven);
+
+		if (survivorCount > 1)
+		{
+			Announce_FormatDamageKillCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]), Announce_GetPlayerSpecialKills(survivorSlots[1]));
+			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
+			Announce_FormatIntCell(ffB, sizeof(ffB), g_Round.players[survivorSlots[1]].combat.ffGiven);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatDamageKillCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]), Announce_GetPlayerSpecialKills(survivorSlots[2]));
+			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
+			Announce_FormatIntCell(ffC, sizeof(ffC), g_Round.players[survivorSlots[2]].combat.ffGiven);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatDamageKillCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]), Announce_GetPlayerSpecialKills(survivorSlots[3]));
+			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
+			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
+			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
+			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
+		}
+
+		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
+		if (showTank)
+		{
+			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+		}
+		if (showWitch)
+		{
+			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+		}
+		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
+		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
-	if (showWitch)
+	else
 	{
-		Announce_AddMetricRow(panel, witchLabel, survivorCount,
-			g_Round.players[survivorSlots[0]].combat.witchDamage,
-			survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.witchDamage : 0,
-			survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.witchDamage : 0,
-			survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.witchDamage : 0);
+		Announce_AddMetricPlayerStringColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
+
+		char siA[16], siB[16], siC[16], siD[16];
+		char tankA[32], tankB[32], tankC[32], tankD[32];
+		char witchA[32], witchB[32], witchC[32], witchD[32];
+		char ciA[16], ciB[16], ciC[16], ciD[16];
+		char ffA[16], ffB[16], ffC[16], ffD[16];
+
+		Announce_FormatIntCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]));
+		Announce_FormatDamageHitCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].combat.tankDamage, g_Round.players[survivorSlots[0]].combat.tankHits);
+		Announce_FormatDamageHitCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].combat.witchDamage, g_Round.players[survivorSlots[0]].combat.witchHits);
+		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
+		Announce_FormatIntCell(ffA, sizeof(ffA), g_Round.players[survivorSlots[0]].combat.ffGiven);
+
+		if (survivorCount > 1)
+		{
+			Announce_FormatIntCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]));
+			Announce_FormatDamageHitCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].combat.tankDamage, g_Round.players[survivorSlots[1]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].combat.witchDamage, g_Round.players[survivorSlots[1]].combat.witchHits);
+			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
+			Announce_FormatIntCell(ffB, sizeof(ffB), g_Round.players[survivorSlots[1]].combat.ffGiven);
+		}
+		if (survivorCount > 2)
+		{
+			Announce_FormatIntCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]));
+			Announce_FormatDamageHitCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].combat.tankDamage, g_Round.players[survivorSlots[2]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].combat.witchDamage, g_Round.players[survivorSlots[2]].combat.witchHits);
+			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
+			Announce_FormatIntCell(ffC, sizeof(ffC), g_Round.players[survivorSlots[2]].combat.ffGiven);
+		}
+		if (survivorCount > 3)
+		{
+			Announce_FormatIntCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]));
+			Announce_FormatDamageHitCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].combat.tankDamage, g_Round.players[survivorSlots[3]].combat.tankHits);
+			Announce_FormatDamageHitCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].combat.witchDamage, g_Round.players[survivorSlots[3]].combat.witchHits);
+			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
+			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
+		}
+
+		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
+		if (showTank)
+		{
+			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+		}
+		if (showWitch)
+		{
+			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+		}
+		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
+		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
-	Announce_AddMetricRow(panel, ciLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].combat.commonKills,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.commonKills : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.commonKills : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.commonKills : 0);
-	Announce_AddMetricRow(panel, ffLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].combat.ffGiven,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.ffGiven : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.ffGiven : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.ffGiven : 0);
 
 	int siMvp = Announce_FindTopDamageSlot();
 	int ciMvp = Announce_FindTopCommonSlot();
@@ -2057,6 +1734,11 @@ void Announce_BroadcastRoundConsolePanel()
 	}
 
 	ConsolePanel_RenderToAudience(panel);
+	if (hasDetailedKills)
+	{
+		Announce_RenderSiKillAssistBreakdownPanel(0);
+		Announce_RenderBossDamageDetailPanel(0);
+	}
 }
 
 bool Announce_BroadcastUtilitiesConsolePanel()
@@ -2159,6 +1841,31 @@ void Announce_AddMetricStringRow(ConsolePanel panel, const char[] metricLabel, i
 	ConsoleTable_EndRow(panel.table);
 }
 
+void Announce_FormatDamageKillCell(char[] buffer, int maxlen, int damage, int kills)
+{
+	Format(buffer, maxlen, "%d/%d", damage, kills);
+}
+
+void Announce_FormatDamageHitCell(char[] buffer, int maxlen, int damage, int hits)
+{
+	Format(buffer, maxlen, "%d/%d", damage, hits);
+}
+
+void Announce_FormatDamageShotsCell(char[] buffer, int maxlen, int damage, int shots)
+{
+	Format(buffer, maxlen, "%d/%d", damage, shots);
+}
+
+void Announce_FormatIntCell(char[] buffer, int maxlen, int value)
+{
+	Format(buffer, maxlen, "%d", value);
+}
+
+void Announce_FormatDamageKillAssistCell(char[] buffer, int maxlen, int damage, int kills, int assistDamage)
+{
+	Format(buffer, maxlen, "%d/%d/%d", damage, kills, assistDamage);
+}
+
 
 void Announce_BuildMetricPanel(ConsolePanel panel, int phraseTarget, const char[] titlePhrase, const char[] totalsPhrase, int totalA, int totalB = 0, int totalC = 0)
 {
@@ -2179,7 +1886,7 @@ void Announce_AddMetricPlayerColumns(ConsolePanel panel, int phraseTarget, int[]
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < survivorCount; i++)
 	{
@@ -2191,7 +1898,7 @@ void Announce_AddMetricPlayerStringColumns(ConsolePanel panel, int phraseTarget,
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < survivorCount; i++)
 	{
@@ -2629,6 +2336,100 @@ void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots,
 	Format(buffer, maxlen, "%d/%d %d%%", displayHits, shots, Announce_GetDisplayAccuracyPercent(hits, shots, clampToShots));
 }
 
+int Announce_GetPlayerAccuracyGroupHits(int slot, int groupIndex)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		return 0;
+	}
+
+	switch (groupIndex)
+	{
+		case 0:
+		{
+			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_PumpShotgun]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Autoshotgun]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_ChromeShotgun]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SpasShotgun];
+		}
+		case 1:
+		{
+			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Smg]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SmgSilenced]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SmgMp5];
+		}
+		case 2:
+		{
+			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Rifle]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleAk47]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleDesert]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleSg552]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleM60];
+		}
+		case 3:
+		{
+			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_HuntingRifle]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperMilitary]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperAwp]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperScout];
+		}
+		case 4:
+		{
+			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Pistol]
+				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Magnum];
+		}
+	}
+
+	return 0;
+}
+
+int Announce_GetPlayerAccuracyGroupShots(int slot, int groupIndex)
+{
+	if (!Stats_IsValidRoundSlot(slot))
+	{
+		return 0;
+	}
+
+	switch (groupIndex)
+	{
+		case 0:
+		{
+			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_PumpShotgun]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Autoshotgun]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_ChromeShotgun]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SpasShotgun];
+		}
+		case 1:
+		{
+			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Smg]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SmgSilenced]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SmgMp5];
+		}
+		case 2:
+		{
+			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Rifle]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleAk47]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleDesert]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleSg552]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleM60];
+		}
+		case 3:
+		{
+			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_HuntingRifle]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperMilitary]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperAwp]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperScout];
+		}
+		case 4:
+		{
+			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Pistol]
+				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Magnum];
+		}
+	}
+
+	return 0;
+}
+
 void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phraseTarget = LANG_SERVER)
 {
 	bool showTank = Announce_ShouldShowTankDamage();
@@ -2638,9 +2439,11 @@ void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phras
 	int tankDamage = g_Round.players[slot].combat.tankDamage;
 	int tankPercent = Announce_GetPercent(tankDamage, g_Round.totals.survivorTotalTankDamage);
 	int tankCount = Announce_GetEncounteredTankCount();
+	int tankShots = g_Round.players[slot].bossDetail.tankShots;
 	int witchDamage = g_Round.players[slot].combat.witchDamage;
 	int witchPercent = Announce_GetPercent(witchDamage, g_Round.totals.survivorTotalWitchDamage);
 	int witchCount = Announce_GetEncounteredWitchCount();
+	int witchShots = g_Round.players[slot].bossDetail.witchShots;
 
 	Format(buffer, maxlen, "%T", "RoundMVPDamageBase", phraseTarget,
 		g_Round.players[slot].player.name,
@@ -2654,7 +2457,11 @@ void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phras
 
 	if (showTank && tankDamage > 0)
 	{
-		if (tankCount > 1)
+		if (g_Runtime.hasPlayerSkills && tankShots > 0)
+		{
+			Format(tankDetail, sizeof(tankDetail), "%T", "RoundMVPDamageTankShots", phraseTarget, tankDamage, tankShots);
+		}
+		else if (tankCount > 1)
 		{
 			Format(tankDetail, sizeof(tankDetail), "%T", "RoundMVPDamageTankCount", phraseTarget, tankDamage, tankCount);
 		}
@@ -2666,7 +2473,11 @@ void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phras
 
 	if (showWitch && witchDamage > 0)
 	{
-		if (witchCount > 1)
+		if (g_Runtime.hasPlayerSkills && witchShots > 0)
+		{
+			Format(witchDetail, sizeof(witchDetail), "%T", "RoundMVPDamageWitchShots", phraseTarget, witchDamage, witchShots);
+		}
+		else if (witchCount > 1)
 		{
 			Format(witchDetail, sizeof(witchDetail), "%T", "RoundMVPDamageWitchCount", phraseTarget, witchDamage, witchCount);
 		}
@@ -2706,9 +2517,11 @@ void Announce_FormatMvPDamageConsoleLine(char[] buffer, int maxlen, int slot)
 	int tankDamage = g_Round.players[slot].combat.tankDamage;
 	int tankPercent = Announce_GetPercent(tankDamage, g_Round.totals.survivorTotalTankDamage);
 	int tankCount = Announce_GetEncounteredTankCount();
+	int tankShots = g_Round.players[slot].bossDetail.tankShots;
 	int witchDamage = g_Round.players[slot].combat.witchDamage;
 	int witchPercent = Announce_GetPercent(witchDamage, g_Round.totals.survivorTotalWitchDamage);
 	int witchCount = Announce_GetEncounteredWitchCount();
+	int witchShots = g_Round.players[slot].bossDetail.witchShots;
 
 	Format(buffer, maxlen, "%T", "PanelMVPDamageBase", LANG_SERVER,
 		g_Round.players[slot].player.name,
@@ -2722,7 +2535,11 @@ void Announce_FormatMvPDamageConsoleLine(char[] buffer, int maxlen, int slot)
 
 	if (showTank && tankDamage > 0)
 	{
-		if (tankCount > 1)
+		if (g_Runtime.hasPlayerSkills && tankShots > 0)
+		{
+			Format(tankDetail, sizeof(tankDetail), "%T", "PanelMVPDamageTankShots", LANG_SERVER, tankDamage, tankShots);
+		}
+		else if (tankCount > 1)
 		{
 			Format(tankDetail, sizeof(tankDetail), "%T", "PanelMVPDamageTankCount", LANG_SERVER, tankDamage, tankCount);
 		}
@@ -2734,7 +2551,11 @@ void Announce_FormatMvPDamageConsoleLine(char[] buffer, int maxlen, int slot)
 
 	if (showWitch && witchDamage > 0)
 	{
-		if (witchCount > 1)
+		if (g_Runtime.hasPlayerSkills && witchShots > 0)
+		{
+			Format(witchDetail, sizeof(witchDetail), "%T", "PanelMVPDamageWitchShots", LANG_SERVER, witchDamage, witchShots);
+		}
+		else if (witchCount > 1)
 		{
 			Format(witchDetail, sizeof(witchDetail), "%T", "PanelMVPDamageWitchCount", LANG_SERVER, witchDamage, witchCount);
 		}
@@ -2965,36 +2786,103 @@ int Announce_GetPlayerSpecialKills(int index)
 	return total;
 }
 
-int Announce_GetSiKillTotalForPlayer(PlayerStatsPlayerRoundData playerData)
+int Announce_GetPlayerSpecialKillsByClass(int index, L4D2ZombieClassType zombieClass)
 {
-	int total = 0;
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			return g_Round.players[index].combat.smokerKills;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			return g_Round.players[index].combat.boomerKills;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			return g_Round.players[index].combat.hunterKills;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			return g_Round.players[index].combat.spitterKills;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			return g_Round.players[index].combat.jockeyKills;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			return g_Round.players[index].combat.chargerKills;
+		}
+	}
 
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
+	return 0;
+}
+
+int Announce_GetPlayerSpecialAssistDamageByClass(int index, L4D2ZombieClassType zombieClass)
+{
+	switch (zombieClass)
 	{
-		total += playerData.combat.smokerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
-	{
-		total += playerData.combat.boomerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
-	{
-		total += playerData.combat.hunterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
-	{
-		total += playerData.combat.spitterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
-	{
-		total += playerData.combat.jockeyKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
-	{
-		total += playerData.combat.chargerKills;
+		case L4D2ZombieClass_Smoker:
+		{
+			return g_Round.players[index].combatAssists.smokerAssistDamage;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			return g_Round.players[index].combatAssists.boomerAssistDamage;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			return g_Round.players[index].combatAssists.hunterAssistDamage;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			return g_Round.players[index].combatAssists.spitterAssistDamage;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			return g_Round.players[index].combatAssists.jockeyAssistDamage;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			return g_Round.players[index].combatAssists.chargerAssistDamage;
+		}
 	}
 
-	return total;
+	return 0;
+}
+
+int Announce_GetPlayerSpecialDamageByClass(int index, L4D2ZombieClassType zombieClass)
+{
+	switch (zombieClass)
+	{
+		case L4D2ZombieClass_Smoker:
+		{
+			return g_Round.players[index].combat.smokerDamage;
+		}
+		case L4D2ZombieClass_Boomer:
+		{
+			return g_Round.players[index].combat.boomerDamage;
+		}
+		case L4D2ZombieClass_Hunter:
+		{
+			return g_Round.players[index].combat.hunterDamage;
+		}
+		case L4D2ZombieClass_Spitter:
+		{
+			return g_Round.players[index].combat.spitterDamage;
+		}
+		case L4D2ZombieClass_Jockey:
+		{
+			return g_Round.players[index].combat.jockeyDamage;
+		}
+		case L4D2ZombieClass_Charger:
+		{
+			return g_Round.players[index].combat.chargerDamage;
+		}
+	}
+
+	return 0;
 }
 
 int Announce_GetTotalSurvivorDamage()

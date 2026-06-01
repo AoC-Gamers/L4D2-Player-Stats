@@ -45,7 +45,9 @@ Campos actuales relevantes:
 - `jockeyDamage`
 - `chargerDamage`
 - `tankDamage`
+- `tankHits`
 - `witchDamage`
+- `witchHits`
 - `commonKills`
 - `smokerKills`
 - `boomerKills`
@@ -54,12 +56,95 @@ Campos actuales relevantes:
 - `jockeyKills`
 - `chargerKills`
 - `tankKills`
+- `witchKills`
 - `ffGiven`
 
 Regla:
 
 - `kill` = último golpe válido
 - `damage` = contribución total
+
+Fallback local de bosses:
+
+- `tankHits`
+- `witchHits`
+
+sirven para el modo base sin `PlayerSkills`, donde `stats` solo puede sostener
+una lectura compacta `dmg/hit`.
+
+Nota:
+
+- `SI` no incluye bosses;
+- `Tank` y `Witch` viven como categorías separadas dentro del mismo bloque
+  survivor de combate.
+
+## combat_assists
+
+Representa contribución survivor a kills SI no-boss cuando otro jugador hizo
+el último golpe acreditado.
+
+Campos actuales:
+
+- `siKillAssists`
+- `siAssistDamage`
+- `smokerKillAssists`
+- `boomerKillAssists`
+- `hunterKillAssists`
+- `spitterKillAssists`
+- `jockeyKillAssists`
+- `chargerKillAssists`
+- `smokerAssistDamage`
+- `boomerAssistDamage`
+- `hunterAssistDamage`
+- `spitterAssistDamage`
+- `jockeyAssistDamage`
+- `chargerAssistDamage`
+
+Reglas:
+
+- `*_KillAssists`
+  - cuenta contribuciones válidas a kills SI no-boss
+- `*_AssistDamage`
+  - usa el daño visible acreditado por `PlayerSkills`
+  - puede venir de:
+    - `kill_event.assists`
+    - `skill_event.assists` cuando la skill principal absorbió una kill default
+- este bloque no reemplaza `combat`
+  - lo complementa
+- `combat`
+  - sigue siendo daño continuo y kill principal
+- `combat_assists`
+  - modela solo contribución de cierre semántico de kill
+
+## boss_detail
+
+Representa el detalle enriquecido de daño survivor a bosses cuando
+`PlayerSkills` finaliza una `boss_session`.
+
+Campos actuales:
+
+- `tankDamage`
+- `tankShots`
+- `witchDamage`
+- `witchShots`
+
+Reglas:
+
+- este bloque se llena desde `boss_session.damage_entries`
+- no reemplaza `combat`
+- complementa el snapshot base local de bosses
+- su semántica visible es:
+  - `Tank = dmg/shots`
+  - `Witch = dmg/shots`
+
+Relación con `combat`:
+
+- `combat.tankDamage` / `combat.witchDamage`
+  - siguen siendo el acumulado local general
+- `combat.tankHits` / `combat.witchHits`
+  - describen el fallback sin `PlayerSkills`
+- `boss_detail`
+  - describe el camino enriquecido con autoridad de `PlayerSkills`
 
 ## survivability
 
@@ -126,21 +211,18 @@ Familias actuales:
 
 También existe detalle por arma para la vista de consola.
 
-## skills
+## skills integration
 
-Representa skills consumidas desde `L4D2-Player-Skills`.
+`PlayerStats` ya no modela un bloque `skills` propio.
 
-Contadores actuales:
+Regla:
 
-- `skeets`
-- `skeetMelees`
-- `deadstops`
-- `boomerPops`
-- `levels`
-- `crowns`
-- `tongueCuts`
-- `smokerSelfClears`
-- `instaKills`
+- la autoridad semántica de skills vive en `L4D2-Player-Skills`
+- `PlayerStats` solo consume consecuencias útiles para su snapshot
+- si una skill implica muerte de SI
+  - `PlayerStats` traduce esa consecuencia a `combat.*Kills`
+  - esa traducción viene de `skill_event.properties`
+  - no mantiene un contador paralelo de la skill como producto interno
 
 ## infected_grab
 
@@ -198,6 +280,8 @@ Además de los bloques por jugador, el snapshot guarda totales por ronda.
 Ejemplos:
 
 - daño total a SI
+- daño total de asistencia a SI
+- kill assists totales a SI
 - common kills totales
 - FF total
 - consumibles totales
@@ -218,7 +302,7 @@ El snapshot de ronda también guarda contexto estructural.
 Campos actuales relevantes:
 
 - `baseMode`
-- `historyScope`
+- `seriesScope`
 - `versusContext`
 - `versusTeamSize`
 - `siPoolMask`

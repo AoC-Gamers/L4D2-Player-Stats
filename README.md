@@ -6,26 +6,15 @@ Current output surface:
 
 - chat summary commands:
   - `sm_stats_mvp` prints the MVP/LVP summary in chat and the round table in the user's console
-    - no args: current round
-    - `sm_stats_mvp c2m1_highway`: latest historical occurrence of that map in the current run
   - `sm_stats_rank` prints the player's SI/CI/FF ranks in chat and the global rank table in the user's console
-  - `sm_stats_history` prints the aggregated mission history in the user's console
-    - no args: current map inside the current mission
-    - `sm_stats_history c2m1_highway`: specific map inside the current mission
-    - `sm_stats_history all`: all maps in the current mission
-  - `sm_stats_acc` prints the accuracy summary table in the user's console
-    - no args: current round
-    - `sm_stats_acc c2m1_highway`: latest historical occurrence of that map in the current run
-  - `sm_stats_acc_details` prints detailed per-weapon accuracy in the user's console
-    - no args: current round
-    - `sm_stats_acc_details c2m1_highway`: latest historical occurrence of that map in the current run
+  - `sm_stats_acc` prints the grouped accuracy table in the user's console
+- round detail commands:
+  - `sm_stats_items`
+  - `sm_stats_support`
+  - `sm_stats_utils`
+  - `sm_stats_infect`
+  - `sm_stats_tank`
 - post-round server console table with survivor totals and MVP/LVP summary
-- game-history panel available through `PlayerStats_BroadcastGameStats`
-- restart integrations:
-  - `PlayerStats_MarkRestart(source)` lets external plugins report direct restarts to the historical layer
-- legacy compatibility wrappers:
-  - `survivor_mvp`
-  - `l4d2_playstats`
 
 Documentation:
 
@@ -34,6 +23,7 @@ Documentation:
 - [Player Stats API](docs/l4d2-player-stats-api.md)
 - [Player Stats Architecture](docs/l4d2-player-stats-architecture.md)
 - [Player Stats Data Model](docs/l4d2-player-stats-data-model.md)
+- [Player Stats Series](docs/l4d2-player-stats-series.md)
 - [Mode Lifecycle and Business Rules](docs/l4d2-mode-lifecycle-business-rules.md)
 
 Bundled utility includes:
@@ -50,3 +40,13 @@ Debug categories:
   - `8` `Api`
   - `16` `Announce`
   - `31` all current categories
+
+Optional debug probe:
+
+- `sourcemod/scripting/l4d2_player_stats_api.sp`
+  - consumes the public `PlayerStats` API and dumps finalized round/player payloads to logs
+
+Optional companion plugins:
+
+- `sourcemod/scripting/l4d2_player_stats_series.sp`
+  - short-lived multi-round grouping for finalized `PlayerStats` snapshots

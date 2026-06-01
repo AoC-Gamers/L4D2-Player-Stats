@@ -27,10 +27,7 @@
 #define TRANSLATION_FILE "l4d2_player_stats.phrases"
 
 PlayerStatsRoundData g_Round;
-PlayerStatsRoundData g_RoundBackup;
-PlayerStatsHistoricalRoundData g_RoundHistory[L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS];
 PlayerStatsSubstitutionSnapshotData g_SubstitutionSnapshots[L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS];
-PlayerStatsGameHistoryData g_GameHistory;
 PlayerStatsRuntimeState g_Runtime;
 int g_iSubstitutionSnapshotCount = 0;
 int g_iSubstitutionSnapshotNext = 0;
@@ -39,7 +36,6 @@ int g_iSubstitutionSnapshotSerial = 0;
 ConVar	g_cvEnable = null;
 ConVar	g_cvDebug	= null;
 ConVar	g_cvTracking = null;
-ConVar	g_cvHistory = null;
 ConVar	g_cvAccuracy = null;
 ConVar	g_cvThrowables = null;
 ConVar	g_cvGamemode = null;
@@ -74,7 +70,6 @@ public Plugin myinfo =
 #include "l4d2_player_stats/api.sp"
 #include "l4d2_player_stats/announce.sp"
 #include "l4d2_player_stats/rounds.sp"
-#include "l4d2_player_stats/series.sp"
 #include "l4d2_player_stats/detect.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int errorMax)
@@ -95,7 +90,6 @@ public void OnPluginStart()
 	g_cvDebug		= CreateConVar("sm_stats_debug", "31", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
 	g_cvEnable		= CreateConVar("sm_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
 	g_cvTracking	= CreateConVar("sm_stats_tracking", "3", "Bitmask for round stats tracking. 1=enable 2=announce 3=all.");
-	g_cvHistory		= CreateConVar("sm_stats_history", "1", "Enable mission or series history. 1=enable.");
 	g_cvAccuracy	= CreateConVar("sm_stats_accuracy", "1", "Enable accuracy tracking. 1=enable.");
 	g_cvThrowables	= CreateConVar("sm_stats_throwables", "3", "Bitmask for throwable utility tracking. 1=enable 2=announce 3=all.");
 	g_cvGamemode	= CreateConVar("sm_stats_gamemode", "15", "Enabled game modes. 1=coop 2=versus 4=scavenge 8=survival 15=all.");
@@ -147,32 +141,22 @@ public void OnPluginStart()
 	HookEvent("defibrillator_used", Event_DefibrillatorUsed, EventHookMode_Post);
 	HookEvent("revive_success", Event_ReviveSuccess, EventHookMode_Post);
 	HookEvent("survivor_rescued", Event_SurvivorRescued, EventHookMode_Post);
-	HookEvent("vote_passed", Event_VotePassed, EventHookMode_PostNoCopy);
-
-	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
+	
 	RegConsoleCmd("sm_stats_mvp", Command_MVP, "Print the current survivor MVP summary.");
 	RegConsoleCmd("sm_stats_rank", Command_Rank, "Print the client's current MVP ranks in chat and the global rank table in console.");
-	RegConsoleCmd("sm_stats_history", Command_Stats, "Print the aggregated mission history for the current map, a requested map, or all maps.");
 	RegConsoleCmd("sm_stats_acc", Command_Acc, "Print the current round accuracy table in console.");
-	RegConsoleCmd("sm_stats_acc_details", Command_AccDetails, "Print detailed per-weapon accuracy for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_utils", Command_Utils, "Print throwable utility stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_items", Command_Items, "Print consumable usage stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_support", Command_Support, "Print support stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_scav", Command_Scavenge, "Print scavenge-specific stats for the current round or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_infect", Command_Infect, "Print infected grab/support stats for the current half or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_tank", Command_Tank, "Print tank session stats for the current half or the latest historical map snapshot.");
-	RegConsoleCmd("sm_stats_subs", Command_Substitutions, "Print substitution snapshots kept in the in-memory buffer.");
+	RegConsoleCmd("sm_stats_utils", Command_Utils, "Print throwable utility stats for the current round.");
+	RegConsoleCmd("sm_stats_items", Command_Items, "Print consumable usage stats for the current round.");
+	RegConsoleCmd("sm_stats_support", Command_Support, "Print support stats for the current round.");
+	RegConsoleCmd("sm_stats_scav", Command_Scavenge, "Print scavenge-specific stats for the current round.");
+	RegConsoleCmd("sm_stats_infect", Command_Infect, "Print infected grab/support stats for the current half.");
+	RegConsoleCmd("sm_stats_tank", Command_Tank, "Print tank session stats for the current half.");
 	RegConsoleCmd("sm_stats_help", Command_Help, "Print stats command help to console.");
 
 	AutoExecConfig(false, LIBRARY_L4D2PLAYERSTATS);
-	g_GameHistory.Reset();
 	g_iSubstitutionSnapshotCount = 0;
 	g_iSubstitutionSnapshotNext = 0;
 	g_iSubstitutionSnapshotSerial = 0;
-	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_HISTORY_ROUNDS; i++)
-	{
-		g_RoundHistory[i].Reset();
-	}
 	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS; i++)
 	{
 		g_SubstitutionSnapshots[i].Reset();
@@ -276,7 +260,6 @@ public void OnLibraryRemoved(const char[] name)
 public void OnMapStart()
 {
 	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnMapStart");
-	Series_OnMapStart();
 
 	if (g_Round.meta.active || g_Round.meta.id > 0)
 	{
@@ -370,9 +353,21 @@ public Action PlayerSkills_OnSkillDetected(int eventId, L4D2ApiSkillType type)
 	return Plugin_Continue;
 }
 
+public Action PlayerSkills_OnKillDetected(int eventId, L4D2ApiKillType type)
+{
+	Detect_OnPlayerKillDetected(eventId, type);
+	return Plugin_Continue;
+}
+
 public Action PlayerSkills_OnBossEventDetected(int eventId, L4D2ApiBossEventType type)
 {
 	Detect_OnPlayerBossEventDetected(eventId, type);
+	return Plugin_Continue;
+}
+
+public Action PlayerSkills_OnBossSessionFinalized(int sessionId, L4D2BossType type)
+{
+	Detect_OnPlayerBossSessionFinalized(sessionId, type);
 	return Plugin_Continue;
 }
 
@@ -425,7 +420,6 @@ public void Event_ScavengeRoundHalftime(Event event, const char[] name, bool don
 	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 	Round_OnScavengeRoundHalftime();
-	Series_OnScavengeRoundHalftime();
 }
 
 public void Event_ScavengeMatchFinished(Event event, const char[] name, bool dontBroadcast)
@@ -433,7 +427,6 @@ public void Event_ScavengeMatchFinished(Event event, const char[] name, bool don
 	Stats_Debug(PlayerStatsDebug_Event, "[%s] winners=%d", name, event.GetInt("winners"));
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 	Round_OnScavengeMatchFinished();
-	Series_OnScavengeMatchFinished();
 }
 
 public void Event_ScavengeOvertime(Event event, const char[] name, bool dontBroadcast)
@@ -464,19 +457,6 @@ public void Event_PlayerBotReplace(Event event, const char[] name, bool dontBroa
 public void Event_BotPlayerReplace(Event event, const char[] name, bool dontBroadcast)
 {
 	Stats_EventBotPlayerReplace(event, name, dontBroadcast);
-}
-
-public Action L4D_OnClearTeamScores(bool newCampaign)
-{
-	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnClearTeamScores] newCampaign=%d", newCampaign);
-	Series_OnClearTeamScores(newCampaign);
-	return Plugin_Continue;
-}
-
-public void L4D_OnSetCampaignScores_Post(int scoreA, int scoreB)
-{
-	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnSetCampaignScores_Post] scoreA=%d scoreB=%d", scoreA, scoreB);
-	Series_OnSetCampaignScoresPost(scoreA, scoreB);
 }
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
@@ -527,11 +507,6 @@ public void Event_VomitBombTank(Event event, const char[] name, bool dontBroadca
 public void Event_ZombieIgnited(Event event, const char[] name, bool dontBroadcast)
 {
 	Detect_EventZombieIgnited(event, name, dontBroadcast);
-}
-
-public void Event_VotePassed(Event event, const char[] name, bool dontBroadcast)
-{
-	Series_EventVotePassed(event, name, dontBroadcast);
 }
 
 public void Event_PillsUsed(Event event, const char[] name, bool dontBroadcast)
@@ -588,14 +563,6 @@ Action Command_MVP(int client, int args)
 {
 	bool fromChat = Announce_WasCommandInvokedFromChat(client);
 
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		Announce_RenderHistoricalRoundSummary(client, mapFilter, fromChat);
-		return Plugin_Handled;
-	}
-
 	if (fromChat && !Announce_BroadcastRoundSummary(client))
 	{
 		return Plugin_Handled;
@@ -625,71 +592,9 @@ Action Command_Rank(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_Stats(int client, int args)
-{
-	char mapFilter[64];
-	mapFilter[0] = '\0';
-	bool useCurrentMapDefault = args < 1;
-
-	if (args >= 1)
-	{
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (StrEqual(mapFilter, "all", false))
-		{
-			mapFilter[0] = '\0';
-		}
-	}
-	else
-	{
-		GetCurrentMap(mapFilter, sizeof(mapFilter));
-	}
-
-	if (useCurrentMapDefault && mapFilter[0] != '\0' && Announce_CountHistoryRowsForFilter(mapFilter) <= 0 && Announce_CountHistoryRowsForFilter() > 0)
-	{
-		mapFilter[0] = '\0';
-	}
-
-	if (Announce_RenderGameHistoryPanel(client, mapFilter))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
-}
-
 Action Command_Acc(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalAccuracyPanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderAccuracyPanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
-}
-
-Action Command_AccDetails(int client, int args)
-{
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalAccuracyDetailsPanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
-	if (Announce_RenderAccuracyDetailsPanel(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
 	}
@@ -698,17 +603,6 @@ Action Command_AccDetails(int client, int args)
 
 Action Command_Utils(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalUtilitiesPanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderUtilitiesPanel(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
@@ -718,17 +612,6 @@ Action Command_Utils(int client, int args)
 
 Action Command_Items(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalConsumablesPanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderConsumablesPanel(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
@@ -738,17 +621,6 @@ Action Command_Items(int client, int args)
 
 Action Command_Support(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalSupportPanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderSupportPanel(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
@@ -758,17 +630,6 @@ Action Command_Support(int client, int args)
 
 Action Command_Scavenge(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalScavengePanel(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderScavengePanel(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
@@ -783,28 +644,8 @@ Action Command_Help(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_Substitutions(int client, int args)
-{
-	if (Announce_PrintSubstitutionSnapshotsToConsole(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
-}
-
 Action Command_Infect(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalInfectedPanels(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderInfectedPanels(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
@@ -814,17 +655,6 @@ Action Command_Infect(int client, int args)
 
 Action Command_Tank(int client, int args)
 {
-	if (args > 0)
-	{
-		char mapFilter[64];
-		GetCmdArg(1, mapFilter, sizeof(mapFilter));
-		if (Announce_RenderHistoricalTankPanels(client, mapFilter))
-		{
-			Announce_NotifyConsoleDelivery(client);
-		}
-		return Plugin_Handled;
-	}
-
 	if (Announce_RenderTankPanels(client))
 	{
 		Announce_NotifyConsoleDelivery(client);
