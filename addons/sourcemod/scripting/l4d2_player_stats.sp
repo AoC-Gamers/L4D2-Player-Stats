@@ -87,7 +87,7 @@ public void OnPluginStart()
 	LoadPluginTranslations();
 	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), LOG_DIRECTORY);
 
-	g_cvDebug		= CreateConVar("sm_stats_debug", "31", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
+	g_cvDebug		= CreateConVar("sm_stats_debug", "0", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
 	g_cvEnable		= CreateConVar("sm_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
 	g_cvTracking	= CreateConVar("sm_stats_tracking", "3", "Bitmask for round stats tracking. 1=enable 2=announce 3=all.");
 	g_cvAccuracy	= CreateConVar("sm_stats_accuracy", "1", "Enable accuracy tracking. 1=enable.");
