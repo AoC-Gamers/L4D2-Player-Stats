@@ -47,7 +47,6 @@ Orden preferido:
 
 1. `OnRoundIsLive()` si `readyup` existe
 2. `L4D_OnFirstSurvivorLeftSafeArea_Post`
-3. `player_left_start_area` como respaldo
 
 La regla es única:
 

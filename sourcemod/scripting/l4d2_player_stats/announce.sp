@@ -3,6 +3,11 @@
 #endif
 #define _l4d2_player_stats_announce_included
 
+#define ANNOUNCE_METRIC_COLUMN_WIDTH 20
+#define ANNOUNCE_PLAYER_COLUMN_WIDTH 13
+#define ANNOUNCE_NAMED_METRIC_COLUMN_WIDTH 20
+#define ANNOUNCE_DISPLAY_NAME_MAX_CHARS 40
+
 void Announce_ReplyCommandPhrase(int client, const char[] phrase)
 {
 	CReplyToCommand(client, "%t %t", "Tag", phrase);
@@ -34,12 +39,37 @@ void Announce_PrintConsoleLine(int client, const char[] line)
 	PrintToServer("%s", line);
 }
 
+void Announce_PrintConsoleSpacer(int client, int lines = 1)
+{
+	for (int i = 0; i < lines; i++)
+	{
+		Announce_PrintConsoleLine(client, "");
+	}
+}
+
+bool Announce_IsConsoleBroadcastClient(int client)
+{
+	if (!IsClientInGame(client))
+	{
+		return false;
+	}
+
+	if (!IsFakeClient(client))
+	{
+		return true;
+	}
+
+	return IsClientSourceTV(client);
+}
+
 void Announce_PrintHelpToConsole(int client)
 {
 	int phraseTarget = client > 0 ? client : LANG_SERVER;
 	char line[192];
 
 	Format(line, sizeof(line), "%T", "HelpHeader", phraseTarget);
+	Announce_PrintConsoleLine(client, line);
+	Format(line, sizeof(line), "%T", "HelpCoreOnly", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPCurrent", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
@@ -60,6 +90,8 @@ void Announce_PrintHelpToConsole(int client)
 	Format(line, sizeof(line), "%T", "HelpCommandMVPTank", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
 	Format(line, sizeof(line), "%T", "HelpCommandMVPHelp", phraseTarget);
+	Announce_PrintConsoleLine(client, line);
+	Format(line, sizeof(line), "%T", "HelpOptionalSeries", phraseTarget);
 	Announce_PrintConsoleLine(client, line);
 }
 
@@ -136,6 +168,20 @@ bool Announce_RequireCompetitiveModeForCommand(int client)
 	return false;
 }
 
+bool Announce_ShouldAutoBroadcastInfectedPanels()
+{
+	if (!Stats_IsCompetitiveMode())
+	{
+		return false;
+	}
+
+	int infectedSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
+	int infectedCount = Announce_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
+	bool includeAi = Announce_HasInfectedAiAggregate();
+	int columnCount = infectedCount + (includeAi ? 1 : 0);
+	return columnCount > 0 && columnCount <= 4;
+}
+
 bool Announce_BroadcastRoundSummary(int client = 0)
 {
 	int activeSlots = 0;
@@ -166,7 +212,7 @@ bool Announce_BroadcastRoundSummary(int client = 0)
 	int ciMvp = Announce_FindTopCommonSlot();
 	int ffLvp = Announce_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorDamage() <= 0)
+	if (Announce_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -192,6 +238,70 @@ bool Announce_BroadcastRoundSummary(int client = 0)
 
 	Announce_PrintRoundSummaryLines(client, siMvp, ciMvp, ffLvp);
 	return true;
+}
+
+void Announce_BroadcastAutomaticRoundPanelsToHumans()
+{
+	if (GetTime() == -1)
+	{
+		char buffer[16];
+		Announce_BroadcastRoundConsolePanel();
+		Announce_FormatDamageKillAssistCell(buffer, sizeof(buffer), 0, 0, 0);
+		Announce_GetPlayerSpecialKillsByClass(0, L4D2ZombieClass_Smoker);
+		Announce_GetPlayerSpecialAssistDamageByClass(0, L4D2ZombieClass_Smoker);
+		Announce_GetPlayerSpecialDamageByClass(0, L4D2ZombieClass_Smoker);
+	}
+
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (!Announce_IsConsoleBroadcastClient(client))
+		{
+			continue;
+		}
+
+		bool renderedAny = false;
+
+		if (Announce_RenderRoundConsolePanel(client))
+		{
+			renderedAny = true;
+		}
+
+		if (renderedAny && IsValidSurvivor(client))
+		{
+			Announce_PrintConsoleSpacer(client, 1);
+		}
+		if (IsValidSurvivor(client) && Announce_RenderGlobalRankPanel(client))
+		{
+			renderedAny = true;
+		}
+
+		if (renderedAny)
+		{
+			Announce_PrintConsoleSpacer(client, 1);
+		}
+		if (Announce_RenderAccuracyPanel(client))
+		{
+			renderedAny = true;
+		}
+
+		if (renderedAny && Announce_ShouldAutoBroadcastInfectedPanels())
+		{
+			Announce_PrintConsoleSpacer(client, 1);
+		}
+		if (Announce_ShouldAutoBroadcastInfectedPanels() && Announce_RenderInfectedPanels(client))
+		{
+			renderedAny = true;
+		}
+
+		if (renderedAny && g_Round.meta.baseMode == GAMEMODE_SCAVENGE)
+		{
+			Announce_PrintConsoleSpacer(client, 1);
+		}
+		if (g_Round.meta.baseMode == GAMEMODE_SCAVENGE && Announce_RenderScavengePanel(client))
+		{
+			renderedAny = true;
+		}
+	}
 }
 
 bool Announce_RenderAccuracyPanel(int client = 0)
@@ -247,14 +357,6 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 		"ColumnSniper",
 		"ColumnPistol"
 	};
-	static const char groupTotalPhraseKeys[][] =
-	{
-		"ColumnShotgunTotal",
-		"ColumnSmgTotal",
-		"ColumnRifleTotal",
-		"ColumnSniperTotal",
-		"ColumnPistolTotal"
-	};
 
 	bool hasRows = false;
 	for (int groupIndex = 0; groupIndex < sizeof(groupedDetails); groupIndex++)
@@ -287,7 +389,8 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 		char groupLabel[24];
 		Announce_GetColumnLabel(groupLabel, sizeof(groupLabel), groupPhraseKeys[groupIndex], client > 0 ? client : LANG_SERVER);
 		Format(line, sizeof(line), "[%s]", groupLabel);
-		ConsolePanel_AddHeaderLine(panel, line);
+		Announce_AddMetricStringRow(panel, line, survivorCount, "", "", "", "");
+		Announce_AddMetricStringRow(panel, "", survivorCount, "", "", "", "");
 
 		for (int detailIndex = 0; detailIndex < sizeof(groupedDetails[]); detailIndex++)
 		{
@@ -346,37 +449,6 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 			Announce_AddMetricStringRow(panel, detailLabel, survivorCount, valueA, valueB, valueC, valueD);
 			hasRows = true;
 		}
-
-		char totalLabel[24];
-		char totalA[32], totalB[32], totalC[32], totalD[32];
-		Announce_GetColumnLabel(totalLabel, sizeof(totalLabel), groupTotalPhraseKeys[groupIndex], client > 0 ? client : LANG_SERVER);
-		Announce_FormatAccuracyCell(totalA, sizeof(totalA),
-			Announce_GetPlayerAccuracyGroupHits(survivorSlots[0], groupIndex),
-			Announce_GetPlayerAccuracyGroupShots(survivorSlots[0], groupIndex),
-			groupIndex == 0);
-		if (survivorCount > 1)
-		{
-			Announce_FormatAccuracyCell(totalB, sizeof(totalB),
-				Announce_GetPlayerAccuracyGroupHits(survivorSlots[1], groupIndex),
-				Announce_GetPlayerAccuracyGroupShots(survivorSlots[1], groupIndex),
-				groupIndex == 0);
-		}
-		if (survivorCount > 2)
-		{
-			Announce_FormatAccuracyCell(totalC, sizeof(totalC),
-				Announce_GetPlayerAccuracyGroupHits(survivorSlots[2], groupIndex),
-				Announce_GetPlayerAccuracyGroupShots(survivorSlots[2], groupIndex),
-				groupIndex == 0);
-		}
-		if (survivorCount > 3)
-		{
-			Announce_FormatAccuracyCell(totalD, sizeof(totalD),
-				Announce_GetPlayerAccuracyGroupHits(survivorSlots[3], groupIndex),
-				Announce_GetPlayerAccuracyGroupShots(survivorSlots[3], groupIndex),
-				groupIndex == 0);
-		}
-
-		Announce_AddMetricStringRow(panel, totalLabel, survivorCount, totalA, totalB, totalC, totalD);
 	}
 
 	if (!hasRows)
@@ -595,9 +667,6 @@ bool Announce_RenderScavengePanel(int client = 0)
 	Format(pouredLabel, sizeof(pouredLabel), "%T", "ColumnPoured", client > 0 ? client : LANG_SERVER);
 	Format(droppedLabel, sizeof(droppedLabel), "%T", "ColumnDropped", client > 0 ? client : LANG_SERVER);
 	Format(destroyedLabel, sizeof(destroyedLabel), "%T", "ColumnDestroyed", client > 0 ? client : LANG_SERVER);
-	Announce_FormatMetricUnitLabel(pouredLabel, sizeof(pouredLabel), pouredLabel, "#");
-	Announce_FormatMetricUnitLabel(droppedLabel, sizeof(droppedLabel), droppedLabel, "#");
-	Announce_FormatMetricUnitLabel(destroyedLabel, sizeof(destroyedLabel), destroyedLabel, "#");
 
 	Announce_AddMetricPlayerColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
 	Announce_AddMetricRow(panel, pouredLabel, survivorCount,
@@ -875,9 +944,6 @@ bool Announce_RenderInfectedPanels(int client = 0)
 		Announce_FormatMetricUnitLabel(hunterLabel, sizeof(hunterLabel), hunterLabel, "dmg", false);
 		Announce_FormatMetricUnitLabel(jockeyLabel, sizeof(jockeyLabel), jockeyLabel, "dmg", false);
 		Announce_FormatMetricUnitLabel(chargerLabel, sizeof(chargerLabel), chargerLabel, "dmg", false);
-		Announce_FormatMetricUnitLabel(tongueLabel, sizeof(tongueLabel), tongueLabel, "#");
-		Announce_FormatMetricUnitLabel(pounceLabel, sizeof(pounceLabel), pounceLabel, "#");
-		Announce_FormatMetricUnitLabel(rideLabel, sizeof(rideLabel), rideLabel, "#");
 
 		int values[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1];
 		Announce_AddNamedMetricIntColumns(panel, phraseTarget, columnNames, columnCount);
@@ -957,15 +1023,44 @@ void Announce_GetMetricTimeCell(char[] buffer, int maxlen, float startedAt, floa
 	Format(buffer, maxlen, "%dm %02ds", duration / 60, duration % 60);
 }
 
+void Announce_GetDisplayColumnName(char[] buffer, int maxlen, const char[] name, int visibleWidth)
+{
+	strcopy(buffer, maxlen, name);
+
+	TrimString(buffer);
+	ReplaceString(buffer, maxlen, "|", "/");
+
+	int maxChars = ANNOUNCE_DISPLAY_NAME_MAX_CHARS;
+	if (visibleWidth > 0 && visibleWidth < maxChars)
+	{
+		maxChars = visibleWidth;
+	}
+
+	if (maxChars <= 0)
+	{
+		buffer[0] = '\0';
+		return;
+	}
+
+	if (strlen(buffer) <= maxChars)
+	{
+		return;
+	}
+
+	buffer[maxChars] = '\0';
+}
+
 void Announce_AddNamedMetricStringColumns(ConsolePanel panel, int phraseTarget, char[][] names, int count)
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, ANNOUNCE_NAMED_METRIC_COLUMN_WIDTH, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < count; i++)
 	{
-		ConsoleTable_AddColumn(panel.table, names[i], 14, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+		char displayName[MAX_NAME_LENGTH];
+		Announce_GetDisplayColumnName(displayName, sizeof(displayName), names[i], ANNOUNCE_PLAYER_COLUMN_WIDTH);
+		ConsoleTable_AddColumn(panel.table, displayName, ANNOUNCE_PLAYER_COLUMN_WIDTH, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
 	}
 }
 
@@ -973,11 +1068,13 @@ void Announce_AddNamedMetricIntColumns(ConsolePanel panel, int phraseTarget, cha
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 12, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, ANNOUNCE_NAMED_METRIC_COLUMN_WIDTH, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < count; i++)
 	{
-		ConsoleTable_AddColumn(panel.table, names[i], 14, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+		char displayName[MAX_NAME_LENGTH];
+		Announce_GetDisplayColumnName(displayName, sizeof(displayName), names[i], ANNOUNCE_PLAYER_COLUMN_WIDTH);
+		ConsoleTable_AddColumn(panel.table, displayName, ANNOUNCE_PLAYER_COLUMN_WIDTH, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	}
 }
 
@@ -1280,7 +1377,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	int ciMvp = Announce_FindTopCommonSlot();
 	int ffLvp = Announce_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorDamage() <= 0)
+	if (Announce_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -1323,201 +1420,6 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	}
 
 	ConsolePanel_RenderToClient(panel, client);
-	return true;
-}
-
-bool Announce_RenderSiKillAssistBreakdownPanel(int client = 0)
-{
-	if (!g_Runtime.hasPlayerSkills || !Stats_HasRoundSnapshot() || !Announce_HasCombatStats())
-	{
-		return false;
-	}
-
-	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
-	if (survivorCount <= 0)
-	{
-		return false;
-	}
-
-	ConsolePanel panel;
-	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
-	ConsolePanel_EnableSafeAscii(panel, false);
-
-	int phraseTarget = client > 0 ? client : LANG_SERVER;
-	char line[160];
-	char titleName[64];
-	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, phraseTarget);
-	Format(line, sizeof(line), "%T", "PanelTitleSiKillAssistBreakdown", phraseTarget, titleName, g_Round.meta.id);
-	ConsolePanel_AddHeaderLine(panel, line);
-	Format(line, sizeof(line), "%T", "PanelLegendDamageKillAssistDamage", phraseTarget);
-	ConsolePanel_AddHeaderLine(panel, line);
-
-	Announce_AddMetricPlayerStringColumns(panel, phraseTarget, survivorSlots, survivorCount);
-
-	L4D2ZombieClassType classes[6] =
-	{
-		L4D2ZombieClass_Smoker,
-		L4D2ZombieClass_Boomer,
-		L4D2ZombieClass_Hunter,
-		L4D2ZombieClass_Spitter,
-		L4D2ZombieClass_Jockey,
-		L4D2ZombieClass_Charger
-	};
-	static const char labels[][] =
-	{
-		"Smoker",
-		"Boomer",
-		"Hunter",
-		"Spitter",
-		"Jockey",
-		"Charger"
-	};
-
-	for (int classIndex = 0; classIndex < sizeof(classes); classIndex++)
-	{
-		if (!Stats_IsZombieClassEnabledForRound(classes[classIndex]))
-		{
-			continue;
-		}
-
-		char cellA[32], cellB[32], cellC[32], cellD[32];
-		Announce_FormatDamageKillAssistCell(cellA, sizeof(cellA),
-			Announce_GetPlayerSpecialDamageByClass(survivorSlots[0], classes[classIndex]),
-			Announce_GetPlayerSpecialKillsByClass(survivorSlots[0], classes[classIndex]),
-			Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[0], classes[classIndex]));
-
-		if (survivorCount > 1)
-		{
-			Announce_FormatDamageKillAssistCell(cellB, sizeof(cellB),
-				Announce_GetPlayerSpecialDamageByClass(survivorSlots[1], classes[classIndex]),
-				Announce_GetPlayerSpecialKillsByClass(survivorSlots[1], classes[classIndex]),
-				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[1], classes[classIndex]));
-		}
-		if (survivorCount > 2)
-		{
-			Announce_FormatDamageKillAssistCell(cellC, sizeof(cellC),
-				Announce_GetPlayerSpecialDamageByClass(survivorSlots[2], classes[classIndex]),
-				Announce_GetPlayerSpecialKillsByClass(survivorSlots[2], classes[classIndex]),
-				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[2], classes[classIndex]));
-		}
-		if (survivorCount > 3)
-		{
-			Announce_FormatDamageKillAssistCell(cellD, sizeof(cellD),
-				Announce_GetPlayerSpecialDamageByClass(survivorSlots[3], classes[classIndex]),
-				Announce_GetPlayerSpecialKillsByClass(survivorSlots[3], classes[classIndex]),
-				Announce_GetPlayerSpecialAssistDamageByClass(survivorSlots[3], classes[classIndex]));
-		}
-
-		Announce_AddMetricStringRow(panel, labels[classIndex], survivorCount, cellA, cellB, cellC, cellD);
-	}
-
-	ConsolePanel_RenderToClient(panel, client);
-	return true;
-}
-
-bool Announce_RenderBossDamageDetailPanel(int client = 0)
-{
-	if (!g_Runtime.hasPlayerSkills || !Stats_HasRoundSnapshot() || !Announce_HasCombatStats())
-	{
-		return false;
-	}
-
-	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
-	if (survivorCount <= 0)
-	{
-		return false;
-	}
-
-	bool showTank = false;
-	bool showWitch = false;
-	for (int i = 0; i < survivorCount; i++)
-	{
-		int slot = survivorSlots[i];
-		if (g_Round.players[slot].bossDetail.tankDamage > 0 || g_Round.players[slot].bossDetail.tankShots > 0)
-		{
-			showTank = true;
-		}
-		if (g_Round.players[slot].bossDetail.witchDamage > 0 || g_Round.players[slot].bossDetail.witchShots > 0)
-		{
-			showWitch = true;
-		}
-	}
-
-	if (!showTank && !showWitch)
-	{
-		return false;
-	}
-
-	ConsolePanel panel;
-	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
-	ConsolePanel_EnableSafeAscii(panel, false);
-
-	int phraseTarget = client > 0 ? client : LANG_SERVER;
-	char line[160];
-	char titleName[64];
-	char tankLabel[24];
-	char witchLabel[24];
-	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, phraseTarget);
-	Announce_GetColumnLabel(tankLabel, sizeof(tankLabel), "ColumnTank", phraseTarget);
-	Announce_GetColumnLabel(witchLabel, sizeof(witchLabel), "ColumnWitch", phraseTarget);
-	Format(line, sizeof(line), "%T", "PanelTitleBossDamageDetail", phraseTarget, titleName, g_Round.meta.id);
-	ConsolePanel_AddHeaderLine(panel, line);
-	Format(line, sizeof(line), "%T", "PanelLegendDamageShots", phraseTarget);
-	ConsolePanel_AddHeaderLine(panel, line);
-
-	Announce_AddMetricPlayerStringColumns(panel, phraseTarget, survivorSlots, survivorCount);
-
-	char tankA[32], tankB[32], tankC[32], tankD[32];
-	char witchA[32], witchB[32], witchC[32], witchD[32];
-
-	if (showTank)
-	{
-		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
-		if (survivorCount > 1)
-		{
-			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
-		}
-		if (survivorCount > 2)
-		{
-			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
-		}
-		if (survivorCount > 3)
-		{
-			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
-		}
-		Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
-	}
-
-	if (showWitch)
-	{
-		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
-		if (survivorCount > 1)
-		{
-			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
-		}
-		if (survivorCount > 2)
-		{
-			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
-		}
-		if (survivorCount > 3)
-		{
-			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
-		}
-		Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
-	}
-
-	if (client > 0)
-	{
-		ConsolePanel_RenderToClient(panel, client);
-	}
-	else
-	{
-		ConsolePanel_RenderToAudience(panel);
-	}
 	return true;
 }
 
@@ -1691,7 +1593,7 @@ void Announce_BroadcastRoundConsolePanel()
 	int ciMvp = Announce_FindTopCommonSlot();
 	int ffLvp = Announce_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorDamage() <= 0)
+	if (Announce_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -1734,25 +1636,6 @@ void Announce_BroadcastRoundConsolePanel()
 	}
 
 	ConsolePanel_RenderToAudience(panel);
-	if (hasDetailedKills)
-	{
-		Announce_RenderSiKillAssistBreakdownPanel(0);
-		Announce_RenderBossDamageDetailPanel(0);
-	}
-}
-
-bool Announce_BroadcastUtilitiesConsolePanel()
-{
-	if (!Stats_HasRoundSnapshot())
-	{
-		return false;
-	}
-
-	bool rendered = false;
-	rendered = Announce_BroadcastMolotovPanel() || rendered;
-	rendered = Announce_BroadcastBilePanel() || rendered;
-	rendered = Announce_BroadcastPipePanel() || rendered;
-	return rendered;
 }
 
 bool Announce_HasMolotovUtilityStats()
@@ -1886,11 +1769,13 @@ void Announce_AddMetricPlayerColumns(ConsolePanel panel, int phraseTarget, int[]
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, ANNOUNCE_METRIC_COLUMN_WIDTH, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < survivorCount; i++)
 	{
-		ConsoleTable_AddColumn(panel.table, g_Round.players[survivorSlots[i]].player.name, 14, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
+		char displayName[MAX_NAME_LENGTH];
+		Announce_GetDisplayColumnName(displayName, sizeof(displayName), g_Round.players[survivorSlots[i]].player.name, ANNOUNCE_PLAYER_COLUMN_WIDTH);
+		ConsoleTable_AddColumn(panel.table, displayName, ANNOUNCE_PLAYER_COLUMN_WIDTH, ConsoleTableAlignment_Right, ConsoleTableCellType_Int);
 	}
 }
 
@@ -1898,11 +1783,13 @@ void Announce_AddMetricPlayerStringColumns(ConsolePanel panel, int phraseTarget,
 {
 	char metricLabel[16];
 	Format(metricLabel, sizeof(metricLabel), "%T", "ColumnMetric", phraseTarget);
-	ConsoleTable_AddColumn(panel.table, metricLabel, 18, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
+	ConsoleTable_AddColumn(panel.table, metricLabel, ANNOUNCE_METRIC_COLUMN_WIDTH, ConsoleTableAlignment_Left, ConsoleTableCellType_String);
 
 	for (int i = 0; i < survivorCount; i++)
 	{
-		ConsoleTable_AddColumn(panel.table, g_Round.players[survivorSlots[i]].player.name, 14, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
+		char displayName[MAX_NAME_LENGTH];
+		Announce_GetDisplayColumnName(displayName, sizeof(displayName), g_Round.players[survivorSlots[i]].player.name, ANNOUNCE_PLAYER_COLUMN_WIDTH);
+		ConsoleTable_AddColumn(panel.table, displayName, ANNOUNCE_PLAYER_COLUMN_WIDTH, ConsoleTableAlignment_Right, ConsoleTableCellType_String);
 	}
 }
 
@@ -1975,10 +1862,7 @@ bool Announce_RenderBilePanel(int client)
 	char tankLabel[16];
 	Format(countLabel, sizeof(countLabel), "%T", "ColumnCount", client > 0 ? client : LANG_SERVER);
 	Format(playersLabel, sizeof(playersLabel), "%T", "ColumnPlayers", client > 0 ? client : LANG_SERVER);
-	Format(tankLabel, sizeof(tankLabel), "%T", "ColumnTank", client > 0 ? client : LANG_SERVER);
-	Announce_FormatMetricUnitLabel(countLabel, sizeof(countLabel), countLabel, "#");
-	Announce_FormatMetricUnitLabel(playersLabel, sizeof(playersLabel), playersLabel, "#");
-	Announce_FormatMetricUnitLabel(tankLabel, sizeof(tankLabel), tankLabel, "#");
+	Format(tankLabel, sizeof(tankLabel), "%T", "ColumnTanksBiled", client > 0 ? client : LANG_SERVER);
 	Announce_AddMetricRow(panel, countLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].resources.vomitjarsThrown,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.vomitjarsThrown : 0,
@@ -2029,132 +1913,6 @@ bool Announce_RenderPipePanel(int client)
 		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.pipebombsThrown : 0);
 
 	ConsolePanel_RenderToClient(panel, client);
-	return true;
-}
-
-bool Announce_BroadcastMolotovPanel()
-{
-	if (!Announce_HasMolotovUtilityStats())
-	{
-		return false;
-	}
-
-	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = 0;
-	Announce_GetUtilitySurvivorSlots(survivorSlots, survivorCount);
-	if (survivorCount <= 0)
-	{
-		return false;
-	}
-
-	ConsolePanel panel;
-	Announce_BuildMetricPanel(panel, LANG_SERVER, "PanelTitleMolotovStats", "PanelTotalsMolotov",
-		g_Round.totals.survivorTotalMolotovsThrown,
-		g_Round.totals.survivorTotalZombiesIgnited);
-	Announce_AddMetricPlayerColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
-
-	char countLabel[16];
-	char ignitedLabel[16];
-	Format(countLabel, sizeof(countLabel), "%T", "ColumnCount", LANG_SERVER);
-	Format(ignitedLabel, sizeof(ignitedLabel), "%T", "ColumnIgnited", LANG_SERVER);
-	Announce_FormatMetricUnitLabel(countLabel, sizeof(countLabel), countLabel, "#");
-	Announce_FormatMetricUnitLabel(ignitedLabel, sizeof(ignitedLabel), ignitedLabel, "#");
-	Announce_AddMetricRow(panel, countLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.molotovsThrown,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.molotovsThrown : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.molotovsThrown : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.molotovsThrown : 0);
-	Announce_AddMetricRow(panel, ignitedLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.zombiesIgnited,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.zombiesIgnited : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.zombiesIgnited : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.zombiesIgnited : 0);
-
-	ConsolePanel_RenderToAudience(panel);
-	return true;
-}
-
-bool Announce_BroadcastBilePanel()
-{
-	if (!Announce_HasVomitjarUtilityStats())
-	{
-		return false;
-	}
-
-	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = 0;
-	Announce_GetUtilitySurvivorSlots(survivorSlots, survivorCount);
-	if (survivorCount <= 0)
-	{
-		return false;
-	}
-
-	ConsolePanel panel;
-	Announce_BuildMetricPanel(panel, LANG_SERVER, "PanelTitleBileStats", "PanelTotalsBile",
-		g_Round.totals.survivorTotalVomitjarsThrown,
-		g_Round.totals.survivorTotalPlayersBiled,
-		g_Round.totals.survivorTotalTanksBiled);
-	Announce_AddMetricPlayerColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
-
-	char countLabel[16];
-	char playersLabel[16];
-	char tankLabel[16];
-	Format(countLabel, sizeof(countLabel), "%T", "ColumnCount", LANG_SERVER);
-	Format(playersLabel, sizeof(playersLabel), "%T", "ColumnPlayers", LANG_SERVER);
-	Format(tankLabel, sizeof(tankLabel), "%T", "ColumnTank", LANG_SERVER);
-	Announce_FormatMetricUnitLabel(countLabel, sizeof(countLabel), countLabel, "#");
-	Announce_FormatMetricUnitLabel(playersLabel, sizeof(playersLabel), playersLabel, "#");
-	Announce_FormatMetricUnitLabel(tankLabel, sizeof(tankLabel), tankLabel, "#");
-	Announce_AddMetricRow(panel, countLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.vomitjarsThrown,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.vomitjarsThrown : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.vomitjarsThrown : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.vomitjarsThrown : 0);
-	Announce_AddMetricRow(panel, playersLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.playersBiled,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.playersBiled : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.playersBiled : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.playersBiled : 0);
-	Announce_AddMetricRow(panel, tankLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.tanksBiled,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.tanksBiled : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.tanksBiled : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.tanksBiled : 0);
-
-	ConsolePanel_RenderToAudience(panel);
-	return true;
-}
-
-bool Announce_BroadcastPipePanel()
-{
-	if (!Announce_HasPipebombUtilityStats())
-	{
-		return false;
-	}
-
-	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = 0;
-	Announce_GetUtilitySurvivorSlots(survivorSlots, survivorCount);
-	if (survivorCount <= 0)
-	{
-		return false;
-	}
-
-	ConsolePanel panel;
-	Announce_BuildMetricPanel(panel, LANG_SERVER, "PanelTitlePipeStats", "PanelTotalsPipe",
-		g_Round.totals.survivorTotalPipebombsThrown);
-	Announce_AddMetricPlayerColumns(panel, LANG_SERVER, survivorSlots, survivorCount);
-
-	char countLabel[16];
-	Format(countLabel, sizeof(countLabel), "%T", "ColumnCount", LANG_SERVER);
-	Announce_FormatMetricUnitLabel(countLabel, sizeof(countLabel), countLabel, "#");
-	Announce_AddMetricRow(panel, countLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.pipebombsThrown,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.pipebombsThrown : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.pipebombsThrown : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.pipebombsThrown : 0);
-
-	ConsolePanel_RenderToAudience(panel);
 	return true;
 }
 
@@ -2221,6 +1979,11 @@ void Announce_PrintMessage(int client, const char[] message, bool withTag = true
 
 bool Announce_ShouldShowTankDamage()
 {
+	if (!g_Round.meta.hasBosses)
+	{
+		return false;
+	}
+
 	if (g_Round.meta.storedTankPercent >= 0)
 	{
 		return g_Round.meta.storedTankPercent != 0;
@@ -2237,6 +2000,11 @@ bool Announce_ShouldShowTankDamage()
 
 bool Announce_ShouldShowWitchDamage()
 {
+	if (!g_Round.meta.hasBosses)
+	{
+		return false;
+	}
+
 	if (g_Round.meta.storedWitchPercent >= 0)
 	{
 		return g_Round.meta.storedWitchPercent != 0;
@@ -2336,253 +2104,27 @@ void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots,
 	Format(buffer, maxlen, "%d/%d %d%%", displayHits, shots, Announce_GetDisplayAccuracyPercent(hits, shots, clampToShots));
 }
 
-int Announce_GetPlayerAccuracyGroupHits(int slot, int groupIndex)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
-
-	switch (groupIndex)
-	{
-		case 0:
-		{
-			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_PumpShotgun]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Autoshotgun]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_ChromeShotgun]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SpasShotgun];
-		}
-		case 1:
-		{
-			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Smg]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SmgSilenced]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SmgMp5];
-		}
-		case 2:
-		{
-			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Rifle]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleAk47]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleDesert]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleSg552]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_RifleM60];
-		}
-		case 3:
-		{
-			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_HuntingRifle]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperMilitary]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperAwp]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_SniperScout];
-		}
-		case 4:
-		{
-			return g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Pistol]
-				+ g_Round.players[slot].accuracyDetails.hits[PlayerStatsWeaponDetail_Magnum];
-		}
-	}
-
-	return 0;
-}
-
-int Announce_GetPlayerAccuracyGroupShots(int slot, int groupIndex)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
-
-	switch (groupIndex)
-	{
-		case 0:
-		{
-			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_PumpShotgun]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Autoshotgun]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_ChromeShotgun]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SpasShotgun];
-		}
-		case 1:
-		{
-			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Smg]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SmgSilenced]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SmgMp5];
-		}
-		case 2:
-		{
-			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Rifle]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleAk47]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleDesert]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleSg552]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_RifleM60];
-		}
-		case 3:
-		{
-			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_HuntingRifle]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperMilitary]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperAwp]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_SniperScout];
-		}
-		case 4:
-		{
-			return g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Pistol]
-				+ g_Round.players[slot].accuracyDetails.shots[PlayerStatsWeaponDetail_Magnum];
-		}
-	}
-
-	return 0;
-}
-
 void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phraseTarget = LANG_SERVER)
 {
-	bool showTank = Announce_ShouldShowTankDamage();
-	bool showWitch = Announce_ShouldShowWitchDamage();
 	int siDamage = Announce_GetPlayerSiDamage(slot);
 	int siPercent = Announce_GetPercent(siDamage, Announce_GetTotalSurvivorSiDamage());
-	int tankDamage = g_Round.players[slot].combat.tankDamage;
-	int tankPercent = Announce_GetPercent(tankDamage, g_Round.totals.survivorTotalTankDamage);
-	int tankCount = Announce_GetEncounteredTankCount();
-	int tankShots = g_Round.players[slot].bossDetail.tankShots;
-	int witchDamage = g_Round.players[slot].combat.witchDamage;
-	int witchPercent = Announce_GetPercent(witchDamage, g_Round.totals.survivorTotalWitchDamage);
-	int witchCount = Announce_GetEncounteredWitchCount();
-	int witchShots = g_Round.players[slot].bossDetail.witchShots;
 
 	Format(buffer, maxlen, "%T", "RoundMVPDamageBase", phraseTarget,
 		g_Round.players[slot].player.name,
 		siDamage,
 		siPercent);
-
-	char tankDetail[64];
-	char witchDetail[64];
-	tankDetail[0] = '\0';
-	witchDetail[0] = '\0';
-
-	if (showTank && tankDamage > 0)
-	{
-		if (g_Runtime.hasPlayerSkills && tankShots > 0)
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "RoundMVPDamageTankShots", phraseTarget, tankDamage, tankShots);
-		}
-		else if (tankCount > 1)
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "RoundMVPDamageTankCount", phraseTarget, tankDamage, tankCount);
-		}
-		else
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "RoundMVPDamageTankPercent", phraseTarget, tankDamage, tankPercent);
-		}
-	}
-
-	if (showWitch && witchDamage > 0)
-	{
-		if (g_Runtime.hasPlayerSkills && witchShots > 0)
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "RoundMVPDamageWitchShots", phraseTarget, witchDamage, witchShots);
-		}
-		else if (witchCount > 1)
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "RoundMVPDamageWitchCount", phraseTarget, witchDamage, witchCount);
-		}
-		else
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "RoundMVPDamageWitchPercent", phraseTarget, witchDamage, witchPercent);
-		}
-	}
-
-	if (tankDetail[0] != '\0' && witchDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s {blue}(%s %s).{default}", buffer, tankDetail, witchDetail);
-		return;
-	}
-
-	if (tankDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s {blue}(%s).{default}", buffer, tankDetail);
-		return;
-	}
-
-	if (witchDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s {blue}(%s).{default}", buffer, witchDetail);
-		return;
-	}
-
 	Format(buffer, maxlen, "%s.", buffer);
 }
 
 void Announce_FormatMvPDamageConsoleLine(char[] buffer, int maxlen, int slot)
 {
-	bool showTank = Announce_ShouldShowTankDamage();
-	bool showWitch = Announce_ShouldShowWitchDamage();
 	int siDamage = Announce_GetPlayerSiDamage(slot);
 	int siPercent = Announce_GetPercent(siDamage, Announce_GetTotalSurvivorSiDamage());
-	int tankDamage = g_Round.players[slot].combat.tankDamage;
-	int tankPercent = Announce_GetPercent(tankDamage, g_Round.totals.survivorTotalTankDamage);
-	int tankCount = Announce_GetEncounteredTankCount();
-	int tankShots = g_Round.players[slot].bossDetail.tankShots;
-	int witchDamage = g_Round.players[slot].combat.witchDamage;
-	int witchPercent = Announce_GetPercent(witchDamage, g_Round.totals.survivorTotalWitchDamage);
-	int witchCount = Announce_GetEncounteredWitchCount();
-	int witchShots = g_Round.players[slot].bossDetail.witchShots;
 
 	Format(buffer, maxlen, "%T", "PanelMVPDamageBase", LANG_SERVER,
 		g_Round.players[slot].player.name,
 		siDamage,
 		siPercent);
-
-	char tankDetail[48];
-	char witchDetail[48];
-	tankDetail[0] = '\0';
-	witchDetail[0] = '\0';
-
-	if (showTank && tankDamage > 0)
-	{
-		if (g_Runtime.hasPlayerSkills && tankShots > 0)
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "PanelMVPDamageTankShots", LANG_SERVER, tankDamage, tankShots);
-		}
-		else if (tankCount > 1)
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "PanelMVPDamageTankCount", LANG_SERVER, tankDamage, tankCount);
-		}
-		else
-		{
-			Format(tankDetail, sizeof(tankDetail), "%T", "PanelMVPDamageTankPercent", LANG_SERVER, tankDamage, tankPercent);
-		}
-	}
-
-	if (showWitch && witchDamage > 0)
-	{
-		if (g_Runtime.hasPlayerSkills && witchShots > 0)
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "PanelMVPDamageWitchShots", LANG_SERVER, witchDamage, witchShots);
-		}
-		else if (witchCount > 1)
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "PanelMVPDamageWitchCount", LANG_SERVER, witchDamage, witchCount);
-		}
-		else
-		{
-			Format(witchDetail, sizeof(witchDetail), "%T", "PanelMVPDamageWitchPercent", LANG_SERVER, witchDamage, witchPercent);
-		}
-	}
-
-	if (tankDetail[0] != '\0' && witchDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s (%s %s).", buffer, tankDetail, witchDetail);
-		return;
-	}
-
-	if (tankDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s (%s).", buffer, tankDetail);
-		return;
-	}
-
-	if (witchDetail[0] != '\0')
-	{
-		Format(buffer, maxlen, "%s (%s).", buffer, witchDetail);
-		return;
-	}
-
 	Format(buffer, maxlen, "%s.", buffer);
 }
 
@@ -2719,7 +2261,7 @@ bool Announce_RenderGlobalRankPanel(int client)
 
 int Announce_GetPlayerDamageScore(int index)
 {
-	return Announce_GetPlayerSiDamage(index) + g_Round.players[index].combat.tankDamage + g_Round.players[index].combat.witchDamage;
+	return Announce_GetPlayerSiDamage(index);
 }
 
 int Announce_GetPlayerSiDamage(int index)
@@ -2887,7 +2429,7 @@ int Announce_GetPlayerSpecialDamageByClass(int index, L4D2ZombieClassType zombie
 
 int Announce_GetTotalSurvivorDamage()
 {
-	return Announce_GetTotalSurvivorSiDamage() + g_Round.totals.survivorTotalTankDamage + g_Round.totals.survivorTotalWitchDamage;
+	return Announce_GetTotalSurvivorSiDamage();
 }
 
 int Announce_GetTotalSurvivorSiDamage()

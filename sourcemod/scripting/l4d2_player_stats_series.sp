@@ -205,9 +205,9 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_stats_series", Command_Series, "Print the current PlayerStats series buffer or a requested series detail.");
 }
 
-public void PlayerStats_OnRoundFinalized(int roundId)
+public void PlayerStats_OnRoundEnded(int roundId, StatsEndType endType, int endReason)
 {
-	if (roundId <= 0)
+	if (roundId <= 0 || endType == StatsEndType_None)
 	{
 		return;
 	}

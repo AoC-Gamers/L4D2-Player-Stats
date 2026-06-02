@@ -168,6 +168,22 @@ void Round_OnEndVersusModeRoundPost()
 	Round_FinalizeActiveSnapshot("versus_mode_round_end", PlayerStatsRoundEndReason_VersusModeRoundEnd, true);
 }
 
+void Round_OnVersusMatchFinished()
+{
+	if (g_Runtime.baseMode != GAMEMODE_VERSUS)
+	{
+		return;
+	}
+
+	if (g_Round.meta.active)
+	{
+		Round_FinalizeActiveSnapshot("versus_match_finished", PlayerStatsRoundEndReason_VersusMatchFinished, true);
+		return;
+	}
+
+	Round_FireMatchEndedForLastSnapshot(PlayerStatsRoundEndReason_VersusMatchFinished);
+}
+
 void Round_OnScavengeRoundHalftime()
 {
 	if (g_Runtime.baseMode != GAMEMODE_SCAVENGE)
@@ -180,7 +196,7 @@ void Round_OnScavengeRoundHalftime()
 		g_Round.meta.active,
 		g_Runtime.roundLive);
 
-	Round_FinalizeActiveSnapshot("scavenge_round_halftime", PlayerStatsRoundEndReason_ScavengeRoundFinished, true);
+	Round_FinalizeActiveSnapshot("scavenge_round_halftime", PlayerStatsRoundEndReason_ScavengeRoundHalftime, true);
 }
 
 void Round_OnScavengeOvertime()
@@ -216,7 +232,23 @@ void Round_OnScavengeMatchFinished()
 		return;
 	}
 
-	Round_FinalizeActiveSnapshot("scavenge_match_finished", PlayerStatsRoundEndReason_ScavengeMatchFinished, true);
+	if (g_Round.meta.active)
+	{
+		Round_FinalizeActiveSnapshot("scavenge_match_finished", PlayerStatsRoundEndReason_ScavengeMatchFinished, true);
+		return;
+	}
+
+	Round_FireMatchEndedForLastSnapshot(PlayerStatsRoundEndReason_ScavengeMatchFinished);
+}
+
+void Round_OnMissionLost()
+{
+	if (g_Runtime.baseMode != GAMEMODE_COOP)
+	{
+		return;
+	}
+
+	Round_FinalizeActiveSnapshot("mission_lost", PlayerStatsRoundEndReason_MissionLost, true);
 }
 
 void Round_OnMapTransition()
@@ -248,6 +280,7 @@ void Round_MarkLive(const char[] reason, int client = 0)
 
 	g_Runtime.roundLive = true;
 	Stats_PrimeCurrentRoundPlayers();
+	API_FireRoundLive(g_Round.meta.id);
 
 	if (client > 0)
 	{
@@ -346,18 +379,52 @@ void Round_FinalizeActiveSnapshot(const char[] reason, PlayerStatsRoundEndReason
 		g_Round.totals.survivorTotalCommonKills,
 		g_Round.totals.survivorTotalFF);
 
-	API_FireRoundFinalized(g_Round.meta.id);
+	StatsEndType endType = StatsEndType_Round;
+	if (g_Round.meta.hasRoundHalves
+		&& (endReason == PlayerStatsRoundEndReason_VersusModeRoundEnd
+			|| endReason == PlayerStatsRoundEndReason_ScavengeRoundHalftime
+			|| endReason == PlayerStatsRoundEndReason_ScavengeRoundFinished))
+	{
+		endType = StatsEndType_Half;
+	}
+	if (endReason == PlayerStatsRoundEndReason_ScavengeMatchFinished)
+	{
+		endType = StatsEndType_Match;
+	}
+	if (endType == StatsEndType_Match)
+	{
+		g_Runtime.lastMatchEndedRoundId = g_Round.meta.id;
+		g_Runtime.lastMatchEndReason = endReason;
+	}
+	API_FireRoundEnded(g_Round.meta.id, endType, endReason);
 
 	if (broadcast && Stats_IsTrackingAnnounceEnabled())
 	{
 		if (Announce_BroadcastRoundSummary())
 		{
-			Announce_BroadcastRoundConsolePanel();
+			Announce_BroadcastAutomaticRoundPanelsToHumans();
 		}
 	}
 
-	if (broadcast && Stats_IsThrowablesAnnounceEnabled())
+}
+
+void Round_FireMatchEndedForLastSnapshot(PlayerStatsRoundEndReasonType endReason)
+{
+	if (!Stats_IsEnabled() || g_Round.meta.id <= 0)
 	{
-		Announce_BroadcastUtilitiesConsolePanel();
+		return;
 	}
+
+	if (g_Runtime.lastMatchEndedRoundId == g_Round.meta.id && g_Runtime.lastMatchEndReason == endReason)
+	{
+		return;
+	}
+
+	g_Runtime.lastMatchEndedRoundId = g_Round.meta.id;
+	g_Runtime.lastMatchEndReason = endReason;
+	API_FireRoundEnded(g_Round.meta.id, StatsEndType_Match, endReason);
+
+	Stats_Debug(PlayerStatsDebug_Core, "Match ended for finalized snapshot. round=%d end_reason=%d",
+		g_Round.meta.id,
+		endReason);
 }

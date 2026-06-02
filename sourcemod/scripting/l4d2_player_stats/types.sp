@@ -108,7 +108,7 @@ enum PlayerStatsSeriesScopeType
 	PlayerStatsSeriesScope_None = 0,
 	PlayerStatsSeriesScope_CurrentMap,
 	PlayerStatsSeriesScope_CampaignRun,
-	PlayerStatsSeriesScope_CompetitiveSeries,
+	PlayerStatsSeriesScope_VersusMatch,
 	PlayerStatsSeriesScope_ScavengeMatch,
 	PlayerStatsSeriesScope_SurvivalRuns
 }
@@ -149,8 +149,11 @@ enum PlayerStatsRoundEndReasonType
 	PlayerStatsRoundEndReason_None = 0,
 	PlayerStatsRoundEndReason_GenericRoundEnd,
 	PlayerStatsRoundEndReason_VersusModeRoundEnd,
+	PlayerStatsRoundEndReason_VersusMatchFinished,
+	PlayerStatsRoundEndReason_ScavengeRoundHalftime,
 	PlayerStatsRoundEndReason_ScavengeRoundFinished,
 	PlayerStatsRoundEndReason_ScavengeMatchFinished,
+	PlayerStatsRoundEndReason_MissionLost,
 	PlayerStatsRoundEndReason_MapTransition,
 	PlayerStatsRoundEndReason_FinaleWin,
 	PlayerStatsRoundEndReason_MapEnd,
@@ -307,6 +310,8 @@ enum struct PlayerStatsModeContextData
 {
 	int baseMode;
 	bool isVersusMode;
+	bool hasBosses;
+	bool hasRoundHalves;
 	int configuredSurvivorLimit;
 	int configuredPlayerZombieLimit;
 	int siPoolMask;
@@ -319,6 +324,8 @@ enum struct PlayerStatsModeContextData
 	{
 		this.baseMode = GAMEMODE_UNKNOWN;
 		this.isVersusMode = false;
+		this.hasBosses = false;
+		this.hasRoundHalves = false;
 		this.configuredSurvivorLimit = 0;
 		this.configuredPlayerZombieLimit = 0;
 		this.siPoolMask = PlayerStatsSiPool_None;
@@ -689,6 +696,8 @@ enum struct PlayerStatsRoundMetaData
 	float endedAt;
 	int baseMode;
 	bool isVersusMode;
+	bool hasBosses;
+	bool hasRoundHalves;
 	int scavengeRoundNumber;
 	bool scavengeInSecondHalf;
 	int scavengeItemsGoal;
@@ -717,6 +726,8 @@ enum struct PlayerStatsRoundMetaData
 		this.endedAt = 0.0;
 		this.baseMode = GAMEMODE_UNKNOWN;
 		this.isVersusMode = false;
+		this.hasBosses = false;
+		this.hasRoundHalves = false;
 		this.scavengeRoundNumber = 0;
 		this.scavengeInSecondHalf = false;
 		this.scavengeItemsGoal = 0;
@@ -1002,6 +1013,8 @@ enum struct PlayerStatsRuntimeState
 	bool hasBossPercents;
 	bool lateload;
 	int baseMode;
+	bool hasBosses;
+	bool hasRoundHalves;
 	int configuredSurvivorLimit;
 	int configuredPlayerZombieLimit;
 	int siPoolMask;
@@ -1013,6 +1026,8 @@ enum struct PlayerStatsRuntimeState
 	PlayerStatsRoundEndSignalType roundEndSignal;
 	PlayerStatsRoundLiveSignalType roundLiveSignal;
 	PlayerStatsRestartPolicyType restartPolicy;
+	int lastMatchEndedRoundId;
+	PlayerStatsRoundEndReasonType lastMatchEndReason;
 	int playerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 	PlayerStatsWeaponFamily lastWeaponFamilyByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 	PlayerStatsWeaponDetailType lastWeaponDetailByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
@@ -1032,6 +1047,8 @@ enum struct PlayerStatsRuntimeState
 		this.hasBossPercents = false;
 		this.lateload = false;
 		this.baseMode = GAMEMODE_UNKNOWN;
+		this.hasBosses = false;
+		this.hasRoundHalves = false;
 		this.configuredSurvivorLimit = 0;
 		this.configuredPlayerZombieLimit = 0;
 		this.siPoolMask = PlayerStatsSiPool_None;
@@ -1043,6 +1060,8 @@ enum struct PlayerStatsRuntimeState
 		this.roundEndSignal = PlayerStatsRoundEndSignal_None;
 		this.roundLiveSignal = PlayerStatsRoundLiveSignal_None;
 		this.restartPolicy = PlayerStatsRestartPolicy_None;
+		this.lastMatchEndedRoundId = 0;
+		this.lastMatchEndReason = PlayerStatsRoundEndReason_None;
 
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 		{

@@ -344,7 +344,7 @@ stock bool IsValidTank(int client)
 
 stock bool Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClassType zombieClass)
 {
-	if (!Stats_IsMode(GAMEMODE_VERSUS))
+	if (!Stats_IsCompetitiveMode() || Stats_GetConfiguredPlayerZombieLimit() <= 0)
 	{
 		return false;
 	}
@@ -452,7 +452,7 @@ stock int Stats_CountEnabledSiClassesFromMask(int mask)
 
 stock PlayerStatsVersusContextType Stats_ClassifyVersusContext(int survivorLimit, int playerZombieLimit, int enabledSiClassCount)
 {
-	if (!Stats_IsMode(GAMEMODE_VERSUS) || survivorLimit <= 0 || playerZombieLimit <= 0 || survivorLimit != playerZombieLimit || enabledSiClassCount <= 0)
+	if (survivorLimit <= 0 || playerZombieLimit <= 0 || survivorLimit != playerZombieLimit || enabledSiClassCount <= 0)
 	{
 		return PlayerStatsVersusContext_None;
 	}
@@ -484,10 +484,30 @@ stock void Stats_BuildCurrentModeContext(PlayerStatsModeContextData context)
 {
 	context.Reset();
 	context.baseMode = Stats_GetModeBase();
-	context.isVersusMode = context.baseMode == GAMEMODE_VERSUS;
+	context.isVersusMode = context.baseMode == GAMEMODE_VERSUS || context.baseMode == GAMEMODE_SCAVENGE;
 	context.hasReadyUp = g_Runtime.hasReadyUp;
 	context.configuredSurvivorLimit = Stats_GetConfiguredSurvivorLimit();
 	context.configuredPlayerZombieLimit = Stats_GetConfiguredPlayerZombieLimit();
+
+	switch (context.baseMode)
+	{
+		case GAMEMODE_COOP, GAMEMODE_VERSUS:
+		{
+			context.hasBosses = true;
+		}
+		case GAMEMODE_SCAVENGE, GAMEMODE_SURVIVAL:
+		{
+			context.hasBosses = false;
+		}
+		default:
+		{
+			context.hasBosses = false;
+		}
+	}
+
+	context.hasRoundHalves =
+		(context.baseMode == GAMEMODE_VERSUS || context.baseMode == GAMEMODE_SCAVENGE)
+		&& context.configuredPlayerZombieLimit > 0;
 
 	if (!context.isVersusMode)
 	{
@@ -522,7 +542,7 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 		}
 		case GAMEMODE_VERSUS:
 		{
-			policy.seriesScope = PlayerStatsSeriesScope_CompetitiveSeries;
+			policy.seriesScope = PlayerStatsSeriesScope_VersusMatch;
 			policy.roundStartSignal = PlayerStatsRoundStartSignal_GenericRoundStart;
 			policy.roundEndSignal = PlayerStatsRoundEndSignal_GenericRoundEnd;
 			policy.roundLiveSignal = context.hasReadyUp
@@ -560,6 +580,8 @@ stock void Stats_GetLifecyclePolicyForContext(PlayerStatsModeContextData context
 stock void Stats_ApplyModeContextToRuntime(PlayerStatsModeContextData context, PlayerStatsLifecyclePolicyData policy)
 {
 	g_Runtime.baseMode = context.baseMode;
+	g_Runtime.hasBosses = context.hasBosses;
+	g_Runtime.hasRoundHalves = context.hasRoundHalves;
 	g_Runtime.configuredSurvivorLimit = context.configuredSurvivorLimit;
 	g_Runtime.configuredPlayerZombieLimit = context.configuredPlayerZombieLimit;
 	g_Runtime.siPoolMask = context.siPoolMask;
@@ -577,6 +599,8 @@ stock void Stats_ApplyModeContextToRoundMeta(PlayerStatsRoundMetaData meta, Play
 {
 	meta.baseMode = context.baseMode;
 	meta.isVersusMode = context.isVersusMode;
+	meta.hasBosses = context.hasBosses;
+	meta.hasRoundHalves = context.hasRoundHalves;
 	meta.configuredSurvivorLimit = context.configuredSurvivorLimit;
 	meta.configuredPlayerZombieLimit = context.configuredPlayerZombieLimit;
 	meta.siPoolMask = context.siPoolMask;
@@ -659,7 +683,7 @@ stock void Stats_RefreshModeContext()
 	Stats_GetLifecyclePolicyForContext(context, policy);
 	Stats_ApplyModeContextToRuntime(context, policy);
 
-	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base_mode=%d series_scope=%d versus_context=%d team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d", g_Runtime.baseMode, g_Runtime.seriesScope, g_Runtime.versusContext, g_Runtime.versusTeamSize, g_Runtime.configuredSurvivorLimit, g_Runtime.configuredPlayerZombieLimit, g_Runtime.siPoolMask, g_Runtime.enabledSiClassCount);
+	Stats_Debug(PlayerStatsDebug_Core, "Mode context refreshed. base_mode=%d series_scope=%d versus_context=%d team_size=%d survivor_limit=%d infected_limit=%d si_pool_mask=%d enabled_si=%d bosses=%d round_halves=%d", g_Runtime.baseMode, g_Runtime.seriesScope, g_Runtime.versusContext, g_Runtime.versusTeamSize, g_Runtime.configuredSurvivorLimit, g_Runtime.configuredPlayerZombieLimit, g_Runtime.siPoolMask, g_Runtime.enabledSiClassCount, g_Runtime.hasBosses, g_Runtime.hasRoundHalves);
 }
 
 stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2ApiSkillType type)
@@ -668,23 +692,23 @@ stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2ApiSkillType type)
 	{
 		case L4D2ApiSkill_HunterSkeet, L4D2ApiSkill_HunterSkeetMelee, L4D2ApiSkill_HunterDeadstop, L4D2ApiSkill_HunterHighPounce:
 		{
-			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Hunter) : true;
+			return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Hunter) : true;
 		}
 		case L4D2ApiSkill_BoomerPop, L4D2ApiSkill_BoomerVomitLanded:
 		{
-			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Boomer) : true;
+			return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Boomer) : true;
 		}
 		case L4D2ApiSkill_ChargerLevel, L4D2ApiSkill_ChargerInstaKill, L4D2ApiSkill_ChargerDeathSetup:
 		{
-			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Charger) : true;
+			return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Charger) : true;
 		}
 		case L4D2ApiSkill_SmokerTongueCut, L4D2ApiSkill_SmokerSelfClear:
 		{
-			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Smoker) : true;
+			return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Smoker) : true;
 		}
 		case L4D2ApiSkill_JockeyHighPounce:
 		{
-			return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Jockey) : true;
+			return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(L4D2ZombieClass_Jockey) : true;
 		}
 	}
 
@@ -693,7 +717,7 @@ stock bool Stats_IsSkillTypeEnabledInCurrentMode(L4D2ApiSkillType type)
 
 stock bool Stats_IsZombieClassEnabledInCurrentMode(L4D2ZombieClassType zombieClass)
 {
-	return Stats_IsMode(GAMEMODE_VERSUS) ? Stats_IsVersusSpecialLimitEnabled(zombieClass) : true;
+	return Stats_IsCompetitiveMode() ? Stats_IsVersusSpecialLimitEnabled(zombieClass) : true;
 }
 
 stock bool Stats_IsZombieClassEnabledForSnapshot(L4D2ZombieClassType zombieClass, bool isVersusMode, int siPoolMask)

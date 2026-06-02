@@ -5,15 +5,47 @@
 
 #define LIBRARY_L4D2PLAYERSTATS "l4d2_player_stats"
 
+enum StatsModeProperty
+{
+	StatsModeProperty_BaseMode = 0,
+	StatsModeProperty_HasBosses,
+	StatsModeProperty_HasRoundHalves,
+	StatsModeProperty_SeriesScope,
+	StatsModeProperty_EnabledSiClassCount,
+	StatsModeProperty_VersusTeamSize,
+	StatsModeProperty_RoundEndSignal,
+	StatsModeProperty_RoundStartSignal,
+	StatsModeProperty_RestartPolicy
+}
+
+enum StatsEndType
+{
+	StatsEndType_None = 0,
+	StatsEndType_Half,
+	StatsEndType_Round,
+	StatsEndType_Match
+}
+
 /**
- * Called after the current round snapshot is finalized.
+ * Called when the current round enters live state.
  *
- * The provided `roundId` remains valid for the finalized snapshot that
- * triggered the forward.
+ * This marks the effective start of sensitive progress counting.
+ *
+ * @param roundId	Current round identifier.
+ */
+forward void PlayerStats_OnRoundLive(int roundId);
+
+/**
+ * Called after the current round snapshot reaches a terminal lifecycle point.
+ *
+ * `endType` describes whether the terminal point corresponds to a half, a
+ * normal round snapshot closure, or a higher-level match closure.
  *
  * @param roundId	Finalized round identifier.
+ * @param endType	StatsEndType value.
+ * @param endReason	PlayerStats round-end reason id.
  */
-forward void PlayerStats_OnRoundFinalized(int roundId);
+forward void PlayerStats_OnRoundEnded(int roundId, StatsEndType endType, int endReason);
 
 /**
  * Called after a survivor slot is substituted by a different human.
@@ -38,6 +70,15 @@ forward Action PlayerStats_OnPlayerSubstituted(const char[] substitutionId, int 
  * @return			True if a round snapshot is active, otherwise false.
  */
 native bool PlayerStats_IsRoundActive();
+
+/**
+ * Returns whether the current round snapshot is live.
+ *
+ * Live means the round has crossed its effective progress-start signal.
+ *
+ * @return			True if the current round is live, otherwise false.
+ */
+native bool PlayerStats_IsRoundLive();
 
 /**
  * Returns the identifier of the current round snapshot.
@@ -68,6 +109,17 @@ native bool PlayerStats_IsRoundPlayerSlotValid(int roundId, int slot);
  * @return				Client index, or `0` if unavailable.
  */
 native int PlayerStats_GetRoundPlayerClient(int roundId, int slot);
+
+/**
+ * Returns a property of the current mode profile.
+ *
+ * This exposes the runtime-resolved mode/lifecycle context without requiring
+ * consumers to parse the round KeyValues payload.
+ *
+ * @param property		Property enum from StatsModeProperty.
+ * @return				Integer value for the requested property.
+ */
+native int PlayerStats_GetCurrentModeProperty(StatsModeProperty property);
 
 /**
  * Writes the current round snapshot into a KeyValues handle.
@@ -131,9 +183,11 @@ public SharedPlugin __pl_l4d2_player_stats =
 public void __pl_l4d2_player_stats_SetNTVOptional()
 {
 	MarkNativeAsOptional("PlayerStats_IsRoundActive");
+	MarkNativeAsOptional("PlayerStats_IsRoundLive");
 	MarkNativeAsOptional("PlayerStats_GetRoundId");
 	MarkNativeAsOptional("PlayerStats_IsRoundPlayerSlotValid");
 	MarkNativeAsOptional("PlayerStats_GetRoundPlayerClient");
+	MarkNativeAsOptional("PlayerStats_GetCurrentModeProperty");
 	MarkNativeAsOptional("PlayerStats_FillRoundKeyValues");
 	MarkNativeAsOptional("PlayerStats_FillRoundPlayerKeyValues");
 	MarkNativeAsOptional("PlayerStats_ApplySubstitutionSnapshotToSlot");

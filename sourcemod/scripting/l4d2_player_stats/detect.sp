@@ -243,34 +243,63 @@ void Detect_EventInfectedDeath(Event event, const char[] name, bool dontBroadcas
 
 	if (!Stats_IsRoundLive())
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because round is not live. attacker_userid=%d round=%d",
+			name,
+			event.GetInt("attacker"),
+			g_Round.meta.id);
 		return;
 	}
 
 	if (!Stats_IsTrackingEnabled())
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because tracking is disabled. attacker_userid=%d round=%d",
+			name,
+			event.GetInt("attacker"),
+			g_Round.meta.id);
 		return;
 	}
 
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	if (!IsValidSurvivor(attacker))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because attacker did not resolve to a survivor. attacker_userid=%d client=%d round=%d",
+			name,
+			event.GetInt("attacker"),
+			attacker,
+			g_Round.meta.id);
 		return;
 	}
 
 	int infectedType = event.GetInt("gender");
-	if (infectedType > 2)
-	{
-		return;
-	}
-
 	int index = Stats_EnsurePlayerRoundSlot(attacker);
 	if (index == -1)
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring %s because no round slot could be assigned. attacker_userid=%d client=%d infected_type=%d round=%d",
+			name,
+			event.GetInt("attacker"),
+			attacker,
+			infectedType,
+			g_Round.meta.id);
 		return;
 	}
 
 	g_Round.players[index].combat.commonKills++;
 	g_Round.totals.survivorTotalCommonKills++;
+
+	if (g_Round.players[index].combat.commonKills <= 5
+		|| g_Round.players[index].combat.commonKills % 25 == 0
+		|| g_Round.totals.survivorTotalCommonKills <= 10
+		|| g_Round.totals.survivorTotalCommonKills % 100 == 0)
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Counted %s as common kill. attacker_userid=%d client=%d slot=%d infected_type=%d player_total=%d round_total=%d",
+			name,
+			event.GetInt("attacker"),
+			attacker,
+			index,
+			infectedType,
+			g_Round.players[index].combat.commonKills,
+			g_Round.totals.survivorTotalCommonKills);
+	}
 }
 
 void Detect_EventInfectedHurt(Event event, const char[] name, bool dontBroadcast)
@@ -1421,6 +1450,30 @@ void Detect_OnTankKilled(int victim)
 	Detect_EndTankSession(sessionIndex);
 }
 
+void Detect_GetPlayerSkillsKillTypeName(L4D2ApiKillType type, char[] buffer, int maxlen)
+{
+	switch (type)
+	{
+		case L4D2ApiKill_SmokerKill: strcopy(buffer, maxlen, "SmokerKill");
+		case L4D2ApiKill_BoomerKill: strcopy(buffer, maxlen, "BoomerKill");
+		case L4D2ApiKill_HunterKill: strcopy(buffer, maxlen, "HunterKill");
+		case L4D2ApiKill_SpitterKill: strcopy(buffer, maxlen, "SpitterKill");
+		case L4D2ApiKill_JockeyKill: strcopy(buffer, maxlen, "JockeyKill");
+		case L4D2ApiKill_ChargerKill: strcopy(buffer, maxlen, "ChargerKill");
+		default: strcopy(buffer, maxlen, "None");
+	}
+}
+
+void Detect_GetPlayerSkillsBossTypeName(L4D2BossType type, char[] buffer, int maxlen)
+{
+	switch (type)
+	{
+		case L4D2Boss_Tank: strcopy(buffer, maxlen, "Tank");
+		case L4D2Boss_Witch: strcopy(buffer, maxlen, "Witch");
+		default: strcopy(buffer, maxlen, "Unknown");
+	}
+}
+
 int Detect_GetPlayerSkillsEventActorClient(int eventId, bool bossEvent)
 {
 	Handle kv = CreateKeyValues("player_skills_event");
@@ -1504,8 +1557,11 @@ L4D2ApiKillType Detect_GetPlayerSkillsSuppressedKillTypeFromSkillEvent(Handle kv
 	return killType;
 }
 
-void Detect_ConsumePlayerSkillsKillAssists(Handle kv, int actorUserid, L4D2ZombieClassType zombieClass)
+void Detect_ConsumePlayerSkillsKillAssists(Handle kv, int actorUserid, L4D2ZombieClassType zombieClass, int &assistCount, int &assistDamage)
 {
+	assistCount = 0;
+	assistDamage = 0;
+
 	if (zombieClass == L4D2ZombieClass_NotInfected || !KvJumpToKey(kv, "assists", false) || !KvGotoFirstSubKey(kv, false))
 	{
 		return;
@@ -1531,8 +1587,11 @@ void Detect_ConsumePlayerSkillsKillAssists(Handle kv, int actorUserid, L4D2Zombi
 			continue;
 		}
 
+		int damage = KvGetNum(kv, "damage", 0);
 		Stats_AddSpecialKillAssistByClass(index, zombieClass);
-		Stats_AddSpecialAssistDamageByClass(index, zombieClass, KvGetNum(kv, "damage", 0));
+		Stats_AddSpecialAssistDamageByClass(index, zombieClass, damage);
+		assistCount++;
+		assistDamage += damage;
 	}
 	while (KvGotoNextKey(kv, false));
 }
@@ -1541,6 +1600,16 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 {
 	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsKillEventValid(eventId))
 	{
+		if (Stats_IsDebugEnabled(PlayerStatsDebug_Detect))
+		{
+			Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills kill_event. event=%d type=%d tracking=%d has_skills=%d live=%d valid=%d",
+				eventId,
+				type,
+				Stats_IsTrackingEnabled(),
+				g_Runtime.hasPlayerSkills,
+				Stats_IsRoundLive(),
+				PlayerSkills_IsKillEventValid(eventId));
+		}
 		return;
 	}
 
@@ -1552,6 +1621,9 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 
 	if (!PlayerSkills_FillKillEventKeyValues(eventId, kv))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills kill_event because FillKillEventKeyValues failed. event=%d type=%d",
+			eventId,
+			type);
 		delete kv;
 		return;
 	}
@@ -1559,6 +1631,9 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 	KvRewind(kv);
 	if (!KvJumpToKey(kv, "kill_event", false))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills kill_event because kill_event root is missing. event=%d type=%d",
+			eventId,
+			type);
 		delete kv;
 		return;
 	}
@@ -1567,6 +1642,11 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 	int actor = actorUserid > 0 ? GetClientOfUserId(actorUserid) : 0;
 	if (!IsValidSurvivor(actor))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills kill_event because actor did not resolve to a survivor. event=%d type=%d actor_userid=%d client=%d",
+			eventId,
+			type,
+			actorUserid,
+			actor);
 		delete kv;
 		return;
 	}
@@ -1574,11 +1654,18 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 	int index = Stats_EnsurePlayerRoundSlot(actor);
 	if (index == -1)
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills kill_event because no round slot could be assigned. event=%d type=%d actor_userid=%d client=%d",
+			eventId,
+			type,
+			actorUserid,
+			actor);
 		delete kv;
 		return;
 	}
 
 	L4D2ZombieClassType zombieClass = Detect_GetZombieClassForPlayerSkillsKillType(type);
+	int assistCount = 0;
+	int assistDamage = 0;
 	switch (zombieClass)
 	{
 		case L4D2ZombieClass_Smoker:
@@ -1607,7 +1694,17 @@ void Detect_OnPlayerKillDetected(int eventId, L4D2ApiKillType type)
 		}
 	}
 
-	Detect_ConsumePlayerSkillsKillAssists(kv, actorUserid, zombieClass);
+	Detect_ConsumePlayerSkillsKillAssists(kv, actorUserid, zombieClass, assistCount, assistDamage);
+	char killTypeName[32];
+	Detect_GetPlayerSkillsKillTypeName(type, killTypeName, sizeof(killTypeName));
+	Stats_Debug(PlayerStatsDebug_Detect, "PlayerSkills kill_event credited. event=%d type=%s actor_userid=%d client=%d slot=%d assists=%d assist_damage=%d",
+		eventId,
+		killTypeName,
+		actorUserid,
+		actor,
+		index,
+		assistCount,
+		assistDamage);
 	delete kv;
 }
 
@@ -1620,6 +1717,16 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 
 	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsSkillEventValid(eventId))
 	{
+		if (Stats_IsDebugEnabled(PlayerStatsDebug_Detect))
+		{
+			Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills skill_event. event=%d type=%d tracking=%d has_skills=%d live=%d valid=%d",
+				eventId,
+				type,
+				Stats_IsTrackingEnabled(),
+				g_Runtime.hasPlayerSkills,
+				Stats_IsRoundLive(),
+				PlayerSkills_IsSkillEventValid(eventId));
+		}
 		return;
 	}
 
@@ -1631,6 +1738,9 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 
 	if (!PlayerSkills_FillSkillEventKeyValues(eventId, kv))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills skill_event because FillSkillEventKeyValues failed. event=%d type=%d",
+			eventId,
+			type);
 		delete kv;
 		return;
 	}
@@ -1638,6 +1748,9 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 	KvRewind(kv);
 	if (!KvJumpToKey(kv, "skill_event", false))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills skill_event because skill_event root is missing. event=%d type=%d",
+			eventId,
+			type);
 		delete kv;
 		return;
 	}
@@ -1646,6 +1759,11 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 	int actor = actorUserid > 0 ? GetClientOfUserId(actorUserid) : 0;
 	if (!IsValidSurvivor(actor))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills skill_event because actor did not resolve to a survivor. event=%d type=%d actor_userid=%d client=%d",
+			eventId,
+			type,
+			actorUserid,
+			actor);
 		delete kv;
 		return;
 	}
@@ -1653,6 +1771,11 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 	int index = Stats_EnsurePlayerRoundSlot(actor);
 	if (index == -1)
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills skill_event because no round slot could be assigned. event=%d type=%d actor_userid=%d client=%d",
+			eventId,
+			type,
+			actorUserid,
+			actor);
 		delete kv;
 		return;
 	}
@@ -1662,7 +1785,28 @@ void Detect_OnPlayerSkillDetected(int eventId, L4D2ApiSkillType type)
 	if (zombieClass != L4D2ZombieClass_NotInfected)
 	{
 		Stats_AddSpecialKillByClass(index, zombieClass);
-		Detect_ConsumePlayerSkillsKillAssists(kv, actorUserid, zombieClass);
+		int assistCount = 0;
+		int assistDamage = 0;
+		Detect_ConsumePlayerSkillsKillAssists(kv, actorUserid, zombieClass, assistCount, assistDamage);
+		char killTypeName[32];
+		Detect_GetPlayerSkillsKillTypeName(suppressedKillType, killTypeName, sizeof(killTypeName));
+		Stats_Debug(PlayerStatsDebug_Detect, "PlayerSkills skill_event implied SI death. event=%d skill_type=%d kill_type=%s actor_userid=%d client=%d slot=%d assists=%d assist_damage=%d",
+			eventId,
+			type,
+			killTypeName,
+			actorUserid,
+			actor,
+			index,
+			assistCount,
+			assistDamage);
+	}
+	else
+	{
+		Stats_Debug(PlayerStatsDebug_Detect, "PlayerSkills skill_event did not imply SI death. event=%d skill_type=%d actor_userid=%d client=%d",
+			eventId,
+			type,
+			actorUserid,
+			actor);
 	}
 
 	delete kv;
@@ -1672,18 +1816,35 @@ void Detect_OnPlayerBossEventDetected(int eventId, L4D2ApiBossEventType type)
 {
 	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsBossEventValid(eventId))
 	{
+		if (Stats_IsDebugEnabled(PlayerStatsDebug_Detect))
+		{
+			Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_event. event=%d type=%d tracking=%d has_skills=%d live=%d valid=%d",
+				eventId,
+				type,
+				Stats_IsTrackingEnabled(),
+				g_Runtime.hasPlayerSkills,
+				Stats_IsRoundLive(),
+				PlayerSkills_IsBossEventValid(eventId));
+		}
 		return;
 	}
 
 	int actor = Detect_GetPlayerSkillsEventActorClient(eventId, true);
 	if (!IsValidSurvivor(actor))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_event because actor did not resolve to a survivor. event=%d type=%d",
+			eventId,
+			type);
 		return;
 	}
 
 	int index = Stats_EnsurePlayerRoundSlot(actor);
 	if (index == -1)
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_event because no round slot could be assigned. event=%d type=%d client=%d",
+			eventId,
+			type,
+			actor);
 		return;
 	}
 
@@ -1698,10 +1859,21 @@ void Detect_OnPlayerBossEventDetected(int eventId, L4D2ApiBossEventType type)
 			Stats_AddWitchKill(index);
 		}
 	}
+
+	Stats_Debug(PlayerStatsDebug_Detect, "PlayerSkills boss_event credited. event=%d type=%d client=%d slot=%d witch_kills=%d",
+		eventId,
+		type,
+		actor,
+		index,
+		g_Round.players[index].combat.witchKills);
 }
 
-void Detect_ConsumePlayerSkillsBossSessionDamageEntries(Handle kv, L4D2BossType type)
+void Detect_ConsumePlayerSkillsBossSessionDamageEntries(Handle kv, L4D2BossType type, int &entryCount, int &totalDamage, int &totalShots)
 {
+	entryCount = 0;
+	totalDamage = 0;
+	totalShots = 0;
+
 	if (!KvJumpToKey(kv, "damage_entries", false) || !KvGotoFirstSubKey(kv, false))
 	{
 		return;
@@ -1724,6 +1896,9 @@ void Detect_ConsumePlayerSkillsBossSessionDamageEntries(Handle kv, L4D2BossType 
 
 		int damage = KvGetNum(kv, "damage", 0);
 		int shots = KvGetNum(kv, "shots", 0);
+		entryCount++;
+		totalDamage += damage;
+		totalShots += shots;
 		switch (type)
 		{
 			case L4D2Boss_Tank:
@@ -1745,6 +1920,16 @@ void Detect_OnPlayerBossSessionFinalized(int sessionId, L4D2BossType type)
 {
 	if (!Stats_IsTrackingEnabled() || !g_Runtime.hasPlayerSkills || !Stats_IsRoundLive() || !PlayerSkills_IsBossSessionValid(sessionId))
 	{
+		if (Stats_IsDebugEnabled(PlayerStatsDebug_Detect))
+		{
+			Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_session. session=%d type=%d tracking=%d has_skills=%d live=%d valid=%d",
+				sessionId,
+				type,
+				Stats_IsTrackingEnabled(),
+				g_Runtime.hasPlayerSkills,
+				Stats_IsRoundLive(),
+				PlayerSkills_IsBossSessionValid(sessionId));
+		}
 		return;
 	}
 
@@ -1756,6 +1941,9 @@ void Detect_OnPlayerBossSessionFinalized(int sessionId, L4D2BossType type)
 
 	if (!PlayerSkills_FillBossSessionKeyValues(sessionId, kv))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_session because FillBossSessionKeyValues failed. session=%d type=%d",
+			sessionId,
+			type);
 		delete kv;
 		return;
 	}
@@ -1763,10 +1951,24 @@ void Detect_OnPlayerBossSessionFinalized(int sessionId, L4D2BossType type)
 	KvRewind(kv);
 	if (!KvJumpToKey(kv, "boss_session", false))
 	{
+		Stats_Debug(PlayerStatsDebug_Detect, "Ignoring PlayerSkills boss_session because boss_session root is missing. session=%d type=%d",
+			sessionId,
+			type);
 		delete kv;
 		return;
 	}
 
-	Detect_ConsumePlayerSkillsBossSessionDamageEntries(kv, type);
+	int entryCount = 0;
+	int totalDamage = 0;
+	int totalShots = 0;
+	Detect_ConsumePlayerSkillsBossSessionDamageEntries(kv, type, entryCount, totalDamage, totalShots);
+	char bossTypeName[16];
+	Detect_GetPlayerSkillsBossTypeName(type, bossTypeName, sizeof(bossTypeName));
+	Stats_Debug(PlayerStatsDebug_Detect, "PlayerSkills boss_session credited. session=%d type=%s entries=%d damage=%d shots=%d",
+		sessionId,
+		bossTypeName,
+		entryCount,
+		totalDamage,
+		totalShots);
 	delete kv;
 }

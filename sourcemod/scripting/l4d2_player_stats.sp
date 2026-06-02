@@ -113,6 +113,8 @@ public void OnPluginStart()
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("map_transition", Event_MapTransition, EventHookMode_PostNoCopy);
 	HookEvent("finale_win", Event_FinaleWin, EventHookMode_PostNoCopy);
+	HookEvent("mission_lost", Event_MissionLost, EventHookMode_PostNoCopy);
+	HookEvent("versus_match_finished", Event_VersusMatchFinished, EventHookMode_PostNoCopy);
 	HookEvent("scavenge_round_start", Event_ScavengeRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("scavenge_round_finished", Event_ScavengeRoundFinished, EventHookMode_PostNoCopy);
 	HookEvent("scavenge_round_halftime", Event_ScavengeRoundHalftime, EventHookMode_PostNoCopy);
@@ -141,7 +143,8 @@ public void OnPluginStart()
 	HookEvent("defibrillator_used", Event_DefibrillatorUsed, EventHookMode_Post);
 	HookEvent("revive_success", Event_ReviveSuccess, EventHookMode_Post);
 	HookEvent("survivor_rescued", Event_SurvivorRescued, EventHookMode_Post);
-	
+
+	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
 	RegConsoleCmd("sm_stats_mvp", Command_MVP, "Print the current survivor MVP summary.");
 	RegConsoleCmd("sm_stats_rank", Command_Rank, "Print the client's current MVP ranks in chat and the global rank table in console.");
 	RegConsoleCmd("sm_stats_acc", Command_Acc, "Print the current round accuracy table in console.");
@@ -280,17 +283,30 @@ public void OnMapEnd()
 
 public void OnConfigsExecuted()
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[OnConfigsExecuted]");
 	Stats_RefreshModeContext();
 	Round_RefreshLiveState();
 }
 
 public void ConVarChange_ModeContext(ConVar convar, const char[] oldValue, const char[] newValue)
 {
+	char name[64];
+	if (convar != null)
+	{
+		convar.GetName(name, sizeof(name));
+	}
+	else
+	{
+		strcopy(name, sizeof(name), "<null>");
+	}
+
+	Stats_Debug(PlayerStatsDebug_Event, "[ConVarChange_ModeContext] cvar=%s old=%s new=%s", name, oldValue, newValue);
 	Stats_RefreshModeContext();
 }
 
 public void L4D_OnGameModeChange(int gamemode)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnGameModeChange] gamemode=%d", gamemode);
 	Stats_RefreshModeContext();
 	Round_RefreshLiveState();
 }
@@ -304,12 +320,14 @@ public void OnPluginEnd()
 
 public void OnClientPutInServer(int client)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[OnClientPutInServer] client=%d bot=%d", client, IsFakeClient(client));
 	Stats_OnClientPutInServer(client);
 	SDKHook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
 }
 
 public void OnClientDisconnect(int client)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[OnClientDisconnect] client=%d bot=%d", client, IsFakeClient(client));
 	Detect_OnClientDisconnect(client);
 	SDKUnhook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
 	Stats_OnClientDisconnect(client);
@@ -329,21 +347,25 @@ public void L4D_OnFirstSurvivorLeftSafeArea_Post(int client)
 
 public void L4D_OnGrabWithTongue_Post(int victim, int attacker)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnGrabWithTongue_Post] victim=%d attacker=%d", victim, attacker);
 	Detect_OnGrabWithTonguePost(victim, attacker);
 }
 
 public void L4D_OnPouncedOnSurvivor_Post(int victim, int attacker)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnPouncedOnSurvivor_Post] victim=%d attacker=%d", victim, attacker);
 	Detect_OnPouncedOnSurvivorPost(victim, attacker);
 }
 
 public void L4D2_OnJockeyRide_Post(int victim, int attacker)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[L4D2_OnJockeyRide_Post] victim=%d attacker=%d", victim, attacker);
 	Detect_OnJockeyRidePost(victim, attacker);
 }
 
 public void L4D_OnVomitedUpon_Post(int victim, int attacker, bool boomerExplosion)
 {
+	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnVomitedUpon_Post] victim=%d attacker=%d boomer_explosion=%d", victim, attacker, boomerExplosion);
 	Detect_OnVomitedUponPost(victim, attacker, boomerExplosion);
 }
 
@@ -403,6 +425,13 @@ public void Event_FinaleWin(Event event, const char[] name, bool dontBroadcast)
 	Round_OnFinaleWin();
 }
 
+public void Event_MissionLost(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	Round_OnMissionLost();
+}
+
 public void Event_ScavengeRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	Stats_Debug(PlayerStatsDebug_Event, "[%s] round=%d firsthalf=%d", name, event.GetInt("round"), event.GetBool("firsthalf"));
@@ -427,6 +456,13 @@ public void Event_ScavengeMatchFinished(Event event, const char[] name, bool don
 	Stats_Debug(PlayerStatsDebug_Event, "[%s] winners=%d", name, event.GetInt("winners"));
 	Stats_ConsumeEventContext(event, name, dontBroadcast);
 	Round_OnScavengeMatchFinished();
+}
+
+public void Event_VersusMatchFinished(Event event, const char[] name, bool dontBroadcast)
+{
+	Stats_Debug(PlayerStatsDebug_Event, "[%s] winners=%d", name, event.GetInt("winners"));
+	Stats_ConsumeEventContext(event, name, dontBroadcast);
+	Round_OnVersusMatchFinished();
 }
 
 public void Event_ScavengeOvertime(Event event, const char[] name, bool dontBroadcast)

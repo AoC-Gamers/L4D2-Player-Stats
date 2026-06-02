@@ -36,6 +36,12 @@
 		"es"		"==== Ayuda de L4D2 Player Stats ===="
 	}
 
+	"HelpCoreOnly"
+	{
+		"en"		"Core commands included in the main PlayerStats artifact:"
+		"es"		"Comandos del core incluidos en el artefacto principal de PlayerStats:"
+	}
+
 	"HelpCommandMVPCurrent"
 	{
 		"en"		"sm_stats_mvp - Print the MVP summary for the current round."
@@ -96,6 +102,12 @@
 		"es"		"sm_stats_help - Imprime esta ayuda en consola."
 	}
 
+	"HelpOptionalSeries"
+	{
+		"en"		"Optional companion: sm_stats_series is provided by l4d2_player_stats_series."
+		"es"		"Companion opcional: sm_stats_series lo provee l4d2_player_stats_series."
+	}
+
 	"ModeNameUnknown"
 	{
 		"en"		"Unknown"
@@ -105,7 +117,7 @@
 	"ModeNameCoop"
 	{
 		"en"		"Coop"
-		"es"		"Campania"
+		"es"		"Campaña"
 	}
 
 	"ModeNameVersus"
@@ -131,48 +143,6 @@
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{blue}[{olive}SI MVP{blue}] {olive}{1} {blue}with {green}{2} {blue}SI damage [{green}{3}%%{blue}]"
 		"es"		"{blue}[{olive}MVP SI{blue}] {olive}{1} {blue}con {green}{2} {blue}de daño SI [{green}{3}%%{blue}]"
-	}
-
-	"RoundMVPDamageTankPercent"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]"
-		"es"		"{green}{1} {blue}Tank [{green}{2}%%{blue}]"
-	}
-
-	"RoundMVPDamageTankCount"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Tank [{green}x{2}{blue}]"
-		"es"		"{green}{1} {blue}Tank [{green}x{2}{blue}]"
-	}
-
-	"RoundMVPDamageTankShots"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Tank [{green}{2} shots{blue}]"
-		"es"		"{green}{1} {blue}Tank [{green}{2} tiros{blue}]"
-	}
-
-	"RoundMVPDamageWitchPercent"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]"
-		"es"		"{green}{1} {blue}Witch [{green}{2}%%{blue}]"
-	}
-
-	"RoundMVPDamageWitchCount"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
-		"es"		"{green}{1} {blue}Witch [{green}x{2}{blue}]"
-	}
-
-	"RoundMVPDamageWitchShots"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{green}{1} {blue}Witch [{green}{2} shots{blue}]"
-		"es"		"{green}{1} {blue}Witch [{green}{2} tiros{blue}]"
 	}
 
 	"RoundMVPCommon"
@@ -386,8 +356,8 @@
 	"PanelTotalsInfectedGrab"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Totals: Dmg {1} | Tongues# {2} | Pins# {3}"
-		"es"		"Totales: Dmg {1} | Tongues# {2} | Pins# {3}"
+		"en"		"Totals: Dmg {1} | Tongues {2} | Pins {3}"
+		"es"		"Totales: Dmg {1} | Lenguas {2} | Atrapados {3}"
 	}
 
 	"PanelTitleInfectedSupport"
@@ -414,15 +384,15 @@
 	"PanelTotalsInfectedSupport"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"Totals: Boomer# {1} | Spit dmg {2}"
-		"es"		"Totales: Boomer# {1} | Spit dmg {2}"
+		"en"		"Totals: Boomer Hits {1} | Spit dmg {2}"
+		"es"		"Totales: Boomer Hits {1} | Spit dmg {2}"
 	}
 
 	"PanelTitleTankStats"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{1} - Tank Session {3} -- Round {2}"
-		"es"		"{1} - Tank Session {3} -- Round {2}"
+		"es"		"{1} - Tank Sesión {3} -- Round {2}"
 	}
 
 	"PanelTotalsTank"
@@ -505,22 +475,22 @@
 	"PanelTotalsMolotov"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"Totals: Count# {1} | Ignited# {2}"
-		"es"		"Totales: Count# {1} | Ignited# {2}"
+		"en"		"Totals: Throws {1} | Zombies Ignited {2}"
+		"es"		"Totales: Lanzables {1} | Zombies Incendiados {2}"
 	}
 
 	"PanelTotalsBile"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Totals: Count# {1} | Players# {2} | Tank# {3}"
-		"es"		"Totales: Count# {1} | Players# {2} | Tank# {3}"
+		"en"		"Totals: Throws {1} | Players Biled {2} | Tanks Biled {3}"
+		"es"		"Totales: Lanzables {1} | Jugadores Vomitados {2} | Tanks Vomitados {3}"
 	}
 
 	"PanelTotalsPipe"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Totals: Count# {1}"
-		"es"		"Totales: Count# {1}"
+		"en"		"Totals: Throws {1}"
+		"es"		"Totales: Lanzables {1}"
 	}
 
 	"PanelTotalsConsumables"
@@ -540,8 +510,8 @@
 	"PanelTotalsScavenge"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"Totals: Poured# {1} | Dropped# {2} | Destroyed# {3}"
-		"es"		"Totales: Poured# {1} | Dropped# {2} | Destroyed# {3}"
+		"en"		"Totals: Poured {1} | Dropped {2} | Destroyed {3}"
+		"es"		"Totales: Llenados {1} | Caidos {2} | Destruidos {3}"
 	}
 
 	"PanelScavengeGoal"
@@ -639,48 +609,6 @@
 		"es"		"MVP SI: {1} con {2} de dano SI [{3}%%]"
 	}
 
-	"PanelMVPDamageTankPercent"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Tank [{2}%%]"
-		"es"		"{1} Tank [{2}%%]"
-	}
-
-	"PanelMVPDamageTankCount"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Tank [x{2}]"
-		"es"		"{1} Tank [x{2}]"
-	}
-
-	"PanelMVPDamageTankShots"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Tank [{2} shots]"
-		"es"		"{1} Tank [{2} tiros]"
-	}
-
-	"PanelMVPDamageWitchPercent"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Witch [{2}%%]"
-		"es"		"{1} Witch [{2}%%]"
-	}
-
-	"PanelMVPDamageWitchCount"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Witch [x{2}]"
-		"es"		"{1} Witch [x{2}]"
-	}
-
-	"PanelMVPDamageWitchShots"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"{1} Witch [{2} shots]"
-		"es"		"{1} Witch [{2} tiros]"
-	}
-
 	"ColumnRound"
 	{
 		"en"		"Round"
@@ -713,8 +641,8 @@
 
 	"ColumnCommon"
 	{
-		"en"		"Common"
-		"es"		"Common"
+		"en"		"Common Kills"
+		"es"		"Muertes Comunes"
 	}
 
 	"ColumnSpecialInfected"
@@ -768,7 +696,7 @@
 	"ColumnDeaths"
 	{
 		"en"		"Deaths"
-		"es"		"Deaths"
+		"es"		"Muertes"
 	}
 
 	"ColumnIncaps"
@@ -780,13 +708,13 @@
 	"ColumnKits"
 	{
 		"en"		"Kits"
-		"es"		"Kits"
+		"es"		"Botiquines"
 	}
 
 	"ColumnPills"
 	{
 		"en"		"Pills"
-		"es"		"Pills"
+		"es"		"Píldoras"
 	}
 
 	"ColumnRestarts"
@@ -815,8 +743,8 @@
 
 	"ColumnCount"
 	{
-		"en"		"Count"
-		"es"		"Count"
+		"en"		"Throws"
+		"es"		"Lanzables"
 	}
 
 	"ColumnTotal"
@@ -834,7 +762,7 @@
 	"ColumnDropped"
 	{
 		"en"		"Dropped"
-		"es"		"Caidos"
+		"es"		"Caídos"
 	}
 
 	"ColumnDestroyed"
@@ -845,8 +773,8 @@
 
 	"ColumnIgnited"
 	{
-		"en"		"Ignited"
-		"es"		"Ignited"
+		"en"		"Zombies Ignited"
+		"es"		"Zombies Incendiados"
 	}
 
 	"ColumnSmoker"
@@ -876,25 +804,25 @@
 	"ColumnTongues"
 	{
 		"en"		"Tongues"
-		"es"		"Tongues"
+		"es"		"Lenguas"
 	}
 
 	"ColumnPounces"
 	{
 		"en"		"Pounces"
-		"es"		"Pounces"
+		"es"		"Saltos"
 	}
 
 	"ColumnRides"
 	{
 		"en"		"Rides"
-		"es"		"Rides"
+		"es"		"Paseos"
 	}
 
 	"ColumnBoomerHits"
 	{
-		"en"		"Boomer"
-		"es"		"Boomer"
+		"en"		"Boomer Hits"
+		"es"		"Boomer Hits"
 	}
 
 	"ColumnSpit"
@@ -995,14 +923,20 @@
 
 	"ColumnPlayers"
 	{
-		"en"		"Plyr"
-		"es"		"Jugs"
+		"en"		"Players Biled"
+		"es"		"Jugadores Vomitados"
 	}
 
 	"ColumnTank"
 	{
 		"en"		"Tank"
 		"es"		"Tank"
+	}
+
+	"ColumnTanksBiled"
+	{
+		"en"		"Tanks Biled"
+		"es"		"Tanks Vomitados"
 	}
 
 	"ColumnAdr"
@@ -1080,37 +1014,37 @@
 	"ColumnPunches"
 	{
 		"en"		"Punches"
-		"es"		"Punches"
+		"es"		"Puñetazos"
 	}
 
 	"ColumnRocks"
 	{
 		"en"		"Rocks"
-		"es"		"Rocks"
+		"es"		"Rocas"
 	}
 
 	"ColumnHittables"
 	{
 		"en"		"Hittables"
-		"es"		"Hittables"
+		"es"		"Objetos golpeables"
 	}
 
 	"ColumnSIRank"
 	{
-		"en"		"SI#"
-		"es"		"SI#"
+		"en"		"SI Rank"
+		"es"		"SI Rank"
 	}
 
 	"ColumnCIRank"
 	{
-		"en"		"CI#"
-		"es"		"CI#"
+		"en"		"CI Rank"
+		"es"		"CI Rank"
 	}
 
 	"ColumnFFRank"
 	{
-		"en"		"FF#"
-		"es"		"FF#"
+		"en"		"FF Rank"
+		"es"		"FF Rank"
 	}
 
 }

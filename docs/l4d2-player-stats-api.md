@@ -26,9 +26,12 @@ La estrategia base sigue siendo:
 El contrato mínimo actual es:
 
 ```sourcepawn
-forward void PlayerStats_OnRoundFinalized(int roundId);
+forward void PlayerStats_OnRoundLive(int roundId);
+forward void PlayerStats_OnRoundEnded(int roundId, StatsEndType endType, int endReason);
 
+native bool PlayerStats_IsRoundLive();
 native bool PlayerStats_IsRoundPlayerSlotValid(int roundId, int slot);
+native int PlayerStats_GetCurrentModeProperty(StatsModeProperty property);
 native bool PlayerStats_FillRoundKeyValues(int roundId, Handle kv);
 native bool PlayerStats_FillRoundPlayerKeyValues(int roundId, int slot, Handle kv);
 ```
@@ -46,11 +49,40 @@ Estos natives ya están implementados en el core actual.
 
 La validación recomendada para consumidores externos es:
 
-1. escuchar `PlayerStats_OnRoundFinalized(roundId)`
-2. llamar `PlayerStats_FillRoundKeyValues(roundId, kv)`
-3. iterar los `slot` listados
-4. validar cada `slot` con `PlayerStats_IsRoundPlayerSlotValid(roundId, slot)` si hace falta
-5. pedir detalle con `PlayerStats_FillRoundPlayerKeyValues(roundId, slot, kv)`
+1. usar `PlayerStats_IsRoundLive()` si necesitan sincronizar una carga tardía
+2. escuchar `PlayerStats_OnRoundEnded(roundId, endType, endReason)`
+3. llamar `PlayerStats_FillRoundKeyValues(roundId, kv)`
+4. iterar los `slot` listados
+5. validar cada `slot` con `PlayerStats_IsRoundPlayerSlotValid(roundId, slot)` si hace falta
+6. pedir detalle con `PlayerStats_FillRoundPlayerKeyValues(roundId, slot, kv)`
+
+## Round Lifecycle
+
+`PlayerStats_OnRoundLive(roundId)` marca la entrada real de la ronda a estado
+`live`.
+
+`PlayerStats_OnRoundEnded(roundId, endType, endReason)` marca el cierre del
+snapshot actual o de su unidad superior.
+
+Valores públicos de `StatsEndType`:
+
+- `Half`
+- `Round`
+- `Match`
+
+Semántica esperada por modo:
+
+- `Coop`
+  - `mission_lost` -> `Round`
+  - `map_transition` -> `Round`
+  - `finale_win` -> `Round`
+- `Versus`
+  - `L4D2_OnEndVersusModeRound_Post` -> `Half`
+  - `versus_match_finished` -> `Match`
+- `Scavenge`
+  - `scavenge_round_halftime` -> `Half`
+  - `scavenge_round_finished` -> `Half`
+  - `scavenge_match_finished` -> `Match`
 
 Para debugging del contrato real existe también un probe opcional en:
 
@@ -94,7 +126,59 @@ Dentro del bloque `context`, el snapshot también expone metadata de lifecycle
 útil para consumidores del stack, incluyendo:
 
 - `base_mode`
+- `has_bosses`
+- `has_round_halves`
 - `series_scope`
+- `round_start_signal`
+- `round_end_signal`
+- `restart_policy`
+
+`has_round_halves` deja explícito que los modos `player vs player` dividen la
+ronda en mitades con intercambio de bandos.
+
+El native `PlayerStats_GetCurrentModeProperty(...)` existe para exponer un
+perfil compacto del modo actual sin obligar a leer `KeyValues`.
+
+Las propiedades públicas actuales son:
+
+- `BaseMode`
+- `HasBosses`
+- `HasRoundHalves`
+- `SeriesScope`
+- `EnabledSiClassCount`
+- `VersusTeamSize`
+- `RoundEndSignal`
+- `RoundStartSignal`
+- `RestartPolicy`
+
+Valores típicos de `SeriesScope`:
+
+- `CampaignRun`
+- `VersusMatch`
+- `ScavengeMatch`
+- `SurvivalRuns`
+
+`RoundStartSignal` en el contrato público representa la señal efectiva de
+inicio real de ronda, es decir, cuándo `stats` considera que la ronda entra a
+estado `live` para empezar a contar progreso sensible.
+
+No expone por separado la señal técnica usada para bootstrap de snapshot.
+
+`end_reason` en el snapshot finalizado identifica la razón concreta del cierre.
+
+Valores relevantes actuales:
+
+- `GenericRoundEnd`
+- `VersusModeRoundEnd`
+- `VersusMatchFinished`
+- `ScavengeRoundHalftime`
+- `ScavengeRoundFinished`
+- `ScavengeMatchFinished`
+- `MissionLost`
+- `MapTransition`
+- `FinaleWin`
+- `MapEnd`
+- `PluginEnd`
 
 ## Minimal Totals
 
@@ -414,52 +498,14 @@ Nota:
 
 ## Mode Sections
 
-Algunas estadísticas no deben vivir en el bloque base del jugador porque dependen demasiado del modo de juego.
+La API actual no expone subsecciones `mode_*` en el contrato público.
 
-Esas estadísticas deben ir en subsecciones dinámicas por modo y solo aparecer cuando apliquen.
+La regla vigente es:
 
-La convención actual es:
-
-- `mode_coop`
-- `mode_versus`
-
-Y, si más adelante hace falta:
-
-- `mode_survival`
-- `mode_scavenge`
-
-La regla es:
-
-- el bloque base contiene solo stats universales
-- cada bloque `mode_*` contiene solo stats específicas de ese modo
-
-### `mode_coop`
-
-La primera sección contextual prevista es:
-
-- `mode_coop`
-
-Su primer campo útil sería:
-
-- `rescues_given`
-
-### `rescues_given`
-
-Este campo solo debe aparecer dentro de `mode_coop`.
-
-La idea es no inflar el payload base con una stat que no tiene el mismo valor general en otros contextos.
-
-### `rescues_received`
-
-`rescues_received` no debe entrar en la primera versión del KV.
-
-Es una stat demasiado contextual y no aporta suficiente valor en el snapshot base como para fijarla todavía en el contrato.
-
-### `mode_versus`
-
-La sección `mode_versus` queda reservada para crecimiento futuro.
-
-No se puebla en la primera versión actual.
+- el detalle por jugador usa bloques funcionales estables
+- el contexto de modo vive en `round.context`
+- si en el futuro aparece una sección específica por modo, deberá justificarse
+  como contrato real implementado, no como reserva teórica
 
 ## Why Skills Stay Out
 
@@ -612,10 +658,6 @@ player
         "tanks_biled"           "0"
     }
 
-    "mode_coop"
-    {
-        "rescues_given"         "0"
-    }
 }
 ```
 
@@ -640,9 +682,7 @@ Por eso el contrato recomendado es:
 - `userid` forma parte de `identity`
 - `accountid` forma parte de `identity`
 - `players_count` no forma parte del snapshot de ronda actual
-- `mode_coop` solo se escribe cuando:
-  - el jugador tiene `rescues_given > 0`
-  - y `mp_gamemode` contiene `coop`
+- no existen bloques `mode_*` en el contrato público actual
 
 ## Open Refinements
 

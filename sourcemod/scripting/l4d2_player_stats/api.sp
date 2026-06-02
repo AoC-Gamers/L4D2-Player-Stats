@@ -3,36 +3,54 @@
 #endif
 #define _l4d2_player_stats_api_included
 
-Handle g_hForwardRoundFinalized = INVALID_HANDLE;
+Handle g_hForwardRoundLive = INVALID_HANDLE;
+Handle g_hForwardRoundEnded = INVALID_HANDLE;
 Handle g_hForwardPlayerSubstituted = INVALID_HANDLE;
 
 void API_CreateForwards()
 {
-	g_hForwardRoundFinalized = CreateGlobalForward("PlayerStats_OnRoundFinalized", ET_Ignore, Param_Cell);
+	g_hForwardRoundLive = CreateGlobalForward("PlayerStats_OnRoundLive", ET_Ignore, Param_Cell);
+	g_hForwardRoundEnded = CreateGlobalForward("PlayerStats_OnRoundEnded", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_hForwardPlayerSubstituted = CreateGlobalForward("PlayerStats_OnPlayerSubstituted", ET_Hook, Param_String, Param_Cell, Param_Cell, Param_Cell);
 }
 
 void API_CreateNatives()
 {
 	CreateNative("PlayerStats_IsRoundActive", Native_PlayerStats_IsRoundActive);
+	CreateNative("PlayerStats_IsRoundLive", Native_PlayerStats_IsRoundLive);
 	CreateNative("PlayerStats_GetRoundId", Native_PlayerStats_GetRoundId);
 	CreateNative("PlayerStats_IsRoundPlayerSlotValid", Native_PlayerStats_IsRoundPlayerSlotValid);
 	CreateNative("PlayerStats_GetRoundPlayerClient", Native_PlayerStats_GetRoundPlayerClient);
+	CreateNative("PlayerStats_GetCurrentModeProperty", Native_PlayerStats_GetCurrentModeProperty);
 	CreateNative("PlayerStats_FillRoundKeyValues", Native_PlayerStats_FillRoundKeyValues);
 	CreateNative("PlayerStats_FillRoundPlayerKeyValues", Native_PlayerStats_FillRoundPlayerKeyValues);
 	CreateNative("PlayerStats_ApplySubstitutionSnapshotToSlot", Native_PlayerStats_ApplySubstitutionSnapshotToSlot);
 	CreateNative("PlayerStats_BroadcastRoundStats", Native_PlayerStats_BroadcastRoundStats);
 }
 
-void API_FireRoundFinalized(int roundId)
+void API_FireRoundLive(int roundId)
 {
-	if (g_hForwardRoundFinalized == INVALID_HANDLE)
+	if (g_hForwardRoundLive == INVALID_HANDLE)
 	{
 		return;
 	}
 
-	Call_StartForward(g_hForwardRoundFinalized);
+	Call_StartForward(g_hForwardRoundLive);
 	Call_PushCell(roundId);
+	Call_Finish();
+}
+
+void API_FireRoundEnded(int roundId, StatsEndType endType, PlayerStatsRoundEndReasonType endReason)
+{
+	if (g_hForwardRoundEnded == INVALID_HANDLE)
+	{
+		return;
+	}
+
+	Call_StartForward(g_hForwardRoundEnded);
+	Call_PushCell(roundId);
+	Call_PushCell(endType);
+	Call_PushCell(endReason);
 	Call_Finish();
 }
 
@@ -72,6 +90,8 @@ void API_WriteRoundContextBlock(Handle kv)
 
 	KvSetNum(kv, "base_mode", g_Round.meta.baseMode);
 	KvSetNum(kv, "is_versus", g_Round.meta.isVersusMode ? 1 : 0);
+	KvSetNum(kv, "has_bosses", g_Round.meta.hasBosses ? 1 : 0);
+	KvSetNum(kv, "has_round_halves", g_Round.meta.hasRoundHalves ? 1 : 0);
 	KvSetNum(kv, "scavenge_round_number", g_Round.meta.scavengeRoundNumber);
 	KvSetNum(kv, "second_half", g_Round.meta.scavengeInSecondHalf ? 1 : 0);
 	KvSetNum(kv, "scavenge_items_goal", g_Round.meta.scavengeItemsGoal);
@@ -84,9 +104,8 @@ void API_WriteRoundContextBlock(Handle kv)
 	KvSetNum(kv, "enabled_si_classes", g_Round.meta.enabledSiClassCount);
 	KvSetNum(kv, "team_size", g_Round.meta.versusTeamSize);
 	KvSetNum(kv, "versus_context", g_Round.meta.versusContext);
-	KvSetNum(kv, "round_start_signal", g_Round.meta.roundStartSignal);
+	KvSetNum(kv, "round_start_signal", g_Round.meta.roundLiveSignal);
 	KvSetNum(kv, "round_end_signal", g_Round.meta.roundEndSignal);
-	KvSetNum(kv, "round_live_signal", g_Round.meta.roundLiveSignal);
 	KvSetNum(kv, "restart_policy", g_Round.meta.restartPolicy);
 	KvSetNum(kv, "end_reason", g_Round.meta.endReason);
 
@@ -593,6 +612,11 @@ public int Native_PlayerStats_IsRoundActive(Handle plugin, int numParams)
 	return g_Round.meta.active;
 }
 
+public int Native_PlayerStats_IsRoundLive(Handle plugin, int numParams)
+{
+	return g_Runtime.roundLive;
+}
+
 public int Native_PlayerStats_GetRoundId(Handle plugin, int numParams)
 {
 	return g_Round.meta.id;
@@ -616,6 +640,53 @@ public int Native_PlayerStats_GetRoundPlayerClient(Handle plugin, int numParams)
 	}
 
 	return IsValidClient(g_Round.players[slot].player.client) ? g_Round.players[slot].player.client : 0;
+}
+
+public int Native_PlayerStats_GetCurrentModeProperty(Handle plugin, int numParams)
+{
+	StatsModeProperty property = view_as<StatsModeProperty>(GetNativeCell(1));
+
+	switch (property)
+	{
+		case StatsModeProperty_BaseMode:
+		{
+			return g_Runtime.baseMode;
+		}
+		case StatsModeProperty_HasBosses:
+		{
+			return g_Runtime.hasBosses;
+		}
+		case StatsModeProperty_HasRoundHalves:
+		{
+			return g_Runtime.hasRoundHalves;
+		}
+		case StatsModeProperty_SeriesScope:
+		{
+			return g_Runtime.seriesScope;
+		}
+		case StatsModeProperty_EnabledSiClassCount:
+		{
+			return g_Runtime.enabledSiClassCount;
+		}
+		case StatsModeProperty_VersusTeamSize:
+		{
+			return g_Runtime.versusTeamSize;
+		}
+		case StatsModeProperty_RoundEndSignal:
+		{
+			return g_Runtime.roundEndSignal;
+		}
+		case StatsModeProperty_RoundStartSignal:
+		{
+			return g_Runtime.roundLiveSignal;
+		}
+		case StatsModeProperty_RestartPolicy:
+		{
+			return g_Runtime.restartPolicy;
+		}
+	}
+
+	return 0;
 }
 
 public int Native_PlayerStats_FillRoundKeyValues(Handle plugin, int numParams)

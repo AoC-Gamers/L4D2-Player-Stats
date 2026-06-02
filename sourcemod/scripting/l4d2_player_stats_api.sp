@@ -95,9 +95,9 @@ public void OnLibraryRemoved(const char[] name)
 	Runtime_SetHasPlayerStats(false, "library_removed");
 }
 
-public void PlayerStats_OnRoundFinalized(int roundId)
+public void PlayerStats_OnRoundEnded(int roundId, StatsEndType endType, int endReason)
 {
-	if (roundId <= 0)
+	if (roundId <= 0 || endType == StatsEndType_None)
 	{
 		return;
 	}
