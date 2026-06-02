@@ -328,7 +328,7 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 
 	ConsolePanel panel;
 	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
+	ConsolePanel_SetWidth(panel, 96);
 	ConsolePanel_EnableSafeAscii(panel, false);
 
 	char line[160];
@@ -359,6 +359,7 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 	};
 
 	bool hasRows = false;
+	bool renderedGroup = false;
 	for (int groupIndex = 0; groupIndex < sizeof(groupedDetails); groupIndex++)
 	{
 		bool showGroup = false;
@@ -389,8 +390,11 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 		char groupLabel[24];
 		Announce_GetColumnLabel(groupLabel, sizeof(groupLabel), groupPhraseKeys[groupIndex], client > 0 ? client : LANG_SERVER);
 		Format(line, sizeof(line), "[%s]", groupLabel);
-		Announce_AddMetricStringRow(panel, line, survivorCount, "", "", "", "");
-		Announce_AddMetricStringRow(panel, "", survivorCount, "", "", "", "");
+		if (renderedGroup)
+		{
+			ConsoleTable_AddSeparatorRow(panel.table);
+		}
+		ConsoleTable_AddFullWidthRow(panel.table, line);
 
 		for (int detailIndex = 0; detailIndex < sizeof(groupedDetails[]); detailIndex++)
 		{
@@ -449,6 +453,7 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 			Announce_AddMetricStringRow(panel, detailLabel, survivorCount, valueA, valueB, valueC, valueD);
 			hasRows = true;
 		}
+		renderedGroup = true;
 	}
 
 	if (!hasRows)
@@ -513,7 +518,7 @@ bool Announce_RenderConsumablesPanel(int client = 0)
 
 	ConsolePanel panel;
 	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
+	ConsolePanel_SetWidth(panel, 96);
 	ConsolePanel_EnableSafeAscii(panel, false);
 
 	char line[160];
@@ -540,16 +545,12 @@ bool Announce_RenderConsumablesPanel(int client = 0)
 	ConsolePanel_AddHeaderLine(panel, line);
 
 	Announce_AddMetricPlayerColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Temporary]");
 	Announce_AddMetricRow(panel, pillsLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].resources.pillsUsed,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.pillsUsed : 0,
 		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.pillsUsed : 0,
 		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.pillsUsed : 0);
-	Announce_AddMetricRow(panel, kitsLabel, survivorCount,
-		g_Round.players[survivorSlots[0]].resources.medkitsUsed,
-		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.medkitsUsed : 0,
-		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.medkitsUsed : 0,
-		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.medkitsUsed : 0);
 
 	if (showAdrenaline)
 	{
@@ -559,6 +560,14 @@ bool Announce_RenderConsumablesPanel(int client = 0)
 			survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.adrenalineUsed : 0,
 			survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.adrenalineUsed : 0);
 	}
+
+	ConsoleTable_AddSeparatorRow(panel.table);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Medical]");
+	Announce_AddMetricRow(panel, kitsLabel, survivorCount,
+		g_Round.players[survivorSlots[0]].resources.medkitsUsed,
+		survivorCount > 1 ? g_Round.players[survivorSlots[1]].resources.medkitsUsed : 0,
+		survivorCount > 2 ? g_Round.players[survivorSlots[2]].resources.medkitsUsed : 0,
+		survivorCount > 3 ? g_Round.players[survivorSlots[3]].resources.medkitsUsed : 0);
 
 	if (showDefib)
 	{
@@ -612,6 +621,7 @@ bool Announce_RenderSupportPanel(int client = 0)
 	Announce_FormatMetricUnitLabel(rescLabel, sizeof(rescLabel), rescLabel, "#");
 
 	Announce_AddMetricPlayerColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Recovery]");
 	Announce_AddMetricRow(panel, healsLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].support.healsGiven,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].support.healsGiven : 0,
@@ -622,6 +632,8 @@ bool Announce_RenderSupportPanel(int client = 0)
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].support.revivesGiven : 0,
 		survivorCount > 2 ? g_Round.players[survivorSlots[2]].support.revivesGiven : 0,
 		survivorCount > 3 ? g_Round.players[survivorSlots[3]].support.revivesGiven : 0);
+	ConsoleTable_AddSeparatorRow(panel.table);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Rescue]");
 	Announce_AddMetricRow(panel, rescLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].support.rescuesGiven,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].support.rescuesGiven : 0,
@@ -669,11 +681,14 @@ bool Announce_RenderScavengePanel(int client = 0)
 	Format(destroyedLabel, sizeof(destroyedLabel), "%T", "ColumnDestroyed", client > 0 ? client : LANG_SERVER);
 
 	Announce_AddMetricPlayerColumns(panel, client > 0 ? client : LANG_SERVER, survivorSlots, survivorCount);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Objective]");
 	Announce_AddMetricRow(panel, pouredLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].scavenge.gascansPoured,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].scavenge.gascansPoured : 0,
 		survivorCount > 2 ? g_Round.players[survivorSlots[2]].scavenge.gascansPoured : 0,
 		survivorCount > 3 ? g_Round.players[survivorSlots[3]].scavenge.gascansPoured : 0);
+	ConsoleTable_AddSeparatorRow(panel.table);
+	ConsoleTable_AddFullWidthRow(panel.table, "[Losses]");
 	Announce_AddMetricRow(panel, droppedLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].scavenge.gascansDropped,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].scavenge.gascansDropped : 0,
@@ -948,6 +963,8 @@ bool Announce_RenderInfectedPanels(int client = 0)
 		int values[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1];
 		Announce_AddNamedMetricIntColumns(panel, phraseTarget, columnNames, columnCount);
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Control]");
+
 		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.totalDamage;
 		if (includeAi) values[infectedCount] = Announce_GetInfectedAiAggregateGrabDamage();
 		Announce_AddMetricRowValues(panel, totalLabel, values, columnCount);
@@ -967,6 +984,9 @@ bool Announce_RenderInfectedPanels(int client = 0)
 		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.chargerDamage;
 		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.chargerDamage; }
 		Announce_AddMetricRowValues(panel, chargerLabel, values, columnCount);
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Pins]");
 
 		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedGrab.tongueGrabs;
 		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedGrab.tongueGrabs; }
@@ -1001,9 +1021,14 @@ bool Announce_RenderInfectedPanels(int client = 0)
 		int values[L4D2_PLAYER_STATS_MAX_SURVIVORS + 1];
 		Announce_AddNamedMetricIntColumns(panel, phraseTarget, columnNames, columnCount);
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Boomer]");
+
 		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedSupport.boomerVomitVictims;
 		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedSupport.boomerVomitVictims; }
 		Announce_AddMetricRowValues(panel, boomerLabel, values, columnCount);
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Spitter]");
 
 		for (int i = 0; i < infectedCount; i++) values[i] = g_Round.players[infectedSlots[i]].infectedSupport.spitterDamage;
 		if (includeAi) { values[infectedCount] = 0; for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++) if (Stats_IsValidRoundSlot(slot) && g_Round.players[slot].team == PlayerStatsTeam_Infected && g_Round.players[slot].player.bot) values[infectedCount] += g_Round.players[slot].infectedSupport.spitterDamage; }
@@ -1307,15 +1332,25 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
 		}
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Special]");
 		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
-		if (showTank)
+
+		if (showTank || showWitch)
 		{
-			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			ConsoleTable_AddSeparatorRow(panel.table);
+			ConsoleTable_AddFullWidthRow(panel.table, "[Bosses]");
+			if (showTank)
+			{
+				Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			}
+			if (showWitch)
+			{
+				Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+			}
 		}
-		if (showWitch)
-		{
-			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
-		}
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Round]");
 		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
@@ -1360,15 +1395,25 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
 		}
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Special]");
 		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
-		if (showTank)
+
+		if (showTank || showWitch)
 		{
-			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			ConsoleTable_AddSeparatorRow(panel.table);
+			ConsoleTable_AddFullWidthRow(panel.table, "[Bosses]");
+			if (showTank)
+			{
+				Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			}
+			if (showWitch)
+			{
+				Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+			}
 		}
-		if (showWitch)
-		{
-			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
-		}
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Round]");
 		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
@@ -1444,7 +1489,7 @@ void Announce_BroadcastRoundConsolePanel()
 
 	ConsolePanel panel;
 	ConsolePanel_Reset(panel);
-	ConsolePanel_SetWidth(panel, 100);
+	ConsolePanel_SetWidth(panel, 96);
 	ConsolePanel_EnableSafeAscii(panel, false);
 
 	char line[128];
@@ -1523,15 +1568,25 @@ void Announce_BroadcastRoundConsolePanel()
 			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
 		}
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Special]");
 		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
-		if (showTank)
+
+		if (showTank || showWitch)
 		{
-			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			ConsoleTable_AddSeparatorRow(panel.table);
+			ConsoleTable_AddFullWidthRow(panel.table, "[Bosses]");
+			if (showTank)
+			{
+				Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			}
+			if (showWitch)
+			{
+				Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+			}
 		}
-		if (showWitch)
-		{
-			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
-		}
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Round]");
 		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
@@ -1576,15 +1631,25 @@ void Announce_BroadcastRoundConsolePanel()
 			Announce_FormatIntCell(ffD, sizeof(ffD), g_Round.players[survivorSlots[3]].combat.ffGiven);
 		}
 
+		ConsoleTable_AddFullWidthRow(panel.table, "[Special]");
 		Announce_AddMetricStringRow(panel, siLabel, survivorCount, siA, siB, siC, siD);
-		if (showTank)
+
+		if (showTank || showWitch)
 		{
-			Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			ConsoleTable_AddSeparatorRow(panel.table);
+			ConsoleTable_AddFullWidthRow(panel.table, "[Bosses]");
+			if (showTank)
+			{
+				Announce_AddMetricStringRow(panel, tankLabel, survivorCount, tankA, tankB, tankC, tankD);
+			}
+			if (showWitch)
+			{
+				Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
+			}
 		}
-		if (showWitch)
-		{
-			Announce_AddMetricStringRow(panel, witchLabel, survivorCount, witchA, witchB, witchC, witchD);
-		}
+
+		ConsoleTable_AddSeparatorRow(panel.table);
+		ConsoleTable_AddFullWidthRow(panel.table, "[Round]");
 		Announce_AddMetricStringRow(panel, ciLabel, survivorCount, ciA, ciB, ciC, ciD);
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
