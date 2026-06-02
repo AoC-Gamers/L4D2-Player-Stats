@@ -86,7 +86,7 @@ Semántica esperada por modo:
 
 Para debugging del contrato real existe también un probe opcional en:
 
-- [l4d2_player_stats_api.sp](C:/GitHub/L4D2-Player-Stats/sourcemod/scripting/l4d2_player_stats_api.sp)
+- [l4d2_player_stats_api.sp](C:/GitHub/L4D2-Player-Stats/addons/sourcemod/scripting/l4d2_player_stats_api.sp)
 
 Ese plugin no forma parte del artefacto principal. Solo consume la API pública y
 exporta snapshots finalizados a logs.

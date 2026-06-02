@@ -54,14 +54,13 @@ for bucket, plugins in build_plugins.items():
             plugin_path = os.path.join(artifact_dir, "addons", "sourcemod", "plugins", bucket, f"{plugin}.smx")
         assert_exists(plugin_path)
 
-source_root = os.path.join(root_dir, "sourcemod")
+source_root = os.path.join(root_dir, "addons", "sourcemod")
 artifact_root = os.path.join(artifact_dir, "addons", "sourcemod")
 artifact_manifest = manifest.get("artifact", {}).get("addons", {}).get("sourcemod", {})
 validate_manifest_tree(source_root, artifact_root, artifact_manifest)
 
 for path in (
     os.path.join(artifact_dir, "README.md"),
-    os.path.join(artifact_dir, "plugin-package-map.json"),
     os.path.join(artifact_dir, "compile.log"),
 ):
     assert_exists(path)

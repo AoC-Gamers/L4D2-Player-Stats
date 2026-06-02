@@ -29,7 +29,6 @@ La compilacion real vive en scripts Python compartidos, y `make` actua como orqu
 4. `package-smx` arma el paquete intermedio en `.build/package-smx`.
 5. `stage-artifact.py` copia ese build a `dist/sourcemod/artifact` y agrega:
    - `README.md`
-   - `plugin-package-map.json`
    - `docs/`
    - `compile.log`
 6. `release` empaqueta `dist/sourcemod/artifact` en un ZIP final.
@@ -57,12 +56,12 @@ Los includes auxiliares locales, como `colors.inc` o `left4dhooks*.inc`, pueden 
 
 ## Build Inputs
 
-`build-local.py` compila todos los `*.sp` bajo `sourcemod/scripting/`, pero solo publica los plugins clasificados en `build.plugins`.
+`build-local.py` compila todos los `*.sp` bajo `addons/sourcemod/scripting/`, pero solo publica los plugins clasificados en `build.plugins`.
 
 Los `include` usados por `spcomp` son:
 
-- `sourcemod/scripting/include`
-- `sourcemod/scripting`
+- `addons/sourcemod/scripting/include`
+- `addons/sourcemod/scripting`
 - `deps/sourcemod-<platform>/addons/sourcemod/scripting/include`
 
 Plugins publicados actualmente:
@@ -99,7 +98,6 @@ Jobs:
 - los `.smx` declarados en `build.plugins`
 - el arbol publicado por `artifact.addons.sourcemod`
 - `README.md`
-- `plugin-package-map.json`
 - `compile.log`
 
 ## Debug

@@ -45,12 +45,12 @@ Includes utilitarios compartidos:
 
 Probe opcional de debug:
 
-- `sourcemod/scripting/l4d2_player_stats_api.sp`
+- `addons/sourcemod/scripting/l4d2_player_stats_api.sp`
   - consume la API pública de `PlayerStats`
   - exporta a logs los payloads finalizados de `round` y `player`
 
 Plugin acompañante opcional:
 
-- `sourcemod/scripting/l4d2_player_stats_series.sp`
+- `addons/sourcemod/scripting/l4d2_player_stats_series.sp`
   - agrega agrupado corto multi-ronda para snapshots finalizados de `PlayerStats`
   - no forma parte del artefacto principal

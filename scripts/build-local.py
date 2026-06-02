@@ -162,7 +162,7 @@ def main() -> int:
     build_buckets = get_build_plugin_buckets(manifest)
     artifact_manifest = manifest.get("artifact", {}).get("addons", {}).get("sourcemod", {})
 
-    source_root = root / "sourcemod"
+    source_root = root / "addons" / "sourcemod"
     scripting_dir = source_root / "scripting"
     include_dir = scripting_dir / "include"
 
@@ -170,7 +170,7 @@ def main() -> int:
         print(f"Using temporary workspace: {workspace}", flush=True)
         remove_tree_if_exists(workspace)
         workspace.mkdir(parents=True, exist_ok=True)
-        workspace_source_root = workspace / "sourcemod"
+        workspace_source_root = workspace / "addons" / "sourcemod"
         shutil.copytree(source_root, workspace_source_root, dirs_exist_ok=True)
         workspace_spcomp_dir = workspace / "spcomp"
         workspace_spcomp_dir.mkdir(parents=True, exist_ok=True)

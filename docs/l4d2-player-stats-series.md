@@ -87,9 +87,9 @@ Comando de compilación de ejemplo:
 
 ```powershell
 & 'C:\sourcemodAPI\addons\sourcemod\scripting\spcomp.exe' `
-  'C:\GitHub\L4D2-Player-Stats\sourcemod\scripting\l4d2_player_stats_series.sp' `
+  'C:\GitHub\L4D2-Player-Stats\addons\sourcemod\scripting\l4d2_player_stats_series.sp' `
   '-oC:\SourcemodCompiled\l4d2_player_stats_series.smx' `
-  '-iC:\GitHub\L4D2-Player-Stats\sourcemod\scripting\include' `
-  '-iC:\GitHub\L4D2-Player-Stats\sourcemod\scripting' `
+  '-iC:\GitHub\L4D2-Player-Stats\addons\sourcemod\scripting\include' `
+  '-iC:\GitHub\L4D2-Player-Stats\addons\sourcemod\scripting' `
   '-iC:\sourcemodAPI\addons\sourcemod\scripting\include'
 ```

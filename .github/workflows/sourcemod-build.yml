@@ -15,7 +15,7 @@ on:
       - scripts/stage-artifact.py
       - scripts/package-release.py
       - scripts/ci-validate-artifact.sh
-      - sourcemod/**
+      - addons/sourcemod/**
       - README.md
       - docs/**
   workflow_dispatch:
