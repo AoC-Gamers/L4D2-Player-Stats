@@ -18,6 +18,11 @@ bool Announce_WasCommandInvokedFromChat(int client)
 	return client > 0 && IsValidClient(client) && GetCmdReplySource() == SM_REPLY_TO_CHAT;
 }
 
+bool Announce_ShouldPrintFriendlyFireSummary()
+{
+	return g_Round.meta.versusTeamSize != 1;
+}
+
 void Announce_NotifyConsoleDelivery(int client)
 {
 	if (!Announce_WasCommandInvokedFromChat(client))
@@ -223,6 +228,11 @@ bool Announce_BroadcastRoundSummary(int client = 0)
 	}
 
 	if (g_Round.totals.survivorTotalFF <= 0)
+	{
+		ffLvp = -1;
+	}
+
+	if (!Announce_ShouldPrintFriendlyFireSummary())
 	{
 		ffLvp = -1;
 	}
@@ -1998,6 +2008,11 @@ void Announce_PrintRoundSummaryLines(int client, int siMvp, int ciMvp, int ffLvp
 			g_Round.players[ciMvp].combat.commonKills,
 			Announce_GetPercent(g_Round.players[ciMvp].combat.commonKills, g_Round.totals.survivorTotalCommonKills));
 		Announce_PrintMessage(client, line, false);
+	}
+
+	if (!Announce_ShouldPrintFriendlyFireSummary())
+	{
+		return;
 	}
 
 	if (g_Round.totals.survivorTotalFF <= 0)
