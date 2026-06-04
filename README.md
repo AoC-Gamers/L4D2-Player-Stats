@@ -4,16 +4,18 @@ Core moderno de estadísticas de jugador para L4D2 competitivo.
 
 ## Surface Principal
 
-- comandos de resumen en chat:
-  - `sm_stats_mvp` imprime el resumen MVP/LVP en chat y la tabla de ronda en la consola del usuario
-  - `sm_stats_rank` imprime los ranks actuales de SI/CI/FF del jugador y la tabla global en consola
-  - `sm_stats_acc` imprime la tabla agrupada de precisión en la consola del usuario
-- comandos de detalle por ronda:
-  - `sm_stats_items`
-  - `sm_stats_support`
-  - `sm_stats_utils`
-  - `sm_stats_infect`
-  - `sm_stats_tank`
+- comandos disponibles:
+  - `sm_mvp` alias de `sm_stats_mvp`
+  - `sm_stats_mvp` imprime el resumen MVP/LVP survivor actual en chat y la tabla detallada de la ronda en la consola del usuario
+  - `sm_stats_rank` imprime los ranks actuales del jugador en SI/CI/FF en chat y la tabla global de ranking en consola
+  - `sm_stats_acc` imprime la tabla de precisión de la ronda actual en la consola del usuario
+  - `sm_stats_utils` imprime las estadísticas de utilidad throwable de la ronda actual
+  - `sm_stats_items` imprime las estadísticas de consumibles usados en la ronda actual
+  - `sm_stats_support` imprime las estadísticas de soporte de la ronda actual
+  - `sm_stats_scav` imprime las estadísticas específicas de scavenge de la ronda actual
+  - `sm_stats_infect` imprime las estadísticas de capturas y soporte del equipo infectado en la mitad actual
+  - `sm_stats_tank` imprime las estadísticas de la sesión de tank en la mitad actual
+  - `sm_stats_help` imprime en consola la ayuda con todos los comandos de estadísticas
 - tabla de consola post-ronda con totales survivor y resumen MVP/LVP
 
 ## Documentación
