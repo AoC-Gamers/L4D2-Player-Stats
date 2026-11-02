@@ -2,6 +2,9 @@
 
 Core moderno de estadísticas de jugador para L4D2 competitivo.
 
+El refactor en `develop` conserva pruebas runtime pendientes; alcance y próximos
+escenarios en el [plan](docs/l4d2-player-stats-refactor-plan.md#entrega-a-develop--1-de-noviembre-de-2026).
+
 ## Surface Principal
 
 - comandos disponibles:
@@ -27,6 +30,8 @@ Core moderno de estadísticas de jugador para L4D2 competitivo.
 - [Player Stats Data Model](docs/l4d2-player-stats-data-model.md)
 - [Player Stats Series](docs/l4d2-player-stats-series.md)
 - [Mode Lifecycle and Business Rules](docs/l4d2-mode-lifecycle-business-rules.md)
+- [Internal Refactor Plan](docs/l4d2-player-stats-refactor-plan.md)
+- [SRCDS Smoke Matrix](docs/l4d2-player-stats-smoke.md)
 
 Includes utilitarios compartidos:
 

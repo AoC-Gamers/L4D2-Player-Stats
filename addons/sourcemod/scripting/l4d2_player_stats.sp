@@ -18,6 +18,10 @@
 #define REQUIRE_PLUGIN
 
 #include "l4d2_player_stats/types.sp"
+#include "l4d2_player_stats/types/observations.sp"
+#include "l4d2_player_stats/types/player_skills.sp"
+#include "l4d2_player_stats/types/trace.sp"
+#include "l4d2_player_stats/types/damage.sp"
 
 #define LIBRARY_READYUP "readyup"
 #define LIBRARY_CONFOGL "confogl"
@@ -27,11 +31,13 @@
 #define TRANSLATION_FILE "l4d2_player_stats.phrases"
 
 PlayerStatsRoundData g_Round;
-PlayerStatsSubstitutionSnapshotData g_SubstitutionSnapshots[L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS];
 PlayerStatsRuntimeState g_Runtime;
-int g_iSubstitutionSnapshotCount = 0;
-int g_iSubstitutionSnapshotNext = 0;
-int g_iSubstitutionSnapshotSerial = 0;
+bool g_bRoundClosing = false;
+int g_iPlayerSkillsGeneration;
+int g_iPlayerSkillsLedgerNext[4];
+int g_iPlayerSkillsLedgerGeneration[4][L4D2_PLAYER_STATS_SKILLS_LEDGER_CAPACITY];
+int g_iPlayerSkillsLedgerIds[4][L4D2_PLAYER_STATS_SKILLS_LEDGER_CAPACITY];
+int g_iPlayerSkillsLedgerRounds[4][L4D2_PLAYER_STATS_SKILLS_LEDGER_CAPACITY];
 
 ConVar	g_cvEnable = null;
 ConVar	g_cvDebug	= null;
@@ -67,633 +73,759 @@ public Plugin myinfo =
 };
 
 #include "l4d2_player_stats/helpers.sp"
-#include "l4d2_player_stats/api.sp"
-#include "l4d2_player_stats/announce.sp"
-#include "l4d2_player_stats/rounds.sp"
+#include "l4d2_player_stats/trace.sp"
+#include "l4d2_player_stats/damage/resolve.sp"
+#include "l4d2_player_stats/modules/skills_import.sp"
+#include "l4d2_player_stats/config.sp"
+#include "l4d2_player_stats/runtime/context.sp"
+#include "l4d2_player_stats/runtime/players.sp"
+#include "l4d2_player_stats/runtime/substitutions.sp"
+#include "l4d2_player_stats/queries.sp"
+#include "l4d2_player_stats/api/forwards.sp"
+#include "l4d2_player_stats/api/exports.sp"
+#include "l4d2_player_stats/inputs/natives.sp"
+#include "l4d2_player_stats/presentation/announce.sp"
+#include "l4d2_player_stats/runtime/rounds.sp"
+#include "l4d2_player_stats/modules/tank.sp"
+#include "l4d2_player_stats/damage/capture.sp"
 #include "l4d2_player_stats/detect.sp"
+#include "l4d2_player_stats/modules/scavenge.sp"
+#include "l4d2_player_stats/modules/survivor.sp"
+#include "l4d2_player_stats/modules/accuracy.sp"
+#include "l4d2_player_stats/modules/combat.sp"
+#include "l4d2_player_stats/modules/utility.sp"
+#include "l4d2_player_stats/modules/infected.sp"
+#include "l4d2_player_stats/inputs/game_events.sp"
+#include "l4d2_player_stats/inputs/player_skills.sp"
+#include "l4d2_player_stats/inputs/commands.sp"
+#include "l4d2_player_stats/inputs/libraries.sp"
+#include "l4d2_player_stats/inputs/players.sp"
+#include "l4d2_player_stats/inputs/sdkhooks.sp"
+#include "l4d2_player_stats/bootstrap.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int errorMax)
 {
-	g_Runtime.Reset();
-	g_Runtime.lateload = late;
-	RegPluginLibrary("l4d2_player_stats");
-	API_CreateForwards();
-	API_CreateNatives();
-	return APLRes_Success;
+	return Bootstrap_OnLoad(late);
 }
 
 public void OnPluginStart()
 {
-	LoadPluginTranslations();
-	BuildPath(Path_SM, g_sDebugLogPath, sizeof(g_sDebugLogPath), LOG_DIRECTORY);
-
-	g_cvDebug		= CreateConVar("sm_stats_debug", "0", "Debug bitmask for l4d2_player_stats. 0=None 1=Core 2=Event 4=Detect 8=Api 16=Announce 31=all.");
-	g_cvEnable		= CreateConVar("sm_stats_enable", "1", "Enable the l4d2_player_stats plugin.");
-	g_cvTracking	= CreateConVar("sm_stats_tracking", "3", "Bitmask for round stats tracking. 1=enable 2=announce 3=all.");
-	g_cvAccuracy	= CreateConVar("sm_stats_accuracy", "1", "Enable accuracy tracking. 1=enable.");
-	g_cvThrowables	= CreateConVar("sm_stats_throwables", "3", "Bitmask for throwable utility tracking. 1=enable 2=announce 3=all.");
-	g_cvGamemode	= CreateConVar("sm_stats_gamemode", "15", "Enabled game modes. 1=coop 2=versus 4=scavenge 8=survival 15=all.");
-	g_cvInfectedValidDamage = CreateConVar("sm_stats_infected_valid_damage", "3", "Valid infected damage bitmask. 0=all 1=exclude incap 2=exclude ledge 3=exclude both.");
-	g_cvTankValidDamage = CreateConVar("sm_stats_tank_valid_damage", "3", "Valid tank damage bitmask. 0=all 1=exclude incap 2=exclude ledge 3=exclude both.");
-
-	g_cvSurvivorLimit		= FindConVar("survivor_limit");
-	g_cvMaxPlayerZombies	= FindConVar("z_max_player_zombies");
-	g_cvVersusBoomerLimit	= FindConVar("z_versus_boomer_limit");
-	g_cvVersusSmokerLimit	= FindConVar("z_versus_smoker_limit");
-	g_cvVersusHunterLimit	= FindConVar("z_versus_hunter_limit");
-	g_cvVersusSpitterLimit	= FindConVar("z_versus_spitter_limit");
-	g_cvVersusJockeyLimit	= FindConVar("z_versus_jockey_limit");
-	g_cvVersusChargerLimit	= FindConVar("z_versus_charger_limit");
-
-	g_cvGamemode.AddChangeHook(ConVarChange_ModeContext);
-	g_cvSurvivorLimit.AddChangeHook(ConVarChange_ModeContext);
-	g_cvMaxPlayerZombies.AddChangeHook(ConVarChange_ModeContext);
-
-	HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
-	HookEvent("round_end", Event_RoundEnd, EventHookMode_Post);
-	HookEvent("map_transition", Event_MapTransition, EventHookMode_Post);
-	HookEvent("finale_win", Event_FinaleWin, EventHookMode_Post);
-	HookEvent("mission_lost", Event_MissionLost, EventHookMode_Post);
-	HookEvent("versus_match_finished", Event_VersusMatchFinished, EventHookMode_Post);
-	HookEvent("scavenge_round_start", Event_ScavengeRoundStart, EventHookMode_Post);
-	HookEvent("scavenge_round_finished", Event_ScavengeRoundFinished, EventHookMode_Post);
-	HookEvent("scavenge_round_halftime", Event_ScavengeRoundHalftime, EventHookMode_Post);
-	HookEvent("scavenge_match_finished", Event_ScavengeMatchFinished, EventHookMode_Post);
-	HookEvent("begin_scavenge_overtime", Event_ScavengeOvertime, EventHookMode_Post);
-	HookEvent("scavenge_score_tied", Event_ScavengeScoreTied, EventHookMode_Post);
-	HookEvent("gascan_pour_completed", Event_GascanPourCompleted, EventHookMode_Post);
-	HookEvent("gascan_dropped", Event_GascanDropped, EventHookMode_Post);
-	HookEvent("scavenge_gas_can_destroyed", Event_ScavengeGascanDestroyed, EventHookMode_Post);
-	HookEvent("tank_spawn", Event_TankSpawn, EventHookMode_Post);
-	HookEvent("player_bot_replace", Event_PlayerBotReplace, EventHookMode_Post);
-	HookEvent("bot_player_replace", Event_BotPlayerReplace, EventHookMode_Post);
-
-	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Post);
-	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
-	HookEvent("player_incapacitated_start", Event_PlayerIncapacitatedStart, EventHookMode_Post);
-	HookEvent("infected_death", Event_InfectedDeath, EventHookMode_Post);
-	HookEvent("infected_hurt", Event_InfectedHurt, EventHookMode_Post);
-	HookEvent("weapon_fire", Event_WeaponFire, EventHookMode_Post);
-	HookEvent("player_now_it", Event_PlayerNowIt, EventHookMode_Post);
-	HookEvent("vomit_bomb_tank", Event_VomitBombTank, EventHookMode_Post);
-	HookEvent("zombie_ignited", Event_ZombieIgnited, EventHookMode_Post);
-	HookEvent("pills_used", Event_PillsUsed, EventHookMode_Post);
-	HookEvent("adrenaline_used", Event_AdrenalineUsed, EventHookMode_Post);
-	HookEvent("heal_success", Event_HealSuccess, EventHookMode_Post);
-	HookEvent("defibrillator_used", Event_DefibrillatorUsed, EventHookMode_Post);
-	HookEvent("revive_success", Event_ReviveSuccess, EventHookMode_Post);
-	HookEvent("survivor_rescued", Event_SurvivorRescued, EventHookMode_Post);
-
-	RegConsoleCmd("sm_mvp", Command_MVP, "Print the current survivor MVP summary.");
-	RegConsoleCmd("sm_stats_mvp", Command_MVP, "Print the current survivor MVP summary.");
-	RegConsoleCmd("sm_stats_rank", Command_Rank, "Print the client's current MVP ranks in chat and the global rank table in console.");
-	RegConsoleCmd("sm_stats_acc", Command_Acc, "Print the current round accuracy table in console.");
-	RegConsoleCmd("sm_stats_utils", Command_Utils, "Print throwable utility stats for the current round.");
-	RegConsoleCmd("sm_stats_items", Command_Items, "Print consumable usage stats for the current round.");
-	RegConsoleCmd("sm_stats_support", Command_Support, "Print support stats for the current round.");
-	RegConsoleCmd("sm_stats_scav", Command_Scavenge, "Print scavenge-specific stats for the current round.");
-	RegConsoleCmd("sm_stats_infect", Command_Infect, "Print infected grab/support stats for the current half.");
-	RegConsoleCmd("sm_stats_tank", Command_Tank, "Print tank session stats for the current half.");
-	RegConsoleCmd("sm_stats_help", Command_Help, "Print stats command help to console.");
-
-	AutoExecConfig(false, LIBRARY_L4D2PLAYERSTATS);
-	g_iSubstitutionSnapshotCount = 0;
-	g_iSubstitutionSnapshotNext = 0;
-	g_iSubstitutionSnapshotSerial = 0;
-	for (int i = 0; i < L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS; i++)
-	{
-		g_SubstitutionSnapshots[i].Reset();
-	}
-
-	L4D2Weapons_Init();
-
-	if (!g_Runtime.lateload)
-	{
-		g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
-		g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
-		g_Runtime.hasConfogl			= LibraryExists(LIBRARY_CONFOGL);
-		g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
-		g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
-	}
-
-	Stats_RefreshReadyUpConVars();
-	Stats_RefreshConfoglConVars();
-	Stats_RefreshModeContext();
-
-	for (int client = 1; client <= MaxClients; client++)
-	{
-		if (IsClientInGame(client))
-		{
-			OnClientPutInServer(client);
-		}
-	}
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Bootstrap_OnPluginStart();
+	Trace_RuntimeLifecycleResult(traceContext, "plugin_start", before);
 }
 
 public void OnAllPluginsLoaded()
 {
-	g_Runtime.hasLeft4DHooks		= LibraryExists(LIBRARY_LEFT4DHOOKS);
-	g_Runtime.hasReadyUp			= LibraryExists(LIBRARY_READYUP);
-	g_Runtime.hasConfogl			= LibraryExists(LIBRARY_CONFOGL);
-	g_Runtime.hasPlayerSkills		= LibraryExists(LIBRARY_L4D2_PLAYER_SKILLS);
-	g_Runtime.hasBossPercents		= LibraryExists(LIBRARY_L4D2_BOSS_PERCENTS);
-	Stats_RefreshReadyUpConVars();
-	Stats_RefreshConfoglConVars();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnAllPluginsLoaded();
+	Trace_RuntimeLifecycleResult(traceContext, "all_plugins_loaded", before);
 }
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (strcmp(name, LIBRARY_LEFT4DHOOKS) == 0)
-	{
-		g_Runtime.hasLeft4DHooks = true;
-		Stats_RefreshModeContext();
-		Round_RefreshLiveState();
-	}
-	else if (strcmp(name, LIBRARY_READYUP) == 0)
-	{
-		g_Runtime.hasReadyUp = true;
-		Stats_RefreshReadyUpConVars();
-		Stats_RefreshModeContext();
-		Round_RefreshLiveState();
-	}
-	else if (strcmp(name, LIBRARY_CONFOGL) == 0)
-	{
-		g_Runtime.hasConfogl = true;
-		Stats_RefreshConfoglConVars();
-	}
-	else if (strcmp(name, LIBRARY_L4D2_PLAYER_SKILLS) == 0)
-	{
-		g_Runtime.hasPlayerSkills = true;
-	}
-	else if (strcmp(name, LIBRARY_L4D2_BOSS_PERCENTS) == 0)
-	{
-		g_Runtime.hasBossPercents = true;
-	}
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnLibraryAdded(name);
+	Trace_RuntimeLifecycleResult(traceContext, "library_added", before);
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if (strcmp(name, LIBRARY_LEFT4DHOOKS) == 0)
-	{
-		g_Runtime.hasLeft4DHooks = false;
-		Stats_RefreshModeContext();
-		Round_RefreshLiveState();
-	}
-	else if (strcmp(name, LIBRARY_READYUP) == 0)
-	{
-		g_Runtime.hasReadyUp = false;
-		Stats_RefreshReadyUpConVars();
-		Stats_RefreshModeContext();
-		Round_RefreshLiveState();
-	}
-	else if (strcmp(name, LIBRARY_CONFOGL) == 0)
-	{
-		g_Runtime.hasConfogl = false;
-		Stats_ClearConfoglConVars();
-	}
-	else if (strcmp(name, LIBRARY_L4D2_PLAYER_SKILLS) == 0)
-	{
-		g_Runtime.hasPlayerSkills = false;
-	}
-	else if (strcmp(name, LIBRARY_L4D2_BOSS_PERCENTS) == 0)
-	{
-		g_Runtime.hasBossPercents = false;
-	}
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnLibraryRemoved(name);
+	Trace_RuntimeLifecycleResult(traceContext, "library_removed", before);
 }
 
 public void OnMapStart()
 {
-	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnMapStart");
-
-	if (g_Round.meta.active || g_Round.meta.id > 0)
-	{
-		Stats_Debug(PlayerStatsDebug_Core, "Skipping OnMapStart reset. round=%d active=%d live=%d", g_Round.meta.id, g_Round.meta.active, g_Runtime.roundLive);
-		return;
-	}
-
-	Round_ResetAll("OnMapStart");
+	Trace_AdvanceMapGeneration();
+	Trace_BeginSignal();
+	Bootstrap_OnMapStart();
 }
 
 public void OnMapEnd()
 {
-	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnMapEnd");
-	bool broadcastOnMapEnd = g_Runtime.baseMode == GAMEMODE_SURVIVAL;
-	Round_FinalizeActiveSnapshot("map_end", PlayerStatsRoundEndReason_MapEnd, broadcastOnMapEnd);
-	Round_ResetAll("OnMapEnd");
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Bootstrap_OnMapEnd();
+	Trace_RuntimeLifecycleResult(traceContext, "map_end", before);
 }
 
 public void OnConfigsExecuted()
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[OnConfigsExecuted]");
-	Stats_RefreshModeContext();
-	Round_RefreshLiveState();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnConfigsExecuted();
+	Trace_RuntimeLifecycleResult(traceContext, "configs_executed", before);
 }
 
 public void ConVarChange_ModeContext(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	char name[64];
-	if (convar != null)
-	{
-		convar.GetName(name, sizeof(name));
-	}
-	else
-	{
-		strcopy(name, sizeof(name), "<null>");
-	}
-
-	Stats_Debug(PlayerStatsDebug_Event, "[ConVarChange_ModeContext] cvar=%s old=%s new=%s", name, oldValue, newValue);
-	Stats_RefreshModeContext();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnModeContextConVarChanged(convar, oldValue, newValue);
+	Trace_RuntimeLifecycleResult(traceContext, "mode_convar", before);
 }
 
 public void L4D_OnGameModeChange(int gamemode)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnGameModeChange] gamemode=%d", gamemode);
-	Stats_RefreshModeContext();
-	Round_RefreshLiveState();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Input_OnGameModeChange(gamemode);
+	Trace_RuntimeLifecycleResult(traceContext, "gamemode_change", before);
 }
 
 public void OnPluginEnd()
 {
-	Stats_Debug(PlayerStatsDebug_Core, "Lifecycle: OnPluginEnd");
-	Round_FinalizeActiveSnapshot("plugin_end", PlayerStatsRoundEndReason_PluginEnd, false);
-	Round_ResetAll("OnPluginEnd");
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsRuntimeTraceSnapshot before;
+	Trace_CaptureRuntimeSnapshot(before);
+	Bootstrap_OnPluginEnd();
+	Trace_RuntimeLifecycleResult(traceContext, "plugin_end", before);
+}
+
+public int Native_PlayerStats_IsRoundActive(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_IsRoundActive();
+	Trace_ApiResult(traceContext, "playerstats_is_round_active", "returned", StatsApiTrace_IsRoundActive, true);
+	return result;
+}
+
+public int Native_PlayerStats_IsRoundLive(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_IsRoundLive();
+	Trace_ApiResult(traceContext, "playerstats_is_round_live", "returned", StatsApiTrace_IsRoundLive, true);
+	return result;
+}
+
+public int Native_PlayerStats_GetRoundId(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_GetRoundId();
+	Trace_ApiResult(traceContext, "playerstats_get_round_id", "returned", StatsApiTrace_GetRoundId, true);
+	return result;
+}
+
+public int Native_PlayerStats_IsRoundPlayerSlotValid(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_IsRoundPlayerSlotValid();
+	Trace_ApiResult(traceContext, "playerstats_is_round_slot_valid", "returned", StatsApiTrace_IsRoundPlayerSlotValid, true);
+	return result;
+}
+
+public int Native_PlayerStats_GetRoundPlayerClient(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_GetRoundPlayerClient();
+	Trace_ApiResult(traceContext, "playerstats_get_round_player_client", "returned", StatsApiTrace_GetRoundPlayerClient, true);
+	return result;
+}
+
+public int Native_PlayerStats_GetCurrentModeProperty(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_GetCurrentModeProperty();
+	Trace_ApiResult(traceContext, "playerstats_get_mode_property", "returned", StatsApiTrace_GetCurrentModeProperty, true);
+	return result;
+}
+
+public int Native_PlayerStats_FillRoundKeyValues(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_FillRoundKeyValues();
+	Trace_ApiResult(traceContext, "playerstats_fill_round_keyvalues", result ? "written" : "rejected", StatsApiTrace_FillRoundKeyValues, true);
+	return result;
+}
+
+public int Native_PlayerStats_FillRoundPlayerKeyValues(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_FillRoundPlayerKeyValues();
+	Trace_ApiResult(traceContext, "playerstats_fill_round_player_keyvalues", result ? "written" : "rejected", StatsApiTrace_FillRoundPlayerKeyValues, true);
+	return result;
+}
+
+public int Native_PlayerStats_ApplySubstitutionSnapshotToSlot(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_ApplySubstitutionSnapshotToSlot();
+	Trace_ApiResult(traceContext, "playerstats_apply_substitution_snapshot", result ? "restored" : "rejected", StatsApiTrace_ApplySubstitutionSnapshot, false);
+	return result;
+}
+
+public int Native_PlayerStats_BroadcastRoundStats(Handle plugin, int numParams)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	int result = Input_NativePlayerStats_BroadcastRoundStats();
+	Trace_ApiResult(traceContext, "playerstats_broadcast_round_stats", "delegated", StatsApiTrace_BroadcastRoundStats, true);
+	return result;
 }
 
 public void OnClientPutInServer(int client)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[OnClientPutInServer] client=%d bot=%d", client, IsFakeClient(client));
-	Stats_OnClientPutInServer(client);
-	SDKHook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_OnClientPutInServer(client, traceContext);
 }
 
 public void OnClientDisconnect(int client)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[OnClientDisconnect] client=%d bot=%d", client, IsFakeClient(client));
-	Detect_OnClientDisconnect(client);
-	SDKUnhook(client, SDKHook_OnTakeDamage, Detect_OnTakeDamage);
-	Stats_OnClientDisconnect(client);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_OnClientDisconnect(client, traceContext);
+}
+
+public Action SDK_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_SdkOnTakeDamage(victim, attacker, inflictor, damage, damagetype, traceContext);
+	return Plugin_Continue;
 }
 
 public void OnRoundIsLive()
 {
-	Stats_Debug(PlayerStatsDebug_Event, "Readyup forward received: OnRoundIsLive");
-	Round_OnReadyUpLive();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_OnReadyUpRoundLive();
+	Trace_LifecycleResult(traceContext, "readyup_round_live", before);
 }
 
 public void L4D_OnFirstSurvivorLeftSafeArea_Post(int client)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnFirstSurvivorLeftSafeArea_Post] client=%d", client);
-	Round_OnFirstSurvivorLeftSafeArea(client);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_OnFirstSurvivorLeftSafeArea(client);
+	Trace_LifecycleResult(traceContext, "first_survivor_left_safe_area", before);
 }
 
 public void L4D_OnGrabWithTongue_Post(int victim, int attacker)
 {
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
 	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnGrabWithTongue_Post] victim=%d attacker=%d", victim, attacker);
-	Detect_OnGrabWithTonguePost(victim, attacker);
+	PlayerStatsControlApplyResult result = Input_ControlTongueGrab(victim, attacker);
+	Trace_ControlResult(traceContext, PlayerStatsControl_TongueGrab, result);
 }
 
 public void L4D_OnPouncedOnSurvivor_Post(int victim, int attacker)
 {
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
 	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnPouncedOnSurvivor_Post] victim=%d attacker=%d", victim, attacker);
-	Detect_OnPouncedOnSurvivorPost(victim, attacker);
+	PlayerStatsControlApplyResult result = Input_ControlHunterPounce(victim, attacker);
+	Trace_ControlResult(traceContext, PlayerStatsControl_HunterPounce, result);
 }
 
 public void L4D2_OnJockeyRide_Post(int victim, int attacker)
 {
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
 	Stats_Debug(PlayerStatsDebug_Event, "[L4D2_OnJockeyRide_Post] victim=%d attacker=%d", victim, attacker);
-	Detect_OnJockeyRidePost(victim, attacker);
+	PlayerStatsControlApplyResult result = Input_ControlJockeyRide(victim, attacker);
+	Trace_ControlResult(traceContext, PlayerStatsControl_JockeyRide, result);
 }
 
 public void L4D_OnVomitedUpon_Post(int victim, int attacker, bool boomerExplosion)
 {
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
 	Stats_Debug(PlayerStatsDebug_Event, "[L4D_OnVomitedUpon_Post] victim=%d attacker=%d boomer_explosion=%d", victim, attacker, boomerExplosion);
-	Detect_OnVomitedUponPost(victim, attacker, boomerExplosion);
+	PlayerStatsControlApplyResult result = Input_ControlBoomerVomit(victim, attacker, boomerExplosion);
+	Trace_ControlResult(traceContext, PlayerStatsControl_BoomerVomit, result);
 }
 
 public Action PlayerSkills_OnSkillDetected(int eventId, L4D2ApiSkillType type)
 {
-	Detect_OnPlayerSkillDetected(eventId, type);
+	StatsTraceContext trace;
+	trace = Trace_BeginSignal();
+	StatsSkillsImportResult result;
+	result = Input_PlayerSkillsSkillDetected(eventId, type);
+	Trace_SkillsImportResult(trace, PlayerStatsSkillsStream_SkillEvent, eventId, type, result);
 	return Plugin_Continue;
 }
 
 public Action PlayerSkills_OnKillDetected(int eventId, L4D2ApiKillType type)
 {
-	Detect_OnPlayerKillDetected(eventId, type);
+	StatsTraceContext trace;
+	trace = Trace_BeginSignal();
+	StatsSkillsImportResult result;
+	result = Input_PlayerSkillsKillDetected(eventId, type);
+	Trace_SkillsImportResult(trace, PlayerStatsSkillsStream_KillEvent, eventId, type, result);
 	return Plugin_Continue;
 }
 
 public Action PlayerSkills_OnBossEventDetected(int eventId, L4D2ApiBossEventType type)
 {
-	Detect_OnPlayerBossEventDetected(eventId, type);
+	StatsTraceContext trace;
+	trace = Trace_BeginSignal();
+	StatsSkillsImportResult result;
+	result = Input_PlayerSkillsBossEventDetected(eventId, type);
+	Trace_SkillsImportResult(trace, PlayerStatsSkillsStream_BossEvent, eventId, type, result);
 	return Plugin_Continue;
 }
 
 public Action PlayerSkills_OnBossSessionFinalized(int sessionId, L4D2BossType type)
 {
-	Detect_OnPlayerBossSessionFinalized(sessionId, type);
+	StatsTraceContext trace;
+	trace = Trace_BeginSignal();
+	StatsSkillsImportResult result;
+	result = Input_PlayerSkillsBossSessionFinalized(sessionId, type);
+	Trace_SkillsImportResult(trace, PlayerStatsSkillsStream_BossSession, sessionId, type, result);
 	return Plugin_Continue;
 }
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	char objective[64];
-	event.GetString("objective", objective, sizeof(objective));
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] timelimit=%d fraglimit=%d objective=%s", name, event.GetInt("timelimit"), event.GetInt("fraglimit"), objective);
-	Round_EventRoundStart(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_RoundStart(event, name);
+	Trace_LifecycleResult(traceContext, "round_start", before);
 }
 
 public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	char message[128];
-	event.GetString("message", message, sizeof(message));
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] winner=%d reason=%d message=%s time=%.1f", name, event.GetInt("winner"), event.GetInt("reason"), message, event.GetFloat("time"));
-	Round_EventRoundEnd(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_RoundEnd(event, name);
+	Trace_LifecycleResult(traceContext, "round_end", before);
 }
 
 public void Event_MapTransition(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnMapTransition();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_MapTransition(name);
+	Trace_LifecycleResult(traceContext, "map_transition", before);
 }
 
 public void Event_FinaleWin(Event event, const char[] name, bool dontBroadcast)
 {
-	char mapName[64];
-	event.GetString("map_name", mapName, sizeof(mapName));
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] map_name=%s difficulty=%d", name, mapName, event.GetInt("difficulty"));
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnFinaleWin();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_FinaleWin(event, name);
+	Trace_LifecycleResult(traceContext, "finale_win", before);
 }
 
 public void Event_MissionLost(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnMissionLost();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_MissionLost(name);
+	Trace_LifecycleResult(traceContext, "mission_lost", before);
 }
 
 public void Event_ScavengeRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] round=%d firsthalf=%d", name, event.GetInt("round"), event.GetBool("firsthalf"));
-	Round_EventRoundStart(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeRoundStart(event, name);
+	Trace_LifecycleResult(traceContext, "scavenge_round_start", before);
 }
 
 public void Event_ScavengeRoundFinished(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Round_EventRoundEnd(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeRoundFinished(name);
+	Trace_LifecycleResult(traceContext, "scavenge_round_finished", before);
 }
 
 public void Event_ScavengeRoundHalftime(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnScavengeRoundHalftime();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeRoundHalftime(name);
+	Trace_LifecycleResult(traceContext, "scavenge_round_halftime", before);
 }
 
 public void Event_ScavengeMatchFinished(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] winners=%d", name, event.GetInt("winners"));
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnScavengeMatchFinished();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeMatchFinished(event, name);
+	Trace_LifecycleResult(traceContext, "scavenge_match_finished", before);
 }
 
 public void Event_VersusMatchFinished(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s] winners=%d", name, event.GetInt("winners"));
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnVersusMatchFinished();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_VersusMatchFinished(event, name);
+	Trace_LifecycleResult(traceContext, "versus_match_finished", before);
 }
 
 public void Event_ScavengeOvertime(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnScavengeOvertime();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeOvertime(name);
+	Trace_LifecycleResult(traceContext, "begin_scavenge_overtime", before);
 }
 
 public void Event_ScavengeScoreTied(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[%s]", name);
-	Stats_ConsumeEventContext(event, name, dontBroadcast);
-	Round_OnScavengeScoreTied();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_ScavengeScoreTied(name);
+	Trace_LifecycleResult(traceContext, "scavenge_score_tied", before);
 }
 
 public void L4D2_OnEndVersusModeRound_Post()
 {
-	Stats_Debug(PlayerStatsDebug_Event, "[L4D2_OnEndVersusModeRound_Post]");
-	Round_OnEndVersusModeRoundPost();
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsLifecycleTraceSnapshot before;
+	Trace_CaptureLifecycleSnapshot(before);
+	Input_OnEndVersusModeRoundPost();
+	Trace_LifecycleResult(traceContext, "versus_mode_round_end_post", before);
 }
 
 public void Event_PlayerBotReplace(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_EventPlayerBotReplace(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_PlayerBotReplace(event, traceContext);
 }
 
 public void Event_BotPlayerReplace(Event event, const char[] name, bool dontBroadcast)
 {
-	Stats_EventBotPlayerReplace(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_BotPlayerReplace(event, traceContext);
 }
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventPlayerHurt(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsPlayerHurtObservation observation;
+	Input_ReadPlayerHurt(event, observation);
+	Detect_ProcessPlayerHurt(observation, traceContext);
 }
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventPlayerDeath(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsPlayerDeathObservation observation;
+	observation.victimUserid = event.GetInt("userid");
+	observation.attackerUserid = event.GetInt("attacker");
+	event.GetString("weapon", observation.weapon, sizeof(observation.weapon));
+	Detect_ProcessPlayerDeath(observation, traceContext);
 }
 
 public void Event_PlayerIncapacitatedStart(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventPlayerIncapacitatedStart(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsPlayerIncapacitatedStartObservation observation;
+	observation.victimUserid = event.GetInt("userid");
+	observation.attackerUserid = event.GetInt("attacker");
+	event.GetString("weapon", observation.weapon, sizeof(observation.weapon));
+	Detect_ProcessPlayerIncapacitatedStart(observation, traceContext);
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Trace_Result(traceContext, "player_spawn", "receive", "input", "received");
+	Input_PlayerSpawn(event);
 }
 
 public void Event_InfectedDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventInfectedDeath(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsInfectedDeathObservation observation;
+	observation.attackerUserid = event.GetInt("attacker");
+	observation.infectedType = event.GetInt("gender");
+	strcopy(observation.eventName, sizeof(observation.eventName), name);
+	Detect_ProcessInfectedDeath(observation, traceContext);
 }
 
 public void Event_InfectedHurt(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventInfectedHurt(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_InfectedHurt(event, traceContext);
 }
 
 public void L4D_OnIncapacitated_Post(int client, int inflictor, int attacker, float damage, int damagetype, int weapon)
 {
-	Detect_OnIncapacitatedPost(client, inflictor, attacker, damage, damagetype, weapon);
+	Input_IncapacitatedPost(client, attacker);
 }
 
 public void Event_WeaponFire(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventWeaponFire(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsWeaponFireResult result;
+	result = Input_WeaponFire(event);
+	Trace_WeaponFireResult(traceContext, result);
 }
 
 public void Event_PlayerNowIt(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventPlayerNowIt(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_UtilityPlayerNowIt(event, traceContext);
 }
 
 public void Event_VomitBombTank(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventVomitBombTank(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_UtilityVomitBombTank(event, traceContext);
 }
 
 public void Event_ZombieIgnited(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventZombieIgnited(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_UtilityZombieIgnited(event, traceContext);
 }
 
 public void Event_PillsUsed(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventPillsUsed(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorPillsUsed(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_PillsUsed, result, detail);
 }
 
 public void Event_AdrenalineUsed(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventAdrenalineUsed(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorAdrenalineUsed(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_AdrenalineUsed, result, detail);
 }
 
 public void Event_HealSuccess(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventHealSuccess(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorHealSuccess(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_HealSuccess, result, detail);
 }
 
 public void Event_DefibrillatorUsed(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventDefibrillatorUsed(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorDefibrillatorUsed(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_DefibrillatorUsed, result, detail);
 }
 
 public void Event_ReviveSuccess(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventReviveSuccess(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorReviveSuccess(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_ReviveSuccess, result, detail);
 }
 
 public void Event_SurvivorRescued(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventSurvivorRescued(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	StatsSurvivorActionResult detail;
+	PlayerStatsSurvivorApplyStatus result;
+	result = Input_SurvivorRescued(event, detail);
+	Trace_SurvivorActionResult(traceContext, PlayerStatsSurvivorAction_Rescued, result, detail);
 }
 
 public void Event_GascanPourCompleted(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventGascanPourCompleted(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_ScavengeGascanPoured(event, traceContext);
 }
 
 public void Event_GascanDropped(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventGascanDropped(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_ScavengeGascanDropped(event, traceContext);
 }
 
 public void Event_ScavengeGascanDestroyed(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventScavengeGascanDestroyed(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Input_ScavengeGascanDestroyed(event, traceContext);
 }
 
 public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
 {
-	Detect_EventTankSpawn(event, name, dontBroadcast);
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Trace_Result(traceContext, "tank_spawn", "receive", "input", "received");
+	StatsTankSpawnResult result;
+	result = Input_TankSpawn(event);
+	Trace_TankSpawnResult(traceContext, result);
 }
 
 Action Command_MVP(int client, int args)
 {
-	bool fromChat = Announce_WasCommandInvokedFromChat(client);
-
-	if (fromChat && !Announce_BroadcastRoundSummary(client))
-	{
-		return Plugin_Handled;
-	}
-
-	if (client > 0 && IsValidClient(client))
-	{
-		Announce_RenderRoundConsolePanel(client);
-	}
-
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandMVP(client);
+	Trace_CommandResult(traceContext, "command_mvp", StatsCommandTrace_MVP, result);
+	return result;
 }
 
 Action Command_Rank(int client, int args)
 {
-	if (!IsValidSurvivor(client))
-	{
-		return Plugin_Handled;
-	}
-
-	if (Announce_WasCommandInvokedFromChat(client))
-	{
-		Announce_PrintClientRanks(client);
-	}
-
-	Announce_RenderGlobalRankPanel(client);
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandRank(client);
+	Trace_CommandResult(traceContext, "command_rank", StatsCommandTrace_Rank, result);
+	return result;
 }
 
 Action Command_Acc(int client, int args)
 {
-	if (Announce_RenderAccuracyPanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandAcc(client);
+	Trace_CommandResult(traceContext, "command_acc", StatsCommandTrace_Acc, result);
+	return result;
 }
 
 Action Command_Utils(int client, int args)
 {
-	if (Announce_RenderUtilitiesPanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandUtils(client);
+	Trace_CommandResult(traceContext, "command_utils", StatsCommandTrace_Utils, result);
+	return result;
 }
 
 Action Command_Items(int client, int args)
 {
-	if (Announce_RenderConsumablesPanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandItems(client);
+	Trace_CommandResult(traceContext, "command_items", StatsCommandTrace_Items, result);
+	return result;
 }
 
 Action Command_Support(int client, int args)
 {
-	if (Announce_RenderSupportPanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandSupport(client);
+	Trace_CommandResult(traceContext, "command_support", StatsCommandTrace_Support, result);
+	return result;
 }
 
 Action Command_Scavenge(int client, int args)
 {
-	if (Announce_RenderScavengePanel(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandScavenge(client);
+	Trace_CommandResult(traceContext, "command_scavenge", StatsCommandTrace_Scavenge, result);
+	return result;
 }
 
 Action Command_Help(int client, int args)
 {
-	Announce_PrintHelpToConsole(client);
-	Announce_NotifyConsoleDelivery(client);
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandHelp(client);
+	Trace_CommandResult(traceContext, "command_help", StatsCommandTrace_Help, result);
+	return result;
 }
 
 Action Command_Infect(int client, int args)
 {
-	if (Announce_RenderInfectedPanels(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandInfect(client);
+	Trace_CommandResult(traceContext, "command_infect", StatsCommandTrace_Infect, result);
+	return result;
 }
 
 Action Command_Tank(int client, int args)
 {
-	if (Announce_RenderTankPanels(client))
-	{
-		Announce_NotifyConsoleDelivery(client);
-	}
-	return Plugin_Handled;
+	StatsTraceContext traceContext;
+	traceContext = Trace_BeginSignal();
+	Action result = Input_CommandTank(client);
+	Trace_CommandResult(traceContext, "command_tank", StatsCommandTrace_Tank, result);
+	return result;
 }

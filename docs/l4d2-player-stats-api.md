@@ -84,12 +84,22 @@ Semántica esperada por modo:
   - `scavenge_round_finished` -> `Half`
   - `scavenge_match_finished` -> `Match`
 
+La lista anterior expresa la semántica esperada. En la revisión de referencia,
+`versus_match_finished` puede emitir `Round` cuando todavía cierra un snapshot
+activo y `Match` si este ya estaba cerrado. La refactorización conserva esa
+rama hasta contrastarla en SRCDS y decidir explícitamente si se corrige.
+
 Para debugging del contrato real existe también un probe opcional en:
 
-- [l4d2_player_stats_api.sp](C:/GitHub/L4D2-Player-Stats/addons/sourcemod/scripting/l4d2_player_stats_api.sp)
+- [l4d2_player_stats_api.sp](../addons/sourcemod/scripting/l4d2_player_stats_api.sp)
 
 Ese plugin no forma parte del artefacto principal. Solo consume la API pública y
 exporta snapshots finalizados a logs.
+
+Al cerrar una ronda, el core bloquea nuevas escrituras ordinarias antes de
+emitir `PlayerStats_OnRoundEnded`. El snapshot cerrado permanece disponible
+para las natives de lectura hasta el siguiente reset; no representa un
+historial persistente de rondas.
 
 ## Current Rule
 
@@ -107,6 +117,14 @@ API de consulta genérica. Para consumidores externos, el flujo soportado es:
 1. interceptar `PlayerStats_OnPlayerSubstituted(...)`
 2. decidir si bloquear la rehidratación automática
 3. si corresponde, reaplicar el snapshot con `PlayerStats_ApplySubstitutionSnapshotToSlot(...)`
+
+La rehidratación identifica el snapshot mediante `substitutionId`; el core
+verifica que la transición, el slot y el cliente sigan correspondiendo a la
+ronda actual antes de aplicarlo. Una restauración ya consumida no vuelve a
+sumarse al total. En SRCDS se observaron aplicación síncrona con
+`Plugin_Continue` y `Plugin_Handled`, veto sin aplicación manual y restauración
+tardía con consumo único del ID. Son casos concretos, no la matriz completa de
+reentradas; véase el [smoke](l4d2-player-stats-smoke.md).
 
 ## First KV Scope
 

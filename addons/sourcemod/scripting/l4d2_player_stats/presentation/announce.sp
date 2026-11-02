@@ -181,7 +181,7 @@ bool Announce_ShouldAutoBroadcastInfectedPanels()
 	}
 
 	int infectedSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int infectedCount = Announce_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
+	int infectedCount = Queries_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
 	bool includeAi = Announce_HasInfectedAiAggregate();
 	int columnCount = infectedCount + (includeAi ? 1 : 0);
 	return columnCount > 0 && columnCount <= 4;
@@ -213,11 +213,11 @@ bool Announce_BroadcastRoundSummary(int client = 0)
 		return false;
 	}
 
-	int siMvp = Announce_FindTopDamageSlot();
-	int ciMvp = Announce_FindTopCommonSlot();
-	int ffLvp = Announce_FindTopFFSlot();
+	int siMvp = Queries_FindTopDamageSlot();
+	int ciMvp = Queries_FindTopCommonSlot();
+	int ffLvp = Queries_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorSiDamage() <= 0)
+	if (Queries_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -257,9 +257,9 @@ void Announce_BroadcastAutomaticRoundPanelsToHumans()
 		char buffer[16];
 		Announce_BroadcastRoundConsolePanel();
 		Announce_FormatDamageKillAssistCell(buffer, sizeof(buffer), 0, 0, 0);
-		Announce_GetPlayerSpecialKillsByClass(0, L4D2ZombieClass_Smoker);
-		Announce_GetPlayerSpecialAssistDamageByClass(0, L4D2ZombieClass_Smoker);
-		Announce_GetPlayerSpecialDamageByClass(0, L4D2ZombieClass_Smoker);
+		Queries_GetPlayerSpecialKillsByClass(0, L4D2ZombieClass_Smoker);
+		Queries_GetPlayerSpecialAssistDamageByClass(0, L4D2ZombieClass_Smoker);
+		Queries_GetPlayerSpecialDamageByClass(0, L4D2ZombieClass_Smoker);
 	}
 
 	for (int client = 1; client <= MaxClients; client++)
@@ -329,7 +329,7 @@ bool Announce_RenderAccuracyPanel(int client = 0)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
@@ -519,7 +519,7 @@ bool Announce_RenderConsumablesPanel(int client = 0)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByConsumables(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByConsumables(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
@@ -537,8 +537,8 @@ bool Announce_RenderConsumablesPanel(int client = 0)
 	char adrLabel[8];
 	char kitsLabel[8];
 	char defibLabel[8];
-	bool showAdrenaline = Announce_ShouldShowAdrenalineConsumable();
-	bool showDefib = Announce_ShouldShowDefibConsumable();
+	bool showAdrenaline = Queries_ShouldShowAdrenalineConsumable();
+	bool showDefib = Queries_ShouldShowDefibConsumable();
 	Announce_GetTitleName(titleName, sizeof(titleName), GAMEMODE_UNKNOWN, client > 0 ? client : LANG_SERVER);
 	Announce_GetColumnLabel(pillsLabel, sizeof(pillsLabel), "ColumnPills", client > 0 ? client : LANG_SERVER);
 	Announce_GetColumnLabel(adrLabel, sizeof(adrLabel), "ColumnAdr", client > 0 ? client : LANG_SERVER);
@@ -607,7 +607,7 @@ bool Announce_RenderSupportPanel(int client = 0)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsBySupport(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsBySupport(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
@@ -669,7 +669,7 @@ bool Announce_RenderScavengePanel(int client = 0)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByScavenge(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByScavenge(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
@@ -723,26 +723,9 @@ bool Announce_RenderScavengePanel(int client = 0)
 	return true;
 }
 
-int Announce_GetPlayerInfectedGrabScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
 
-	return g_Round.players[slot].infectedGrab.totalDamage;
-}
 
-int Announce_GetPlayerInfectedSupportScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
 
-	return (g_Round.players[slot].infectedSupport.boomerVomitVictims * 1000)
-		+ g_Round.players[slot].infectedSupport.spitterDamage;
-}
 
 int Announce_GetInfectedAiAggregateGrabDamage()
 {
@@ -790,46 +773,7 @@ bool Announce_HasTankStats()
 	return false;
 }
 
-int Announce_CollectSortedInfectedHumanSlots(int[] slots, int maxSlots)
-{
-	int count = 0;
 
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot)
-			|| g_Round.players[slot].team != PlayerStatsTeam_Infected
-			|| g_Round.players[slot].player.bot)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int currentSlot = slots[i];
-		int currentScore = Announce_GetPlayerInfectedGrabScore(currentSlot) + Announce_GetPlayerInfectedSupportScore(currentSlot);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int compareSlot = slots[j];
-			int compareScore = Announce_GetPlayerInfectedGrabScore(compareSlot) + Announce_GetPlayerInfectedSupportScore(compareSlot);
-			if (compareScore > currentScore)
-			{
-				break;
-			}
-
-			slots[j + 1] = compareSlot;
-			j--;
-		}
-
-		slots[j + 1] = currentSlot;
-	}
-
-	return count;
-}
 
 bool Announce_HasInfectedAiAggregate()
 {
@@ -869,25 +813,25 @@ void Announce_PrintInfectedSummaryLines(int client, int[] infectedSlots, int inf
 	for (int i = 0; i < infectedCount; i++)
 	{
 		int slot = infectedSlots[i];
-		if (bestGrabSlot == -1 || Announce_GetPlayerInfectedGrabScore(slot) > Announce_GetPlayerInfectedGrabScore(bestGrabSlot))
+		if (bestGrabSlot == -1 || Queries_GetPlayerInfectedGrabScore(slot) > Queries_GetPlayerInfectedGrabScore(bestGrabSlot))
 		{
 			bestGrabSlot = slot;
 		}
 
-		if (bestSupportSlot == -1 || Announce_GetPlayerInfectedSupportScore(slot) > Announce_GetPlayerInfectedSupportScore(bestSupportSlot))
+		if (bestSupportSlot == -1 || Queries_GetPlayerInfectedSupportScore(slot) > Queries_GetPlayerInfectedSupportScore(bestSupportSlot))
 		{
 			bestSupportSlot = slot;
 		}
 	}
 
-	if (Stats_IsValidRoundSlot(bestGrabSlot) && Announce_GetPlayerInfectedGrabScore(bestGrabSlot) > 0)
+	if (Stats_IsValidRoundSlot(bestGrabSlot) && Queries_GetPlayerInfectedGrabScore(bestGrabSlot) > 0)
 	{
 		CReplyToCommand(client, "%t", "RoundMVPInfected",
 			g_Round.players[bestGrabSlot].player.name,
 			g_Round.players[bestGrabSlot].infectedGrab.totalDamage);
 	}
 
-	if (Stats_IsValidRoundSlot(bestSupportSlot) && Announce_GetPlayerInfectedSupportScore(bestSupportSlot) > 0)
+	if (Stats_IsValidRoundSlot(bestSupportSlot) && Queries_GetPlayerInfectedSupportScore(bestSupportSlot) > 0)
 	{
 		CReplyToCommand(client, "%t", "RoundSupportInfected",
 			g_Round.players[bestSupportSlot].player.name,
@@ -916,7 +860,7 @@ bool Announce_RenderInfectedPanels(int client = 0)
 	}
 
 	int infectedSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int infectedCount = Announce_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
+	int infectedCount = Queries_CollectSortedInfectedHumanSlots(infectedSlots, sizeof(infectedSlots));
 	bool includeAi = Announce_HasInfectedAiAggregate();
 	int columnCount = infectedCount + (includeAi ? 1 : 0);
 	if (columnCount <= 0)
@@ -1254,7 +1198,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		Announce_ReplyCommandPhrase(client, "StatsUnavailable");
@@ -1285,10 +1229,10 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 	bool hasDetailedKills = g_Runtime.hasPlayerSkills;
 	if (hasDetailedKills)
 	{
-		int totalDamage = Announce_GetTotalSurvivorDamage();
+		int totalDamage = Queries_GetTotalSurvivorDamage();
 		Format(line, sizeof(line), "%T", "PanelTotalsCombat", client > 0 ? client : LANG_SERVER,
 			totalDamage,
-			Announce_GetTotalSurvivorSpecialKills(),
+			Queries_GetTotalSurvivorSpecialKills(),
 			g_Round.totals.survivorTotalCommonKills,
 			g_Round.totals.survivorTotalFF);
 		ConsolePanel_AddHeaderLine(panel, line);
@@ -1311,7 +1255,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		char ciA[16], ciB[16], ciC[16], ciD[16];
 		char ffA[16], ffB[16], ffC[16], ffD[16];
 
-		Announce_FormatDamageKillCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]), Announce_GetPlayerSpecialKills(survivorSlots[0]));
+		Announce_FormatDamageKillCell(siA, sizeof(siA), Queries_GetPlayerSiDamage(survivorSlots[0]), Queries_GetPlayerSpecialKills(survivorSlots[0]));
 		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
 		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
 		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
@@ -1319,7 +1263,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 
 		if (survivorCount > 1)
 		{
-			Announce_FormatDamageKillCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]), Announce_GetPlayerSpecialKills(survivorSlots[1]));
+			Announce_FormatDamageKillCell(siB, sizeof(siB), Queries_GetPlayerSiDamage(survivorSlots[1]), Queries_GetPlayerSpecialKills(survivorSlots[1]));
 			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
@@ -1327,7 +1271,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		}
 		if (survivorCount > 2)
 		{
-			Announce_FormatDamageKillCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]), Announce_GetPlayerSpecialKills(survivorSlots[2]));
+			Announce_FormatDamageKillCell(siC, sizeof(siC), Queries_GetPlayerSiDamage(survivorSlots[2]), Queries_GetPlayerSpecialKills(survivorSlots[2]));
 			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
@@ -1335,7 +1279,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		}
 		if (survivorCount > 3)
 		{
-			Announce_FormatDamageKillCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]), Announce_GetPlayerSpecialKills(survivorSlots[3]));
+			Announce_FormatDamageKillCell(siD, sizeof(siD), Queries_GetPlayerSiDamage(survivorSlots[3]), Queries_GetPlayerSpecialKills(survivorSlots[3]));
 			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
@@ -1374,7 +1318,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		char ciA[16], ciB[16], ciC[16], ciD[16];
 		char ffA[16], ffB[16], ffC[16], ffD[16];
 
-		Announce_FormatIntCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]));
+		Announce_FormatIntCell(siA, sizeof(siA), Queries_GetPlayerSiDamage(survivorSlots[0]));
 		Announce_FormatDamageHitCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].combat.tankDamage, g_Round.players[survivorSlots[0]].combat.tankHits);
 		Announce_FormatDamageHitCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].combat.witchDamage, g_Round.players[survivorSlots[0]].combat.witchHits);
 		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
@@ -1382,7 +1326,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 
 		if (survivorCount > 1)
 		{
-			Announce_FormatIntCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]));
+			Announce_FormatIntCell(siB, sizeof(siB), Queries_GetPlayerSiDamage(survivorSlots[1]));
 			Announce_FormatDamageHitCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].combat.tankDamage, g_Round.players[survivorSlots[1]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].combat.witchDamage, g_Round.players[survivorSlots[1]].combat.witchHits);
 			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
@@ -1390,7 +1334,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		}
 		if (survivorCount > 2)
 		{
-			Announce_FormatIntCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]));
+			Announce_FormatIntCell(siC, sizeof(siC), Queries_GetPlayerSiDamage(survivorSlots[2]));
 			Announce_FormatDamageHitCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].combat.tankDamage, g_Round.players[survivorSlots[2]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].combat.witchDamage, g_Round.players[survivorSlots[2]].combat.witchHits);
 			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
@@ -1398,7 +1342,7 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		}
 		if (survivorCount > 3)
 		{
-			Announce_FormatIntCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]));
+			Announce_FormatIntCell(siD, sizeof(siD), Queries_GetPlayerSiDamage(survivorSlots[3]));
 			Announce_FormatDamageHitCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].combat.tankDamage, g_Round.players[survivorSlots[3]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].combat.witchDamage, g_Round.players[survivorSlots[3]].combat.witchHits);
 			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
@@ -1428,11 +1372,11 @@ bool Announce_RenderRoundConsolePanel(int client = 0)
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
 
-	int siMvp = Announce_FindTopDamageSlot();
-	int ciMvp = Announce_FindTopCommonSlot();
-	int ffLvp = Announce_FindTopFFSlot();
+	int siMvp = Queries_FindTopDamageSlot();
+	int ciMvp = Queries_FindTopCommonSlot();
+	int ffLvp = Queries_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorSiDamage() <= 0)
+	if (Queries_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -1491,7 +1435,7 @@ void Announce_BroadcastRoundConsolePanel()
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		return;
@@ -1521,10 +1465,10 @@ void Announce_BroadcastRoundConsolePanel()
 	bool hasDetailedKills = g_Runtime.hasPlayerSkills;
 	if (hasDetailedKills)
 	{
-		int totalDamage = Announce_GetTotalSurvivorDamage();
+		int totalDamage = Queries_GetTotalSurvivorDamage();
 		Format(line, sizeof(line), "%T", "PanelTotalsCombat", LANG_SERVER,
 			totalDamage,
-			Announce_GetTotalSurvivorSpecialKills(),
+			Queries_GetTotalSurvivorSpecialKills(),
 			g_Round.totals.survivorTotalCommonKills,
 			g_Round.totals.survivorTotalFF);
 		ConsolePanel_AddHeaderLine(panel, line);
@@ -1547,7 +1491,7 @@ void Announce_BroadcastRoundConsolePanel()
 		char ciA[16], ciB[16], ciC[16], ciD[16];
 		char ffA[16], ffB[16], ffC[16], ffD[16];
 
-		Announce_FormatDamageKillCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]), Announce_GetPlayerSpecialKills(survivorSlots[0]));
+		Announce_FormatDamageKillCell(siA, sizeof(siA), Queries_GetPlayerSiDamage(survivorSlots[0]), Queries_GetPlayerSpecialKills(survivorSlots[0]));
 		Announce_FormatDamageShotsCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].bossDetail.tankDamage, g_Round.players[survivorSlots[0]].bossDetail.tankShots);
 		Announce_FormatDamageShotsCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].bossDetail.witchDamage, g_Round.players[survivorSlots[0]].bossDetail.witchShots);
 		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
@@ -1555,7 +1499,7 @@ void Announce_BroadcastRoundConsolePanel()
 
 		if (survivorCount > 1)
 		{
-			Announce_FormatDamageKillCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]), Announce_GetPlayerSpecialKills(survivorSlots[1]));
+			Announce_FormatDamageKillCell(siB, sizeof(siB), Queries_GetPlayerSiDamage(survivorSlots[1]), Queries_GetPlayerSpecialKills(survivorSlots[1]));
 			Announce_FormatDamageShotsCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].bossDetail.tankDamage, g_Round.players[survivorSlots[1]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].bossDetail.witchDamage, g_Round.players[survivorSlots[1]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
@@ -1563,7 +1507,7 @@ void Announce_BroadcastRoundConsolePanel()
 		}
 		if (survivorCount > 2)
 		{
-			Announce_FormatDamageKillCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]), Announce_GetPlayerSpecialKills(survivorSlots[2]));
+			Announce_FormatDamageKillCell(siC, sizeof(siC), Queries_GetPlayerSiDamage(survivorSlots[2]), Queries_GetPlayerSpecialKills(survivorSlots[2]));
 			Announce_FormatDamageShotsCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].bossDetail.tankDamage, g_Round.players[survivorSlots[2]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].bossDetail.witchDamage, g_Round.players[survivorSlots[2]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
@@ -1571,7 +1515,7 @@ void Announce_BroadcastRoundConsolePanel()
 		}
 		if (survivorCount > 3)
 		{
-			Announce_FormatDamageKillCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]), Announce_GetPlayerSpecialKills(survivorSlots[3]));
+			Announce_FormatDamageKillCell(siD, sizeof(siD), Queries_GetPlayerSiDamage(survivorSlots[3]), Queries_GetPlayerSpecialKills(survivorSlots[3]));
 			Announce_FormatDamageShotsCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].bossDetail.tankDamage, g_Round.players[survivorSlots[3]].bossDetail.tankShots);
 			Announce_FormatDamageShotsCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].bossDetail.witchDamage, g_Round.players[survivorSlots[3]].bossDetail.witchShots);
 			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
@@ -1610,7 +1554,7 @@ void Announce_BroadcastRoundConsolePanel()
 		char ciA[16], ciB[16], ciC[16], ciD[16];
 		char ffA[16], ffB[16], ffC[16], ffD[16];
 
-		Announce_FormatIntCell(siA, sizeof(siA), Announce_GetPlayerSiDamage(survivorSlots[0]));
+		Announce_FormatIntCell(siA, sizeof(siA), Queries_GetPlayerSiDamage(survivorSlots[0]));
 		Announce_FormatDamageHitCell(tankA, sizeof(tankA), g_Round.players[survivorSlots[0]].combat.tankDamage, g_Round.players[survivorSlots[0]].combat.tankHits);
 		Announce_FormatDamageHitCell(witchA, sizeof(witchA), g_Round.players[survivorSlots[0]].combat.witchDamage, g_Round.players[survivorSlots[0]].combat.witchHits);
 		Announce_FormatIntCell(ciA, sizeof(ciA), g_Round.players[survivorSlots[0]].combat.commonKills);
@@ -1618,7 +1562,7 @@ void Announce_BroadcastRoundConsolePanel()
 
 		if (survivorCount > 1)
 		{
-			Announce_FormatIntCell(siB, sizeof(siB), Announce_GetPlayerSiDamage(survivorSlots[1]));
+			Announce_FormatIntCell(siB, sizeof(siB), Queries_GetPlayerSiDamage(survivorSlots[1]));
 			Announce_FormatDamageHitCell(tankB, sizeof(tankB), g_Round.players[survivorSlots[1]].combat.tankDamage, g_Round.players[survivorSlots[1]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchB, sizeof(witchB), g_Round.players[survivorSlots[1]].combat.witchDamage, g_Round.players[survivorSlots[1]].combat.witchHits);
 			Announce_FormatIntCell(ciB, sizeof(ciB), g_Round.players[survivorSlots[1]].combat.commonKills);
@@ -1626,7 +1570,7 @@ void Announce_BroadcastRoundConsolePanel()
 		}
 		if (survivorCount > 2)
 		{
-			Announce_FormatIntCell(siC, sizeof(siC), Announce_GetPlayerSiDamage(survivorSlots[2]));
+			Announce_FormatIntCell(siC, sizeof(siC), Queries_GetPlayerSiDamage(survivorSlots[2]));
 			Announce_FormatDamageHitCell(tankC, sizeof(tankC), g_Round.players[survivorSlots[2]].combat.tankDamage, g_Round.players[survivorSlots[2]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchC, sizeof(witchC), g_Round.players[survivorSlots[2]].combat.witchDamage, g_Round.players[survivorSlots[2]].combat.witchHits);
 			Announce_FormatIntCell(ciC, sizeof(ciC), g_Round.players[survivorSlots[2]].combat.commonKills);
@@ -1634,7 +1578,7 @@ void Announce_BroadcastRoundConsolePanel()
 		}
 		if (survivorCount > 3)
 		{
-			Announce_FormatIntCell(siD, sizeof(siD), Announce_GetPlayerSiDamage(survivorSlots[3]));
+			Announce_FormatIntCell(siD, sizeof(siD), Queries_GetPlayerSiDamage(survivorSlots[3]));
 			Announce_FormatDamageHitCell(tankD, sizeof(tankD), g_Round.players[survivorSlots[3]].combat.tankDamage, g_Round.players[survivorSlots[3]].combat.tankHits);
 			Announce_FormatDamageHitCell(witchD, sizeof(witchD), g_Round.players[survivorSlots[3]].combat.witchDamage, g_Round.players[survivorSlots[3]].combat.witchHits);
 			Announce_FormatIntCell(ciD, sizeof(ciD), g_Round.players[survivorSlots[3]].combat.commonKills);
@@ -1664,11 +1608,11 @@ void Announce_BroadcastRoundConsolePanel()
 		Announce_AddMetricStringRow(panel, ffLabel, survivorCount, ffA, ffB, ffC, ffD);
 	}
 
-	int siMvp = Announce_FindTopDamageSlot();
-	int ciMvp = Announce_FindTopCommonSlot();
-	int ffLvp = Announce_FindTopFFSlot();
+	int siMvp = Queries_FindTopDamageSlot();
+	int ciMvp = Queries_FindTopCommonSlot();
+	int ffLvp = Queries_FindTopFFSlot();
 
-	if (Announce_GetTotalSurvivorSiDamage() <= 0)
+	if (Queries_GetTotalSurvivorSiDamage() <= 0)
 	{
 		siMvp = -1;
 	}
@@ -1715,25 +1659,25 @@ void Announce_BroadcastRoundConsolePanel()
 
 bool Announce_HasMolotovUtilityStats()
 {
-	return Announce_ShouldShowMolotovUtility()
+	return Queries_ShouldShowMolotovUtility()
 		&& (g_Round.totals.survivorTotalMolotovsThrown > 0 || g_Round.totals.survivorTotalZombiesIgnited > 0);
 }
 
 bool Announce_HasPipebombUtilityStats()
 {
-	return Announce_ShouldShowPipebombUtility()
+	return Queries_ShouldShowPipebombUtility()
 		&& g_Round.totals.survivorTotalPipebombsThrown > 0;
 }
 
 bool Announce_HasVomitjarUtilityStats()
 {
-	return Announce_ShouldShowVomitjarUtility()
+	return Queries_ShouldShowVomitjarUtility()
 		&& (g_Round.totals.survivorTotalVomitjarsThrown > 0 || g_Round.totals.survivorTotalPlayersBiled > 0 || g_Round.totals.survivorTotalTanksBiled > 0);
 }
 
 void Announce_GetUtilitySurvivorSlots(int[] survivorSlots, int &survivorCount)
 {
-	survivorCount = Announce_CollectSortedSurvivorSlotsByUtility(survivorSlots, L4D2_PLAYER_STATS_MAX_SURVIVORS);
+	survivorCount = Queries_CollectSortedSurvivorSlotsByUtility(survivorSlots, L4D2_PLAYER_STATS_MAX_SURVIVORS);
 }
 
 void Announce_AddMetricRow(ConsolePanel panel, const char[] metricLabel, int survivorCount, int valueA, int valueB = 0, int valueC = 0, int valueD = 0)
@@ -1823,7 +1767,6 @@ void Announce_FormatDamageKillAssistCell(char[] buffer, int maxlen, int damage, 
 {
 	Format(buffer, maxlen, "%d/%d/%d", damage, kills, assistDamage);
 }
-
 
 void Announce_BuildMetricPanel(ConsolePanel panel, int phraseTarget, const char[] titlePhrase, const char[] totalsPhrase, int totalA, int totalB = 0, int totalC = 0)
 {
@@ -2186,8 +2129,8 @@ void Announce_FormatAccuracyCell(char[] buffer, int maxlen, int hits, int shots,
 
 void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phraseTarget = LANG_SERVER)
 {
-	int siDamage = Announce_GetPlayerSiDamage(slot);
-	int siPercent = Announce_GetPercent(siDamage, Announce_GetTotalSurvivorSiDamage());
+	int siDamage = Queries_GetPlayerSiDamage(slot);
+	int siPercent = Announce_GetPercent(siDamage, Queries_GetTotalSurvivorSiDamage());
 
 	Format(buffer, maxlen, "%T", "RoundMVPDamageBase", phraseTarget,
 		g_Round.players[slot].player.name,
@@ -2198,8 +2141,8 @@ void Announce_FormatMvPDamageLine(char[] buffer, int maxlen, int slot, int phras
 
 void Announce_FormatMvPDamageConsoleLine(char[] buffer, int maxlen, int slot)
 {
-	int siDamage = Announce_GetPlayerSiDamage(slot);
-	int siPercent = Announce_GetPercent(siDamage, Announce_GetTotalSurvivorSiDamage());
+	int siDamage = Queries_GetPlayerSiDamage(slot);
+	int siPercent = Announce_GetPercent(siDamage, Queries_GetTotalSurvivorSiDamage());
 
 	Format(buffer, maxlen, "%T", "PanelMVPDamageBase", LANG_SERVER,
 		g_Round.players[slot].player.name,
@@ -2223,16 +2166,16 @@ void Announce_PrintClientRanks(int client)
 		return;
 	}
 
-	int damageRank = Announce_GetDamageRank(client);
-	int commonRank = Announce_GetCommonRank(client);
-	int ffRank = Announce_GetFFRank(client);
+	int damageRank = Queries_GetDamageRank(client);
+	int commonRank = Queries_GetCommonRank(client);
+	int ffRank = Queries_GetFFRank(client);
 
-	if (damageRank > 0 && Announce_GetTotalSurvivorDamage() > 0)
+	if (damageRank > 0 && Queries_GetTotalSurvivorDamage() > 0)
 	{
 		CReplyToCommand(client, "%t", "YourRankDamage",
 			damageRank,
-			Announce_GetPlayerDamageScore(index),
-			Announce_GetPercent(Announce_GetPlayerDamageScore(index), Announce_GetTotalSurvivorDamage()));
+			Queries_GetPlayerDamageScore(index),
+			Announce_GetPercent(Queries_GetPlayerDamageScore(index), Queries_GetTotalSurvivorDamage()));
 	}
 
 	if (commonRank > 0 && g_Round.totals.survivorTotalCommonKills > 0)
@@ -2266,7 +2209,7 @@ bool Announce_RenderGlobalRankPanel(int client)
 	}
 
 	int survivorSlots[L4D2_PLAYER_STATS_MAX_SURVIVORS];
-	int survivorCount = Announce_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
+	int survivorCount = Queries_CollectSortedSurvivorSlotsByDamage(survivorSlots, sizeof(survivorSlots));
 	if (survivorCount <= 0)
 	{
 		return false;
@@ -2305,30 +2248,30 @@ bool Announce_RenderGlobalRankPanel(int client)
 
 	Announce_AddMetricPlayerColumns(panel, client, survivorSlots, survivorCount);
 	Announce_AddMetricRow(panel, siRankLabel, survivorCount,
-		Announce_GetDamageRankBySlot(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetDamageRankBySlot(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetDamageRankBySlot(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetDamageRankBySlot(survivorSlots[3]) : 0);
+		Queries_GetDamageRankBySlot(survivorSlots[0]),
+		survivorCount > 1 ? Queries_GetDamageRankBySlot(survivorSlots[1]) : 0,
+		survivorCount > 2 ? Queries_GetDamageRankBySlot(survivorSlots[2]) : 0,
+		survivorCount > 3 ? Queries_GetDamageRankBySlot(survivorSlots[3]) : 0);
 	Announce_AddMetricRow(panel, siLabel, survivorCount,
-		Announce_GetPlayerDamageScore(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetPlayerDamageScore(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetPlayerDamageScore(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetPlayerDamageScore(survivorSlots[3]) : 0);
+		Queries_GetPlayerDamageScore(survivorSlots[0]),
+		survivorCount > 1 ? Queries_GetPlayerDamageScore(survivorSlots[1]) : 0,
+		survivorCount > 2 ? Queries_GetPlayerDamageScore(survivorSlots[2]) : 0,
+		survivorCount > 3 ? Queries_GetPlayerDamageScore(survivorSlots[3]) : 0);
 	Announce_AddMetricRow(panel, ciRankLabel, survivorCount,
-		Announce_GetCommonRankBySlot(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetCommonRankBySlot(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetCommonRankBySlot(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetCommonRankBySlot(survivorSlots[3]) : 0);
+		Queries_GetCommonRankBySlot(survivorSlots[0]),
+		survivorCount > 1 ? Queries_GetCommonRankBySlot(survivorSlots[1]) : 0,
+		survivorCount > 2 ? Queries_GetCommonRankBySlot(survivorSlots[2]) : 0,
+		survivorCount > 3 ? Queries_GetCommonRankBySlot(survivorSlots[3]) : 0);
 	Announce_AddMetricRow(panel, commonLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].combat.commonKills,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.commonKills : 0,
 		survivorCount > 2 ? g_Round.players[survivorSlots[2]].combat.commonKills : 0,
 		survivorCount > 3 ? g_Round.players[survivorSlots[3]].combat.commonKills : 0);
 	Announce_AddMetricRow(panel, ffRankLabel, survivorCount,
-		Announce_GetFFRankBySlot(survivorSlots[0]),
-		survivorCount > 1 ? Announce_GetFFRankBySlot(survivorSlots[1]) : 0,
-		survivorCount > 2 ? Announce_GetFFRankBySlot(survivorSlots[2]) : 0,
-		survivorCount > 3 ? Announce_GetFFRankBySlot(survivorSlots[3]) : 0);
+		Queries_GetFFRankBySlot(survivorSlots[0]),
+		survivorCount > 1 ? Queries_GetFFRankBySlot(survivorSlots[1]) : 0,
+		survivorCount > 2 ? Queries_GetFFRankBySlot(survivorSlots[2]) : 0,
+		survivorCount > 3 ? Queries_GetFFRankBySlot(survivorSlots[3]) : 0);
 	Announce_AddMetricRow(panel, ffLabel, survivorCount,
 		g_Round.players[survivorSlots[0]].combat.ffGiven,
 		survivorCount > 1 ? g_Round.players[survivorSlots[1]].combat.ffGiven : 0,
@@ -2339,385 +2282,17 @@ bool Announce_RenderGlobalRankPanel(int client)
 	return true;
 }
 
-int Announce_GetPlayerDamageScore(int index)
-{
-	return Announce_GetPlayerSiDamage(index);
-}
-
-int Announce_GetPlayerSiDamage(int index)
-{
-	int total = 0;
-
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
-	{
-		total += g_Round.players[index].combat.smokerDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
-	{
-		total += g_Round.players[index].combat.boomerDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
-	{
-		total += g_Round.players[index].combat.hunterDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
-	{
-		total += g_Round.players[index].combat.spitterDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
-	{
-		total += g_Round.players[index].combat.jockeyDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
-	{
-		total += g_Round.players[index].combat.chargerDamage;
-	}
-
-	return total;
-}
-
-int Announce_GetPlayerSpecialKills(int index)
-{
-	int total = 0;
-
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
-	{
-		total += g_Round.players[index].combat.smokerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
-	{
-		total += g_Round.players[index].combat.boomerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
-	{
-		total += g_Round.players[index].combat.hunterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
-	{
-		total += g_Round.players[index].combat.spitterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
-	{
-		total += g_Round.players[index].combat.jockeyKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
-	{
-		total += g_Round.players[index].combat.chargerKills;
-	}
-
-	return total;
-}
-
-int Announce_GetPlayerSpecialKillsByClass(int index, L4D2ZombieClassType zombieClass)
-{
-	switch (zombieClass)
-	{
-		case L4D2ZombieClass_Smoker:
-		{
-			return g_Round.players[index].combat.smokerKills;
-		}
-		case L4D2ZombieClass_Boomer:
-		{
-			return g_Round.players[index].combat.boomerKills;
-		}
-		case L4D2ZombieClass_Hunter:
-		{
-			return g_Round.players[index].combat.hunterKills;
-		}
-		case L4D2ZombieClass_Spitter:
-		{
-			return g_Round.players[index].combat.spitterKills;
-		}
-		case L4D2ZombieClass_Jockey:
-		{
-			return g_Round.players[index].combat.jockeyKills;
-		}
-		case L4D2ZombieClass_Charger:
-		{
-			return g_Round.players[index].combat.chargerKills;
-		}
-	}
-
-	return 0;
-}
-
-int Announce_GetPlayerSpecialAssistDamageByClass(int index, L4D2ZombieClassType zombieClass)
-{
-	switch (zombieClass)
-	{
-		case L4D2ZombieClass_Smoker:
-		{
-			return g_Round.players[index].combatAssists.smokerAssistDamage;
-		}
-		case L4D2ZombieClass_Boomer:
-		{
-			return g_Round.players[index].combatAssists.boomerAssistDamage;
-		}
-		case L4D2ZombieClass_Hunter:
-		{
-			return g_Round.players[index].combatAssists.hunterAssistDamage;
-		}
-		case L4D2ZombieClass_Spitter:
-		{
-			return g_Round.players[index].combatAssists.spitterAssistDamage;
-		}
-		case L4D2ZombieClass_Jockey:
-		{
-			return g_Round.players[index].combatAssists.jockeyAssistDamage;
-		}
-		case L4D2ZombieClass_Charger:
-		{
-			return g_Round.players[index].combatAssists.chargerAssistDamage;
-		}
-	}
-
-	return 0;
-}
-
-int Announce_GetPlayerSpecialDamageByClass(int index, L4D2ZombieClassType zombieClass)
-{
-	switch (zombieClass)
-	{
-		case L4D2ZombieClass_Smoker:
-		{
-			return g_Round.players[index].combat.smokerDamage;
-		}
-		case L4D2ZombieClass_Boomer:
-		{
-			return g_Round.players[index].combat.boomerDamage;
-		}
-		case L4D2ZombieClass_Hunter:
-		{
-			return g_Round.players[index].combat.hunterDamage;
-		}
-		case L4D2ZombieClass_Spitter:
-		{
-			return g_Round.players[index].combat.spitterDamage;
-		}
-		case L4D2ZombieClass_Jockey:
-		{
-			return g_Round.players[index].combat.jockeyDamage;
-		}
-		case L4D2ZombieClass_Charger:
-		{
-			return g_Round.players[index].combat.chargerDamage;
-		}
-	}
-
-	return 0;
-}
-
-int Announce_GetTotalSurvivorDamage()
-{
-	return Announce_GetTotalSurvivorSiDamage();
-}
-
-int Announce_GetTotalSurvivorSiDamage()
-{
-	int total = 0;
-
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
-	{
-		total += g_Round.totals.survivorTotalSmokerDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
-	{
-		total += g_Round.totals.survivorTotalBoomerDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
-	{
-		total += g_Round.totals.survivorTotalHunterDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
-	{
-		total += g_Round.totals.survivorTotalSpitterDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
-	{
-		total += g_Round.totals.survivorTotalJockeyDamage;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
-	{
-		total += g_Round.totals.survivorTotalChargerDamage;
-	}
-
-	return total;
-}
-
-int Announce_GetTotalSurvivorSpecialKills()
-{
-	int total = 0;
-
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Smoker))
-	{
-		total += g_Round.totals.survivorTotalSmokerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Boomer))
-	{
-		total += g_Round.totals.survivorTotalBoomerKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Hunter))
-	{
-		total += g_Round.totals.survivorTotalHunterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Spitter))
-	{
-		total += g_Round.totals.survivorTotalSpitterKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Jockey))
-	{
-		total += g_Round.totals.survivorTotalJockeyKills;
-	}
-	if (Stats_IsZombieClassEnabledForRound(L4D2ZombieClass_Charger))
-	{
-		total += g_Round.totals.survivorTotalChargerKills;
-	}
-
-	return total;
-}
-
 int Announce_GetPercent(int part, int whole)
 {
 	return L4D2Util_IntToPercentInt(part, whole);
 }
 
-int Announce_FindTopDamageSlot(int excludeA = -1, int excludeB = -1, int excludeC = -1)
-{
-	int bestSlot = -1;
-	int bestScore = -1;
 
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == excludeA || slot == excludeB || slot == excludeC)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		int score = Announce_GetPlayerDamageScore(slot);
-		if (score > bestScore)
-		{
-			bestScore = score;
-			bestSlot = slot;
-		}
-	}
-
-	return bestSlot;
-}
-
-int Announce_FindTopCommonSlot(int excludeA = -1, int excludeB = -1, int excludeC = -1)
-{
-	int bestSlot = -1;
-	int bestScore = -1;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == excludeA || slot == excludeB || slot == excludeC)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		int score = g_Round.players[slot].combat.commonKills;
-		if (score > bestScore)
-		{
-			bestScore = score;
-			bestSlot = slot;
-		}
-	}
-
-	return bestSlot;
-}
-
-int Announce_FindTopFFSlot(int excludeA = -1, int excludeB = -1, int excludeC = -1)
-{
-	int bestSlot = -1;
-	int bestScore = -1;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == excludeA || slot == excludeB || slot == excludeC)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		int score = g_Round.players[slot].combat.ffGiven;
-		if (score > bestScore)
-		{
-			bestScore = score;
-			bestSlot = slot;
-		}
-	}
-
-	return bestSlot;
-}
-
-int Announce_CollectSortedSurvivorSlotsByDamage(int[] slots, int maxSlots)
-{
-	int count = 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot))
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int key = slots[i];
-		int keyScore = Announce_GetPlayerDamageScore(key);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int current = slots[j];
-			int currentScore = Announce_GetPlayerDamageScore(current);
-			if (currentScore > keyScore)
-			{
-				break;
-			}
-
-			if (currentScore == keyScore && g_Round.players[current].combat.commonKills >= g_Round.players[key].combat.commonKills)
-			{
-				break;
-			}
-
-			slots[j + 1] = current;
-			j--;
-		}
-
-		slots[j + 1] = key;
-	}
-
-	return count;
-}
 
 bool Announce_HasCombatStats()
 {
-	return Announce_GetTotalSurvivorDamage() > 0
-		|| Announce_GetTotalSurvivorSpecialKills() > 0
+	return Queries_GetTotalSurvivorDamage() > 0
+		|| Queries_GetTotalSurvivorSpecialKills() > 0
 		|| g_Round.totals.survivorTotalCommonKills > 0
 		|| g_Round.totals.survivorTotalFF > 0;
 }
@@ -2746,9 +2321,9 @@ bool Announce_HasAccuracyStats()
 bool Announce_HasConsumableStats()
 {
 	return g_Round.totals.survivorTotalPillsUsed > 0
-		|| (Announce_ShouldShowAdrenalineConsumable() && g_Round.totals.survivorTotalAdrenalineUsed > 0)
+		|| (Queries_ShouldShowAdrenalineConsumable() && g_Round.totals.survivorTotalAdrenalineUsed > 0)
 		|| g_Round.totals.survivorTotalMedkitsUsed > 0
-		|| (Announce_ShouldShowDefibConsumable() && g_Round.totals.survivorTotalDefibsUsed > 0);
+		|| (Queries_ShouldShowDefibConsumable() && g_Round.totals.survivorTotalDefibsUsed > 0);
 }
 
 bool Announce_HasSupportStats()
@@ -2766,78 +2341,19 @@ bool Announce_HasScavengeStats()
 			|| g_Round.totals.survivorTotalGascansDestroyed > 0);
 }
 
-int Announce_GetPlayerUtilityScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
 
-	int total = 0;
 
-	if (Announce_ShouldShowMolotovUtility())
-	{
-		total += g_Round.players[slot].resources.molotovsThrown + g_Round.players[slot].resources.zombiesIgnited;
-	}
-	if (Announce_ShouldShowPipebombUtility())
-	{
-		total += g_Round.players[slot].resources.pipebombsThrown;
-	}
-	if (Announce_ShouldShowVomitjarUtility())
-	{
-		total += g_Round.players[slot].resources.vomitjarsThrown
-			+ g_Round.players[slot].resources.playersBiled
-			+ g_Round.players[slot].resources.tanksBiled;
-	}
 
-	return total;
-}
 
-int Announce_GetPlayerConsumableScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
 
-	int total = g_Round.players[slot].resources.pillsUsed + g_Round.players[slot].resources.medkitsUsed;
 
-	if (Announce_ShouldShowAdrenalineConsumable())
-	{
-		total += g_Round.players[slot].resources.adrenalineUsed;
-	}
-	if (Announce_ShouldShowDefibConsumable())
-	{
-		total += g_Round.players[slot].resources.defibsUsed;
-	}
 
-	return total;
-}
 
-bool Announce_ShouldShowMolotovUtility()
-{
-	return g_cvConfoglMolotovLimit == null || g_cvConfoglMolotovLimit.IntValue != 0;
-}
 
-bool Announce_ShouldShowPipebombUtility()
-{
-	return g_cvConfoglPipebombLimit == null || g_cvConfoglPipebombLimit.IntValue != 0;
-}
 
-bool Announce_ShouldShowVomitjarUtility()
-{
-	return g_cvConfoglVomitjarLimit == null || g_cvConfoglVomitjarLimit.IntValue != 0;
-}
 
-bool Announce_ShouldShowAdrenalineConsumable()
-{
-	return g_cvConfoglAdrenalineLimit == null || g_cvConfoglAdrenalineLimit.IntValue != 0;
-}
 
-bool Announce_ShouldShowDefibConsumable()
-{
-	return g_cvConfoglRemoveDefib == null || !g_cvConfoglRemoveDefib.BoolValue;
-}
+
 
 void Announce_FormatConsumableTotalsLine(char[] buffer, int maxlen, int phraseTarget, bool showAdrenaline, bool showDefib)
 {
@@ -2846,371 +2362,4 @@ void Announce_FormatConsumableTotalsLine(char[] buffer, int maxlen, int phraseTa
 		showAdrenaline ? g_Round.totals.survivorTotalAdrenalineUsed : 0,
 		g_Round.totals.survivorTotalMedkitsUsed,
 		showDefib ? g_Round.totals.survivorTotalDefibsUsed : 0);
-}
-
-int Announce_GetPlayerSupportScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
-
-	return g_Round.players[slot].support.healsGiven
-		+ g_Round.players[slot].support.revivesGiven
-		+ g_Round.players[slot].support.rescuesGiven;
-}
-
-int Announce_GetPlayerScavengeScore(int slot)
-{
-	if (!Stats_IsValidRoundSlot(slot))
-	{
-		return 0;
-	}
-
-	return (g_Round.players[slot].scavenge.gascansPoured * 10000)
-		+ (g_Round.players[slot].scavenge.gascansDestroyed * 100)
-		+ g_Round.players[slot].scavenge.gascansDropped;
-}
-
-int Announce_CollectSortedSurvivorSlotsByUtility(int[] slots, int maxSlots)
-{
-	int count = 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int currentSlot = slots[i];
-		int currentUtility = Announce_GetPlayerUtilityScore(currentSlot);
-		int currentDamage = Announce_GetPlayerDamageScore(currentSlot);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int compareSlot = slots[j];
-			int compareUtility = Announce_GetPlayerUtilityScore(compareSlot);
-			int compareDamage = Announce_GetPlayerDamageScore(compareSlot);
-			if (compareUtility > currentUtility)
-			{
-				break;
-			}
-
-			if (compareUtility == currentUtility && compareDamage >= currentDamage)
-			{
-				break;
-			}
-
-			slots[j + 1] = compareSlot;
-			j--;
-		}
-
-		slots[j + 1] = currentSlot;
-	}
-
-	return count;
-}
-
-int Announce_CollectSortedSurvivorSlotsByConsumables(int[] slots, int maxSlots)
-{
-	int count = 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int currentSlot = slots[i];
-		int currentItems = Announce_GetPlayerConsumableScore(currentSlot);
-		int currentDamage = Announce_GetPlayerDamageScore(currentSlot);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int compareSlot = slots[j];
-			int compareItems = Announce_GetPlayerConsumableScore(compareSlot);
-			int compareDamage = Announce_GetPlayerDamageScore(compareSlot);
-			if (compareItems > currentItems)
-			{
-				break;
-			}
-
-			if (compareItems == currentItems && compareDamage >= currentDamage)
-			{
-				break;
-			}
-
-			slots[j + 1] = compareSlot;
-			j--;
-		}
-
-		slots[j + 1] = currentSlot;
-	}
-
-	return count;
-}
-
-int Announce_CollectSortedSurvivorSlotsBySupport(int[] slots, int maxSlots)
-{
-	int count = 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int currentSlot = slots[i];
-		int currentSupport = Announce_GetPlayerSupportScore(currentSlot);
-		int currentDamage = Announce_GetPlayerDamageScore(currentSlot);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int compareSlot = slots[j];
-			int compareSupport = Announce_GetPlayerSupportScore(compareSlot);
-			int compareDamage = Announce_GetPlayerDamageScore(compareSlot);
-			if (compareSupport > currentSupport)
-			{
-				break;
-			}
-
-			if (compareSupport == currentSupport && compareDamage >= currentDamage)
-			{
-				break;
-			}
-
-			slots[j + 1] = compareSlot;
-			j--;
-		}
-
-		slots[j + 1] = currentSlot;
-	}
-
-	return count;
-}
-
-int Announce_CollectSortedSurvivorSlotsByScavenge(int[] slots, int maxSlots)
-{
-	int count = 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS && count < maxSlots; slot++)
-	{
-		if (!g_Round.players[slot].active || g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		slots[count++] = slot;
-	}
-
-	for (int i = 1; i < count; i++)
-	{
-		int currentSlot = slots[i];
-		int currentScore = Announce_GetPlayerScavengeScore(currentSlot);
-		int currentDamage = Announce_GetPlayerDamageScore(currentSlot);
-		int j = i - 1;
-
-		while (j >= 0)
-		{
-			int compareSlot = slots[j];
-			int compareScore = Announce_GetPlayerScavengeScore(compareSlot);
-			int compareDamage = Announce_GetPlayerDamageScore(compareSlot);
-			if (compareScore > currentScore)
-			{
-				break;
-			}
-
-			if (compareScore == currentScore && compareDamage >= currentDamage)
-			{
-				break;
-			}
-
-			slots[j + 1] = compareSlot;
-			j--;
-		}
-
-		slots[j + 1] = currentSlot;
-	}
-
-	return count;
-}
-
-int Announce_GetDamageRank(int client)
-{
-	int rank = 1;
-	int index = Stats_GetPlayerRoundIndex(client);
-	int score = index != -1 ? Announce_GetPlayerDamageScore(index) : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (Announce_GetPlayerDamageScore(slot) > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
-}
-
-int Announce_GetDamageRankBySlot(int index)
-{
-	int rank = 1;
-	int score = index != -1 ? Announce_GetPlayerDamageScore(index) : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (Announce_GetPlayerDamageScore(slot) > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
-}
-
-int Announce_GetCommonRank(int client)
-{
-	int rank = 1;
-	int index = Stats_GetPlayerRoundIndex(client);
-	int score = index != -1 ? g_Round.players[index].combat.commonKills : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].combat.commonKills > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
-}
-
-int Announce_GetCommonRankBySlot(int index)
-{
-	int rank = 1;
-	int score = index != -1 ? g_Round.players[index].combat.commonKills : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].combat.commonKills > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
-}
-
-int Announce_GetFFRank(int client)
-{
-	int rank = 1;
-	int index = Stats_GetPlayerRoundIndex(client);
-	int score = index != -1 ? g_Round.players[index].combat.ffGiven : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].combat.ffGiven > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
-}
-
-int Announce_GetFFRankBySlot(int index)
-{
-	int rank = 1;
-	int score = index != -1 ? g_Round.players[index].combat.ffGiven : 0;
-
-	for (int slot = 0; slot < L4D2_PLAYER_STATS_MAX_SLOTS; slot++)
-	{
-		if (!Stats_IsValidRoundSlot(slot) || slot == index)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].team != PlayerStatsTeam_Survivor)
-		{
-			continue;
-		}
-
-		if (g_Round.players[slot].combat.ffGiven > score)
-		{
-			rank++;
-		}
-	}
-
-	return rank;
 }

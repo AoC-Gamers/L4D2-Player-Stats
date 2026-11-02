@@ -224,6 +224,12 @@ Regla:
   - esa traducción viene de `skill_event.properties`
   - no mantiene un contador paralelo de la skill como producto interno
 
+La importación actual adapta cada paquete `KeyValues` a una observación local y
+lo libera antes de modificar el snapshot. Un ledger por familia e instancia de
+`PlayerSkills` evita aplicar dos veces el mismo ID recibido. Una observación
+válida se consume antes de escribir sus consecuencias; una lectura fallida se
+puede reintentar. Los paquetes recibidos fuera de live no reabren una ronda.
+
 ## infected_grab
 
 Bloque competitivo de infected por control y daño de agarre.
@@ -263,6 +269,12 @@ Esto permite modelar:
 - cambio de control humano
 - continuidad en bot
 
+El daño que causa el Tank a survivors pertenece a la sesión y al controlador;
+el daño que recibe el Tank pertenece al bloque `combat` del survivor. La ruta
+terminal del Tank todavía usa una captura previa del hook y requiere la
+correlación operativa prevista en el [plan](l4d2-player-stats-refactor-plan.md)
+antes de declararse equivalente.
+
 ## scavenge
 
 `Scavenge` agrega métricas específicas del objetivo.
@@ -294,6 +306,10 @@ Estos totales sirven para:
 - MVP
 - LVP
 - ranking relativo
+
+Las consultas filtradas por clases SI se comparten entre API y presentación.
+Los totales almacenados conservan los contadores por clase; la consulta decide
+qué clases del contexto actual entran en `si_damage` visible.
 
 ## Context Block
 

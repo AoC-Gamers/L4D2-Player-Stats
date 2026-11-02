@@ -102,11 +102,12 @@ Jobs:
 
 ## Debug
 
-El core usa `l4d2_player_stats_debug` como bitmask de categorias:
+El core usa `sm_stats_debug` como bitmask de categorias:
 
 - `1` `Core`
-- `2` `Detect`
-- `4` `Api`
-- `8` `Announce`
+- `2` `Event`
+- `4` `Detect`
+- `8` `Api`
+- `16` `Announce`
 
-`15` habilita todas las categorias actuales.
+`31` habilita todas las categorias actuales. Los mensajes se escriben en `logs/l4d2_player_stats.log`.
