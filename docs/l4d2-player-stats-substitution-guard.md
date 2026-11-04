@@ -1,0 +1,13 @@
+# Guard de rehidratación por sustitución
+
+La protección interna no altera las firmas ni el contrato del include público. `PlayerStats_OnPlayerSubstituted` puede devolver `Plugin_Handled`; una integración puede llamar `PlayerStats_ApplySubstitutionSnapshotToSlot` después de que el forward regrese.
+
+Antes de emitir el forward, el core registra un serial por slot y una transición pendiente con ronda, slot, snapshot (índice + generación + ID) e identidad entrante (cliente + userid + cuenta cuando está disponible). Al volver, solo la transición que conserva esos valores puede continuar. Si una native ya restauró, la ronda cambió, se reemplazó el snapshot o una transición anidada avanzó el serial del slot, el callback exterior no restaura ni reasigna el slot.
+
+La native sigue disponible después de `Plugin_Handled` y conserva la posibilidad de pedir por ID cualquier snapshot activo del mismo round/slot, incluso una entrada anterior de reconexión. Si el forward retorna `Plugin_Continue` sin snapshot automático elegible, el core bindea el slot limpio y mantiene pendiente la transición para que una integración todavía pueda restaurar por ID. La transición pendiente valida por separado el snapshot saliente que la originó y la identidad del cliente entrante; la native valida el snapshot objetivo, slot y ronda actuales. El fallback automático conserva su búsqueda previa por account ID entrante. La marca `restored` del objetivo se escribe antes de copiar y sumar los contadores, y una restauración consume la transición pendiente para impedir doble aplicación. Si el slot entrante acumuló estadísticas antes de una restauración manual tardía, se restan sus aportes de los totales antes de reemplazarlo por el snapshot.
+
+## Límite de integridad pendiente
+
+El guard detecta nuevas transiciones del core, cambios de ronda, reemplazo del elemento del ring y la restauración nativa. Los resets de ronda invalidan las transiciones pendientes sin cambiar el ring de snapshots. No detecta de forma general que otro listener del forward haya escrito estadísticas en el slot sin restaurar snapshot ni iniciar otra transición. Detectar eso requiere marcar todos los writers o comparar íntegramente el estado mutable del slot, un cambio más amplio que este corte.
+
+Por ello E2 queda parcial: la rehidratación manual posterior sigue respetando el contrato y puede reemplazar el estado actual del slot por el snapshot solicitado; una transición con invalidación detectada se deja intacta, sin fallback. Los aportes que acumuló el slot reemplazado se eliminan de los totales, pero no se conservan como estadísticas separadas de la persona entrante. Hace falta probar reentrada, veto y escrituras de otros listeners en SRCDS antes de afirmar cierre completo.

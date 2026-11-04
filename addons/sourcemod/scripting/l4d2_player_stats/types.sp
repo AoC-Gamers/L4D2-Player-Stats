@@ -10,6 +10,7 @@
 #define L4D2_PLAYER_STATS_MAX_SUBSTITUTION_SNAPSHOTS 16
 #define L4D2_PLAYER_STATS_MAX_TANK_SESSIONS 4
 #define L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS 4
+#define L4D2_PLAYER_STATS_MAX_TANK_DAMAGE_OPERATIONS L4D2_PLAYER_STATS_MAX_PLAYERS
 
 enum PlayerStatsValidDamageFlag
 {
@@ -133,6 +134,41 @@ enum PlayerStatsRoundLiveSignalType
 	PlayerStatsRoundLiveSignal_Immediate,
 	PlayerStatsRoundLiveSignal_SafeArea,
 	PlayerStatsRoundLiveSignal_ReadyUpOrSafeArea
+}
+
+enum StatsLifecycleSignalClass
+{
+	StatsLifecycleSignalClass_Start = 0,
+	StatsLifecycleSignalClass_End
+}
+
+enum StatsTankSpawnResultType
+{
+	StatsTankSpawnResult_NotEvaluated = 0,
+	StatsTankSpawnResult_TrackingDisabled,
+	StatsTankSpawnResult_RoundNotLive,
+	StatsTankSpawnResult_WrongMode,
+	StatsTankSpawnResult_ExistingSession,
+	StatsTankSpawnResult_NewSession,
+	StatsTankSpawnResult_SessionCapacity
+}
+
+enum struct StatsTankSpawnResult
+{
+	StatsTankSpawnResultType type;
+	int sessionIndex;
+
+	void Reset()
+	{
+		this.type = StatsTankSpawnResult_NotEvaluated;
+		this.sessionIndex = -1;
+	}
+}
+
+enum struct StatsLifecycleSignal
+{
+	StatsLifecycleSignalClass signalClass;
+	char name[32];
 }
 
 enum PlayerStatsRestartPolicyType
@@ -912,6 +948,107 @@ enum struct PlayerStatsTankControllerData
 	}
 }
 
+enum PlayerStatsTankDamageOperationState
+{
+	PlayerStatsTankDamageOperation_Empty = 0,
+	PlayerStatsTankDamageOperation_Pending,
+	PlayerStatsTankDamageOperation_Applied,
+	PlayerStatsTankDamageOperation_Ambiguous
+}
+
+enum struct PlayerStatsTankDamageOperation
+{
+	PlayerStatsTankDamageOperationState state;
+	int runId;
+	int mapGeneration;
+	int roundId;
+	int signalId;
+	int damageId;
+	int tick;
+	int victimClient;
+	int victimUserid;
+	int victimLifeEpoch;
+	int attackerClient;
+	int attackerUserid;
+	int sessionIndex;
+	int sessionId;
+	int controllerIndex;
+	int healthBefore;
+
+	void Reset()
+	{
+		this.state = PlayerStatsTankDamageOperation_Empty;
+		this.runId = 0;
+		this.mapGeneration = 0;
+		this.roundId = 0;
+		this.signalId = 0;
+		this.damageId = 0;
+		this.tick = 0;
+		this.victimClient = 0;
+		this.victimUserid = 0;
+		this.victimLifeEpoch = 0;
+		this.attackerClient = 0;
+		this.attackerUserid = 0;
+		this.sessionIndex = -1;
+		this.sessionId = 0;
+		this.controllerIndex = -1;
+		this.healthBefore = 0;
+	}
+}
+
+enum PlayerStatsTankDamageResolveResult
+{
+	PlayerStatsTankDamageResolve_None = 0,
+	PlayerStatsTankDamageResolve_Ready,
+	PlayerStatsTankDamageResolve_AlreadyApplied,
+	PlayerStatsTankDamageResolve_ReconciledLateCapture,
+	PlayerStatsTankDamageResolve_Ambiguous,
+	PlayerStatsTankDamageResolve_Stale
+}
+
+enum PlayerStatsTankHurtReceiptState
+{
+	PlayerStatsTankHurtReceipt_Empty = 0,
+	PlayerStatsTankHurtReceipt_Recorded,
+	PlayerStatsTankHurtReceipt_Ambiguous
+}
+
+enum struct PlayerStatsTankHurtReceipt
+{
+	PlayerStatsTankHurtReceiptState state;
+	int runId;
+	int mapGeneration;
+	int roundId;
+	int tick;
+	int victimClient;
+	int victimUserid;
+	int attackerClient;
+	int attackerUserid;
+	int sessionIndex;
+	int sessionId;
+	int controllerIndex;
+	int damageApplied;
+	bool damageCounted;
+
+	void Reset()
+	{
+		this.state = PlayerStatsTankHurtReceipt_Empty;
+		this.runId = 0;
+		this.mapGeneration = 0;
+		this.roundId = 0;
+		this.tick = 0;
+		this.victimClient = 0;
+		this.victimUserid = 0;
+		this.attackerClient = 0;
+		this.attackerUserid = 0;
+		this.sessionIndex = -1;
+		this.sessionId = 0;
+		this.controllerIndex = -1;
+		this.damageApplied = 0;
+		this.damageCounted = false;
+	}
+}
+
 enum struct PlayerStatsTankSessionData
 {
 	bool active;
@@ -930,7 +1067,6 @@ enum struct PlayerStatsTankSessionData
 	char lastHumanName[MAX_NAME_LENGTH];
 	int controllerCount;
 	PlayerStatsTankControllerData controllers[L4D2_PLAYER_STATS_MAX_TANK_CONTROLLERS];
-	int lastHealthByVictim[L4D2_PLAYER_STATS_MAX_PLAYERS];
 
 	void Reset()
 	{
@@ -954,10 +1090,6 @@ enum struct PlayerStatsTankSessionData
 		{
 			this.controllers[i].Reset();
 		}
-		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_PLAYERS; i++)
-		{
-			this.lastHealthByVictim[i] = 0;
-		}
 	}
 }
 
@@ -972,6 +1104,8 @@ enum struct PlayerStatsRoundData
 	int witchEntityCount;
 	int tankSessionCount;
 	PlayerStatsTankSessionData tankSessions[L4D2_PLAYER_STATS_MAX_TANK_SESSIONS];
+	PlayerStatsTankDamageOperation tankDamageOperations[L4D2_PLAYER_STATS_MAX_TANK_DAMAGE_OPERATIONS];
+	PlayerStatsTankHurtReceipt tankHurtReceipts[L4D2_PLAYER_STATS_MAX_PLAYERS];
 
 	/**
 	 * @brief Resets the current round snapshot and all tracked players.
@@ -994,6 +1128,14 @@ enum struct PlayerStatsRoundData
 		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_SESSIONS; i++)
 		{
 			this.tankSessions[i].Reset();
+		}
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_TANK_DAMAGE_OPERATIONS; i++)
+		{
+			this.tankDamageOperations[i].Reset();
+		}
+		for (int i = 0; i < L4D2_PLAYER_STATS_MAX_PLAYERS; i++)
+		{
+			this.tankHurtReceipts[i].Reset();
 		}
 
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_SLOTS; client++)
@@ -1029,6 +1171,8 @@ enum struct PlayerStatsRuntimeState
 	int lastMatchEndedRoundId;
 	PlayerStatsRoundEndReasonType lastMatchEndReason;
 	int playerSlotByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+	int tankLifeUseridByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
+	int tankLifeEpochByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 	PlayerStatsWeaponFamily lastWeaponFamilyByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 	PlayerStatsWeaponDetailType lastWeaponDetailByClient[L4D2_PLAYER_STATS_MAX_PLAYERS];
 
@@ -1066,6 +1210,8 @@ enum struct PlayerStatsRuntimeState
 		for (int client = 0; client < L4D2_PLAYER_STATS_MAX_PLAYERS; client++)
 		{
 			this.playerSlotByClient[client] = -1;
+			this.tankLifeUseridByClient[client] = 0;
+			this.tankLifeEpochByClient[client] = 0;
 			this.lastWeaponFamilyByClient[client] = PlayerStatsWeaponFamily_None;
 			this.lastWeaponDetailByClient[client] = PlayerStatsWeaponDetail_None;
 		}
@@ -1076,6 +1222,7 @@ enum struct PlayerStatsSubstitutionSnapshotData
 {
 	bool active;
 	bool restored;
+	int generation;
 	char substitutionId[64];
 	int accountId;
 	int timestamp;
@@ -1089,6 +1236,7 @@ enum struct PlayerStatsSubstitutionSnapshotData
 	{
 		this.active = false;
 		this.restored = false;
+		this.generation = 0;
 		this.substitutionId[0] = '\0';
 		this.accountId = 0;
 		this.timestamp = 0;
@@ -1097,5 +1245,33 @@ enum struct PlayerStatsSubstitutionSnapshotData
 		this.baseMode = GAMEMODE_UNKNOWN;
 		this.map[0] = '\0';
 		this.player.Reset();
+	}
+}
+
+enum struct PlayerStatsPendingSubstitutionData
+{
+	bool active;
+	int transitionSerial;
+	bool callbackActive;
+	int roundId;
+	int snapshotIndex;
+	int snapshotGeneration;
+	int incomingClient;
+	int incomingUserid;
+	int incomingAccountId;
+	char substitutionId[64];
+
+	void Reset()
+	{
+		this.active = false;
+		this.transitionSerial = 0;
+		this.callbackActive = false;
+		this.roundId = 0;
+		this.snapshotIndex = -1;
+		this.snapshotGeneration = 0;
+		this.incomingClient = 0;
+		this.incomingUserid = 0;
+		this.incomingAccountId = 0;
+		this.substitutionId[0] = '\0';
 	}
 }

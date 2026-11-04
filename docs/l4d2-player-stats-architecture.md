@@ -10,12 +10,39 @@ Su foco es:
 - fuentes de tracking
 - integración con otros plugins
 
+## Organización interna del core
+
+El artefacto sigue siendo un único `l4d2_player_stats.smx`. `l4d2_player_stats.sp` define los callbacks propios que reciben llamadas externas y delega a entradas internas sin cambiar sus firmas públicas.
+
+| Directorio o archivo | Responsabilidad |
+|---|---|
+| `inputs/` | Lee eventos, forwards, comandos y natives; transforma payloads externos en datos locales. El adaptador de Player-Skills libera sus `KeyValues` antes de llamar al módulo. |
+| `types/` | Define observaciones, resultados y razones de descarte para rutas tipadas. |
+| `damage/` | Resuelve la autoridad y la base numérica de Witch y daño ordinario migrado. |
+| `modules/` | Escribe métricas de combate, precisión, infectados, survivability/soporte, utilidad, Scavenge, sesiones Tank y consecuencias de Skills. |
+| `runtime/` | Mantiene contexto de modo, bindings, sustituciones y ciclo de vida de ronda. |
+| `queries.sp` | Calcula filtros, rankings y colecciones de lectura usados por API y presentación. |
+| `trace.sp` | Conserva `Stats_Debug` y agrega contexto local para las rutas cubiertas en [traza](l4d2-player-stats-trace-coverage.md). |
+| `api/` y `presentation/announce.sp` | Serializan el contrato público, emiten forwards y presentan resultados. La presentación conserva junto su formato de chat y consola porque ambos comparten helpers. |
+
+La sesión Tank atacante y su correlación terminal D2 están integradas; el cierre E2 liquida o descarta operaciones pendientes antes de congelar el snapshot. El smoke local verificó una parte de los casos Tank, el cierre duplicado de `round_end` y rutas de sustitución síncrona y tardía. Esto no cubre toda la matriz ni establece equivalencia operativa completa. El detalle vigente de implementación, evidencia y casos pendientes está en el [plan](l4d2-player-stats-refactor-plan.md), la [traza](l4d2-player-stats-trace-coverage.md) y el [registro de smoke](l4d2-player-stats-smoke.md).
+
 ## Round Model
 
 El core distingue dos estados:
 
 - `round active`
 - `round live`
+
+Durante la finalización existe además una fase interna `closing`: corta nuevas
+escrituras ordinarias antes de emitir `PlayerStats_OnRoundEnded` y mostrar el
+resultado. Una reentrada que cambie o reinicie el snapshot impide que el
+presentador anuncie datos de la ronda nueva como si fueran los de la cerrada.
+Antes de congelar el snapshot, el cierre D2/E2 llama al finalizador de
+operaciones Tank de esa ronda y generación de mapa. Este finalizador conserva
+las operaciones ya aplicadas y descarta con razón las que no tienen evidencia
+terminal suficiente o contexto vigente; no infiere ni añade daño. El orden y
+las rutas de reentrada se describen en el [ciclo de cierre](l4d2-player-stats-close-lifecycle.md).
 
 ### round active
 
@@ -43,10 +70,15 @@ Desde este punto el core puede contar:
 
 ## Live Signals
 
-Orden preferido:
+La entrada efectiva a `live` se determina así:
 
-1. `OnRoundIsLive()` si `readyup` existe
-2. `L4D_OnFirstSurvivorLeftSafeArea_Post`
+1. `OnRoundIsLive()` cuando la biblioteca `readyup` está presente.
+2. `L4D_OnFirstSurvivorLeftSafeArea_Post` como autoridad cuando `readyup` no está presente.
+
+Con `readyup` presente, una consulta que encuentre el saferoom despejado no
+sustituye su señal. La ruta de carga tardía y el caso de inicialización con el
+saferoom ya despejado aún requieren smoke específico; véase el [registro
+operativo](l4d2-player-stats-smoke.md).
 
 La regla es única:
 
