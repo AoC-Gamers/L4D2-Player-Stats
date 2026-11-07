@@ -51,13 +51,14 @@ void Input_OnClientPutInServer(int client, StatsTraceContext traceContext)
 void Input_OnClientDisconnect(int client, StatsTraceContext traceContext)
 {
 	int userid = GetClientUserId(client);
-	int teamBefore = GetClientTeam(client);
+	// Disconnect also runs for clients that never entered the game.
+	int teamBefore = IsClientInGame(client) ? GetClientTeam(client) : 0;
 	int slotBefore = Stats_GetPlayerRoundIndex(client);
 	Stats_Debug(PlayerStatsDebug_Event, "[OnClientDisconnect] client=%d bot=%d", client, IsFakeClient(client));
 	Detect_OnClientDisconnect(client);
 	SDKUnhook(client, SDKHook_OnTakeDamage, SDK_OnTakeDamage);
 	Stats_OnClientDisconnect(client);
-	int teamAfter = GetClientTeam(client);
+	int teamAfter = IsClientInGame(client) ? GetClientTeam(client) : 0;
 	int slotAfter = Stats_GetPlayerRoundIndex(client);
 	Trace_ClientBindingResult(traceContext, "client_disconnect", client, userid, teamBefore, teamAfter, slotBefore, slotAfter);
 }
